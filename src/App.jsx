@@ -198,7 +198,7 @@ function Setup({onSave}){
               <div style={{fontSize:14,color:"#ffffff",marginTop:6,fontWeight:700}}>Ask your group admin for the password.</div>
             </>
           )}
-          <div style={{fontSize:14,color:"#ffffff",marginTop:8,fontWeight:700}}>Everyone with the same Group ID shares a leaderboard & chat.</div>
+          <div style={{fontSize:14,color:"#ffffff",marginTop:8,fontWeight:700}}>Everyone with the same Group ID shares a leaderboard &amp; chat.</div>
         </div>
 
         <button className="btn" onClick={handleGo} style={{fontSize:17,padding:16,opacity:ok?1:0.4}}>
@@ -691,7 +691,7 @@ export default function App(){
             </div>
 
             <div style={{display:"flex",gap:8,marginBottom:8,position:"sticky",bottom:0,background:"#2D006Eee",paddingTop:12,marginLeft:-20,marginRight:-20,paddingLeft:20,paddingRight:20,paddingBottom:4}}>
-              <button className="btn" onClick={saveAdminSettings} style={{flex:1,fontSize:13}}>Save & Activate 🌈</button>
+              <button className="btn" onClick={saveAdminSettings} style={{flex:1,fontSize:13}}>Save &amp; Activate 🌈</button>
               <button onClick={()=>setShowAdmin(false)} style={{flex:1,background:"#ffffff18",border:`2px solid ${LF.purple}44`,borderRadius:50,padding:11,fontFamily:"'Outfit',sans-serif",fontSize:15,color:"#ffffff",cursor:"pointer"}}>Cancel</button>
             </div>
           </div>
@@ -720,7 +720,7 @@ export default function App(){
                 <div style={{fontFamily:"'Outfit',sans-serif",fontSize:22,color:LF.white,marginBottom:2}}>{fmtProg(me)}</div>
                 <div style={{fontSize:15,color:LF.hotpink,fontWeight:800,marginBottom:2}}>of {fmtGoal(me)}</div>
                 <div style={{fontSize:15,color:pct>=100?LF.lime:LF.teal,fontWeight:800}}>{pct>=100?"🌟 GOAL CRUSHED! 🌟":fmtLeft()}</div>
-                {history.filter(h=>h.met).length>0&&<div style={{fontSize:15,marginTop:4,color:LF.yellow,fontWeight:800}}>{"🔥".repeat(Math.min(history.filter(h=>h.met).length,3))} {history.filter(h=>h.met).length}wk streak!</div>}
+                {history.filter(h=>h.met).length>0&amp;&amp;<div style={{fontSize:15,marginTop:4,color:LF.yellow,fontWeight:800}}>{"🔥".repeat(Math.min(history.filter(h=>h.met).length,3))} {history.filter(h=>h.met).length}wk streak!</div>}
               </div>
             </div>
             <div style={{display:"flex",gap:6,marginTop:16}}>
@@ -753,10 +753,10 @@ export default function App(){
                 {!timerRunning
                   ?<button className="btn" onClick={startTimer} style={{flex:1,fontSize:15,background:`linear-gradient(135deg,${LF.pink},${LF.purple})`}}>{timerSecs>0?"▶ Resume":"▶ Start"} Writing</button>
                   :<button className="btn" onClick={pauseTimer} style={{flex:1,fontSize:15,background:`linear-gradient(135deg,${LF.purple},${LF.blue})`}}>⏸ Pause</button>}
-                {timerSecs>0&&<button className="btn btn-red" onClick={()=>{clearInterval(timerRef.current);setTimerRunning(false);setTimerSecs(0);}} style={{flex:1,fontSize:15}}>⏹ Stop</button>}
-                {timerSecs>=60&&<button className="btn btn-yellow" onClick={stopAndSave} style={{width:"100%",fontSize:15,marginTop:4}}>✅ Save {Math.round(timerSecs/60)}m</button>}
+                {timerSecs>0&amp;&amp;<button className="btn btn-red" onClick={()=>{clearInterval(timerRef.current);setTimerRunning(false);setTimerSecs(0);}} style={{flex:1,fontSize:15}}>⏹ Stop</button>}
+                {timerSecs>=60&amp;&amp;<button className="btn btn-yellow" onClick={stopAndSave} style={{width:"100%",fontSize:15,marginTop:4}}>✅ Save {Math.round(timerSecs/60)}m</button>}
               </div>
-              {timerSessions.length>0&&(
+              {timerSessions.length>0&amp;&amp;(
                 <div style={{marginTop:12,borderTop:`1px solid ${LF.purple}33`,paddingTop:10}}>
                   <div style={{fontSize:16,color:LF.teal,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Today's Sessions</div>
                   {timerSessions.map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:15,color:"#ffffff",fontWeight:800,padding:"2px 0"}}><span>Session {i+1}</span><span style={{color:LF.teal}}>{s.mins}m ✓</span></div>)}
@@ -902,7 +902,7 @@ export default function App(){
               {pollOpts.map((o,i)=>(
                 <div key={i} style={{display:"flex",gap:6,marginBottom:8}}>
                   <input className="inp" placeholder={`Option ${i+1}`} value={o} onChange={e=>{const opts=[...pollOpts];opts[i]=e.target.value;setPollOpts(opts);}} style={{flex:1}}/>
-                  {pollOpts.length>2&&<button onClick={()=>setPollOpts(pollOpts.filter((_,j)=>j!==i))} style={{background:"none",border:`2px solid ${LF.pink}55`,borderRadius:10,padding:"0 12px",cursor:"pointer",color:LF.pink}}>✕</button>}
+                  {pollOpts.length>2&amp;&amp;<button onClick={()=>setPollOpts(pollOpts.filter((_,j)=>j!==i))} style={{background:"none",border:`2px solid ${LF.pink}55`,borderRadius:10,padding:"0 12px",cursor:"pointer",color:LF.pink}}>✕</button>}
                 </div>
               ))}
               {pollOpts.length<6&&<button onClick={()=>setPollOpts([...pollOpts,""])} style={{background:"none",border:"2px dashed #ffffff33",borderRadius:10,padding:8,width:"100%",cursor:"pointer",color:"#ffffff",fontSize:15,marginBottom:10}}>+ Add Option</button>}
@@ -965,7 +965,7 @@ export default function App(){
                 const resolved=poll.adminOverride||null;
                 const myVoteIdx=poll.options.findIndex(o=>o.votes.includes(me.name));
                 const deadlineDate=poll.deadline?new Date(poll.deadline):null;
-                const expired=deadlineDate&&deadlineDate<new Date();
+                const expired=deadlineDate&amp;&amp;deadlineDate<new Date();
                 const canVote=!resolved&&!expired;
                 const hoursLeft=deadlineDate&&!expired?Math.ceil((deadlineDate-new Date())/3600000):null;
 
@@ -989,7 +989,7 @@ export default function App(){
                       {poll.options.map((o,i)=>{
                         const pct2=total>0?Math.round((o.votes.length/total)*100):0;
                         const voted=myVoteIdx===i;
-                        const isLeading=o.votes.length>0&&o.votes.length===leading.votes.length;
+                        const isLeading=o.votes.length>0&amp;&amp;o.votes.length===leading.votes.length;
                         return(
                           <div key={i}>
                             <button onClick={()=>canVote&&votePoll(poll.id,i)} style={{width:"100%",textAlign:"left",padding:"8px 12px",borderRadius:10,cursor:canVote?"pointer":"default",fontFamily:"'Outfit',sans-serif",fontSize:15,fontWeight:voted?900:700,border:`2px solid ${voted?LF.pink:isLeading&&canVote?"#FFE600":"#ffffff33"}`,background:voted?`${LF.pink}33`:isLeading&&canVote?"#FFE60011":"#ffffff11",color:voted?LF.pink:isLeading&&canVote?LF.yellow:"#ffffff",display:"flex",justifyContent:"space-between",alignItems:"center",transition:"all 0.15s"}}>
@@ -1030,17 +1030,17 @@ export default function App(){
 
         {/* ── STATS ── */}
         {tab==="Stats"&&(<>
-          <div style={{fontFamily:"'Outfit',sans-serif",fontSize:16,color:LF.teal}}>📊 Group Stats & Ledger</div>
+          <div style={{fontFamily:"'Outfit',sans-serif",fontSize:16,color:LF.teal}}>📊 Group Stats &amp; Ledger</div>
 
           {/* Group totals */}
           <div className="card" style={{background:`linear-gradient(135deg,#FF2D9B11,#BF5FFF11)`}}>
             <span className="lbl">🌍 Total Group Output — All Time</span>
             <div style={{display:"flex",gap:0}}>
-              {totalGroupWords>0&&<div style={{flex:1,textAlign:"center",borderRight:totalGroupMinutes>0?`1px solid ${LF.purple}33`:"none"}}>
+              {totalGroupWords>0&amp;&amp;<div style={{flex:1,textAlign:"center",borderRight:totalGroupMinutes>0?`1px solid ${LF.purple}33`:"none"}}>
                 <div style={{fontFamily:"'Outfit',sans-serif",fontSize:26,color:LF.pink}}>{totalGroupWords.toLocaleString()}</div>
                 <div style={{fontSize:16,color:"#ffffff",fontWeight:800,marginTop:2}}>Total Words ✍️</div>
               </div>}
-              {totalGroupMinutes>0&&<div style={{flex:1,textAlign:"center"}}>
+              {totalGroupMinutes>0&amp;&amp;<div style={{flex:1,textAlign:"center"}}>
                 <div style={{fontFamily:"'Outfit',sans-serif",fontSize:26,color:LF.teal}}>{Math.round(totalGroupMinutes/60)}h {totalGroupMinutes%60}m</div>
                 <div style={{fontSize:16,color:"#ffffff",fontWeight:800,marginTop:2}}>Total Writing Time ⏱️</div>
               </div>}
@@ -1066,7 +1066,7 @@ export default function App(){
               </div>
             </div>
 
-            {Object.entries(ledger.charityTotals||{}).length>0&&(<>
+            {Object.entries(ledger.charityTotals||{}).length>0&amp;&amp;(<>
               <div style={{fontSize:16,color:LF.teal,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Charity Breakdown</div>
               {Object.entries(ledger.charityTotals).map(([c,amt])=>(
                 <div key={c} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${LF.purple}22`,fontSize:15,fontWeight:800}}>
@@ -1075,7 +1075,7 @@ export default function App(){
               ))}
             </>)}
 
-            {Object.entries(ledger.payoutTotals||{}).length>0&&(<>
+            {Object.entries(ledger.payoutTotals||{}).length>0&amp;&amp;(<>
               <div style={{fontSize:16,color:LF.yellow,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginTop:10,marginBottom:6}}>Winner Payouts</div>
               {Object.entries(ledger.payoutTotals).map(([name,amt])=>(
                 <div key={name} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${LF.purple}22`,fontSize:15,fontWeight:800}}>
@@ -1084,7 +1084,7 @@ export default function App(){
               ))}
             </>)}
 
-            {Object.entries(ledger.prizeTotals||{}).length>0&&(<>
+            {Object.entries(ledger.prizeTotals||{}).length>0&amp;&amp;(<>
               <div style={{fontSize:16,color:LF.teal,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginTop:10,marginBottom:6}}>Admin Prizes Awarded</div>
               {Object.entries(ledger.prizeTotals).map(([name,desc])=>(
                 <div key={name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${LF.purple}22`,fontSize:15,fontWeight:800,gap:8}}>
@@ -1114,7 +1114,7 @@ export default function App(){
           </div>
 
           {/* Payment history */}
-          {(ledger.entries||[]).length>0&&(
+          {(ledger.entries||[]).length>0&amp;&amp;(
             <div className="card">
               <span className="lbl">📋 Payment History</span>
               {[...(ledger.entries||[])].reverse().slice(0,20).map(e=>(
@@ -1133,7 +1133,7 @@ export default function App(){
         {/* ── STAKES ── */}
         {tab==="Stakes"&&(<>
           <div className="card">
-            <span className="lbl">Goal Type & Target</span>
+            <span className="lbl">Goal Type &amp; Target</span>
             {isLocked&&<div style={{fontSize:15,color:LF.orange,fontWeight:800,marginBottom:10}}>🔒 Goals locked — you can raise your goal but not lower it{admin.changeWindowOpen?` (change window open for ~${changeHoursLeft}h)`:"."}.</div>}
             <div className="pill" style={{marginBottom:12}}>
               <button onClick={()=>setGoalTypeEdit("words")} style={{background:goalTypeEdit==="words"?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"transparent",color:goalTypeEdit==="words"?LF.white:LF.purple}}>✍️ Words</button>
@@ -1204,7 +1204,7 @@ export default function App(){
               </div>
             </div>
           ))}
-          {history.length>0&&(
+          {history.length>0&amp;&amp;(
             <div className="card">
               <div style={{display:"flex"}}>
                 {[{l:"Periods",v:history.length,c:LF.teal},{l:"Nailed it",v:history.filter(h=>h.met).length,c:LF.lime},{l:"Missed",v:history.filter(h=>!h.met).length,c:LF.pink}].map((s,i)=>(
