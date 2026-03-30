@@ -38,7 +38,7 @@ const G=`
   .leopard-history  { background: linear-gradient(135deg, #BF5FFF 0%, #6B0AC9 35%, #C77DFF 70%, #E040FB 100%); background-attachment:fixed; }
   .leopard-setup    { background: linear-gradient(135deg, #6B0AC9 0%, #9B30FF 20%, #FF2D9B 45%, #FF7A00 65%, #FFE600 85%, #E040FB 100%); background-attachment:fixed; }
 
-  .root{min-height:100vh;font-family:'Outfit',sans-serif;color:#ffffff;font-weight:600;display:flex;flex-direction:column;align-items:center;padding-bottom:80px;text-shadow:0 1px 3px rgba(0,0,0,0.8);}
+  .root{min-height:100vh;font-family:'Outfit',sans-serif;color:#ffffff;font-weight:600;display:flex;flex-direction:column;align-items:center;padding-bottom:80px;}
   .card{background:#1A004488;border:1.5px solid #ffffff22;border-radius:20px;padding:20px;position:relative;backdrop-filter:blur(4px);text-shadow:-1px -1px 0 rgba(0,0,0,0.7),1px -1px 0 rgba(0,0,0,0.7),-1px 1px 0 rgba(0,0,0,0.7),1px 1px 0 rgba(0,0,0,0.7);}
   .card::before{display:none;}
   .btn{background:linear-gradient(135deg,#FF2D9B,#BF5FFF);color:#fff;border:none;border-radius:50px;padding:11px 24px;font-family:'Outfit',sans-serif;font-size:17px;cursor:pointer;font-weight:700;box-shadow:0 4px 20px #FF2D9B44;transition:transform 0.15s,box-shadow 0.15s;text-shadow:0 1px 3px rgba(0,0,0,0.6);}
@@ -59,6 +59,9 @@ const G=`
   @keyframes pop{0%{transform:scale(0.5);opacity:0;}60%{transform:scale(1.2);}100%{transform:scale(1);opacity:1;}}
   @keyframes msgIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
   .msg-in{animation:msgIn 0.25s ease forwards;}
+  /* Universal text shadow for readability on gradient backgrounds */
+  .root *{text-shadow:-1px -1px 0 rgba(0,0,0,0.75),1px -1px 0 rgba(0,0,0,0.75),-1px 1px 0 rgba(0,0,0,0.75),1px 1px 0 rgba(0,0,0,0.75);}
+  .root .holo{text-shadow:none;}
   /* Colored text classes with white outline */
   .c-pink{color:#FF2D9B;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;}
   .c-yellow{color:#FFE600;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;}
@@ -68,14 +71,7 @@ const G=`
   .c-purple{color:#BF5FFF;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;}
   .btn,.btn-yellow,.btn-teal,.btn-red{text-shadow:-1px -1px 0 rgba(0,0,0,0.8),1px -1px 0 rgba(0,0,0,0.8),-1px 1px 0 rgba(0,0,0,0.8),1px 1px 0 rgba(0,0,0,0.8)!important;}
   .tab{text-shadow:-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)!important;}
-  /* White outline on all text for readability */
-  * { -webkit-text-stroke: 0px; paint-order: stroke fill; }
-  .wtxt { -webkit-text-stroke: 0.6px #000; }
-  span, div, p, label, button, a {
-    text-shadow: -1px -1px 0 rgba(0,0,0,0.85), 1px -1px 0 rgba(0,0,0,0.85),
-                 -1px  1px 0 rgba(0,0,0,0.85), 1px  1px 0 rgba(0,0,0,0.85),
-                  0 0 8px rgba(0,0,0,0.5);
-  }
+
   .lbl{font-size:13px;color:#ffffff;text-transform:uppercase;letter-spacing:2px;font-weight:900;display:block;margin-bottom:10px;text-shadow:-1px -1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9);}
   .colored-text{-webkit-text-stroke:0.5px rgba(0,0,0,0.8);paint-order:stroke fill;}
   .outline-text{text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 4px rgba(0,0,0,0.5);}
@@ -198,7 +194,7 @@ function Setup({onSave}){
             <>
               <span className="lbl">Group Password</span>
               <input className="inp" type="password" value={joinPassword} onChange={e=>setJoinPassword(e.target.value)} placeholder="Enter the group password" onKeyDown={e=>e.key==="Enter"&&handleGo()}/>
-              {pwError&&<div style={{fontSize:14,color:LF.pink,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800,marginTop:6}}>⚠️ {pwError}</div>}
+              {pwError&&<div style={{fontSize:14,color:LF.pink,fontWeight:800,marginTop:6}}>⚠️ {pwError}</div>}
               <div style={{fontSize:14,color:"#ffffff",marginTop:6,fontWeight:700}}>Ask your group admin for the password.</div>
             </>
           )}
@@ -602,7 +598,7 @@ export default function App(){
       <div style={{width:"100%",maxWidth:500,padding:"22px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
         <div>
           <div style={{fontFamily:"'Outfit',sans-serif",fontSize:28,fontWeight:900,lineHeight:1,marginBottom:4,color:"#ffffff"}}>Wordcountability</div>
-          <div style={{fontSize:15,color:LF.hotpink,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800,display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
+          <div style={{fontSize:15,color:LF.hotpink,fontWeight:800,display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
             {me.avatar} {me.name} · <span style={{color:"#ffffff"}}>#{me.groupId}</span>
             {me.isAdmin&&<span style={{background:`linear-gradient(135deg,${LF.yellow},${LF.orange})`,color:"#ffffff",fontSize:15,fontWeight:800,padding:"2px 8px",borderRadius:20}}>⭐ ADMIN</span>}
             {triggered&&<span style={{background:`linear-gradient(135deg,${LF.orange},${LF.pink})`,color:"#fff",fontSize:15,fontWeight:800,padding:"2px 8px",borderRadius:20}}>💸 PAY UP!</span>}
@@ -610,7 +606,7 @@ export default function App(){
             {isLocked&&<span className="locked-badge">🔒 Goals Locked</span>}
             {admin.changeWindowOpen&&<span className="open-badge">🔓 Change Window Open</span>}
           </div>
-          {endDate&&<div style={{fontSize:16,color:LF.teal,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800,marginTop:3}}>🏁 {daysLeft}d left · {admin.frequency} check-ins · {admin.payoutMode==="winners"?"🏆 Payout to winners":admin.payoutMode==="pain"?"😈 To The Pain":`🎁 Prize for top ${admin.prizeMetric==="pct"?"% achiever":"performer"}`:("💝 Donate to charity")}</div>}
+          {endDate&&<div style={{fontSize:16,color:LF.teal,fontWeight:800,marginTop:3}}>🏁 {daysLeft}d left · {admin.frequency} check-ins · {admin.payoutMode==="winners"?"🏆 Payout to winners":admin.payoutMode==="pain"?"😈 To The Pain":`🎁 Prize for top ${admin.prizeMetric==="pct"?"% achiever":"performer"}`:("💝 Donate to charity")}</div>}
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
           {me.isAdmin&&<button className="btn btn-yellow" onClick={()=>{setAdminDraft({...admin});setShowAdmin(true);}} style={{fontSize:16,padding:"6px 10px"}}>⚙️ Admin</button>}
@@ -622,7 +618,7 @@ export default function App(){
       {showAdmin&&me.isAdmin&&(
         <div className="modal-bg">
           <div className="card modal">
-            <div style={{fontFamily:"'Outfit',sans-serif",fontSize:20,color:LF.yellow,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",marginBottom:16}}>⚙️ Admin Settings</div>
+            <div style={{fontFamily:"'Outfit',sans-serif",fontSize:20,color:LF.yellow,marginBottom:16}}>⚙️ Admin Settings</div>
 
             <span className="lbl">Challenge Duration</span>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
@@ -686,7 +682,7 @@ export default function App(){
 
             {/* Goal Lock */}
             <div style={{background:"#FF444422",border:`2px solid #FF444444`,borderRadius:14,padding:14,marginBottom:14}}>
-              <span className="lbl" style={{color:LF.orange,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>🔒 Goal Lock</span>
+              <span className="lbl" style={{color:LF.orange}}>🔒 Goal Lock</span>
               <div style={{fontSize:15,color:"#ffffff",fontWeight:800,marginBottom:10}}>When locked, members cannot lower their goals. You can open a temporary change window.</div>
               <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
                 <span style={{fontSize:15,color:"#ffffff",fontWeight:800}}>Change window (days):</span>
@@ -717,14 +713,14 @@ export default function App(){
               <div style={{position:"relative",flexShrink:0}}>
                 <Ring pct={pct}/>
                 <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  <span style={{fontFamily:"'Outfit',sans-serif",fontSize:22,fontWeight:900,color:pct>=100?LF.lime:LF.yellow,textShadow:`0 0 10px ${pct>=100?LF.lime:LF.yellow}`}}>{pct}%</span>
+                  <span style={{fontFamily:"'Outfit',sans-serif",fontSize:22,fontWeight:900,color:pct>=100?LF.lime:LF.yellow}}>{pct}%</span>
                 </div>
               </div>
               <div style={{flex:1}}>
                 <div style={{fontFamily:"'Outfit',sans-serif",fontSize:22,color:LF.white,marginBottom:2}}>{fmtProg(me)}</div>
-                <div style={{fontSize:15,color:LF.hotpink,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800,marginBottom:2}}>of {fmtGoal(me)}</div>
+                <div style={{fontSize:15,color:LF.hotpink,fontWeight:800,marginBottom:2}}>of {fmtGoal(me)}</div>
                 <div style={{fontSize:15,color:pct>=100?LF.lime:LF.teal,fontWeight:800}}>{pct>=100?"🌟 GOAL CRUSHED! 🌟":fmtLeft()}</div>
-                {history.filter(h=>h.met).length>0&&<div style={{fontSize:15,marginTop:4,color:LF.yellow,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800}}>{"🔥".repeat(Math.min(history.filter(h=>h.met).length,3))} {history.filter(h=>h.met).length}wk streak!</div>}
+                {history.filter(h=>h.met).length>0&&<div style={{fontSize:15,marginTop:4,color:LF.yellow,fontWeight:800}}>{"🔥".repeat(Math.min(history.filter(h=>h.met).length,3))} {history.filter(h=>h.met).length}wk streak!</div>}
               </div>
             </div>
             <div style={{display:"flex",gap:6,marginTop:16}}>
@@ -750,7 +746,7 @@ export default function App(){
             <div className="card" style={{border:`2px solid ${timerRunning?LF.teal:LF.pink}55`}}>
               <span className="lbl">⏱️ Writing Timer</span>
               <div style={{textAlign:"center",padding:"12px 0 16px"}}>
-                <div style={{fontFamily:"'Outfit',sans-serif",fontSize:52,color:timerRunning?LF.pink:LF.yellow,textShadow:`0 0 20px ${timerRunning?LF.pink:LF.yellow}88`,letterSpacing:2}}>{fmtTimer(timerSecs)}</div>
+                <div style={{fontFamily:"'Outfit',sans-serif",fontSize:52,color:timerRunning?LF.pink:LF.yellow,letterSpacing:2}}>{fmtTimer(timerSecs)}</div>
                 <div style={{fontSize:16,fontWeight:800,marginTop:4,color:timerRunning?LF.pink:timerSecs>0?LF.yellow:"#ffffff"}}>{timerRunning?"● WRITING IN PROGRESS...":timerSecs>0?"⏸ Paused":"Hit Start when you begin ✨"}</div>
               </div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -762,9 +758,9 @@ export default function App(){
               </div>
               {timerSessions.length>0&&(
                 <div style={{marginTop:12,borderTop:`1px solid ${LF.purple}33`,paddingTop:10}}>
-                  <div style={{fontSize:16,color:LF.teal,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Today's Sessions</div>
-                  {timerSessions.map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:15,color:"#ffffff",fontWeight:800,padding:"2px 0"}}><span>Session {i+1}</span><span style={{color:LF.teal,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>{s.mins}m ✓</span></div>)}
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:15,fontWeight:800,marginTop:6,color:LF.yellow,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}><span>Total today</span><span>{timerSessions.reduce((a,s)=>a+s.mins,0)}m 🔥</span></div>
+                  <div style={{fontSize:16,color:LF.teal,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Today's Sessions</div>
+                  {timerSessions.map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:15,color:"#ffffff",fontWeight:800,padding:"2px 0"}}><span>Session {i+1}</span><span style={{color:LF.teal}}>{s.mins}m ✓</span></div>)}
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:15,fontWeight:800,marginTop:6,color:LF.yellow}}><span>Total today</span><span>{timerSessions.reduce((a,s)=>a+s.mins,0)}m 🔥</span></div>
                 </div>
               )}
               <div style={{fontSize:16,color:"#ffffff",fontWeight:800,marginTop:10,textAlign:"center"}}>Sessions under 1 min aren't counted 🦄</div>
@@ -783,20 +779,20 @@ export default function App(){
                   </>
                 ):admin.payoutMode==="prize"?(
                   <>
-                    <div style={{fontFamily:"'Outfit',sans-serif",fontSize:18,color:LF.teal,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>{admin.prizeDescription||"Prize TBA"}</div>
-                    <div style={{fontSize:15,color:LF.hotpink,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800,marginTop:3}}>{admin.prizeMetric==="pct"?"Highest % of goal wins":"Most "+(me.goalType==="words"?"words":"time")+" wins"} · no stake required 🎁</div>
+                    <div style={{fontFamily:"'Outfit',sans-serif",fontSize:18,color:LF.teal}}>{admin.prizeDescription||"Prize TBA"}</div>
+                    <div style={{fontSize:15,color:LF.hotpink,fontWeight:800,marginTop:3}}>{admin.prizeMetric==="pct"?"Highest % of goal wins":"Most "+(me.goalType==="words"?"words":"time")+" wins"} · no stake required 🎁</div>
                     {/* Show current leader */}
                     {sorted.length>0&&(()=>{
                       const leader=admin.prizeMetric==="pct"
                         ?[...sorted].sort((a,b)=>(b.progressThisWeek/b.goalValue)-(a.progressThisWeek/a.goalValue))[0]
                         :[...sorted].sort((a,b)=>(b.progressThisWeek||0)-(a.progressThisWeek||0))[0];
-                      return <div style={{fontSize:15,color:LF.yellow,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800,marginTop:4}}>🏅 Current leader: {leader.avatar} {leader.name}</div>;
+                      return <div style={{fontSize:15,color:LF.yellow,fontWeight:800,marginTop:4}}>🏅 Current leader: {leader.avatar} {leader.name}</div>;
                     })()}
                   </>
                 ):(
                   <>
                     <div style={{fontFamily:"'Outfit',sans-serif",fontSize:18,color:triggered?LF.orange:atRisk?LF.yellow:LF.white}}>{fmtMoney(admin.stake)} → {admin.payoutMode==="winners"?"🏆 Winners":(me.charityName||me.charity)}</div>
-                    <div style={{fontSize:15,color:LF.hotpink,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800,marginTop:3}}>{missed}/{admin.threshold} missed · {admin.payoutMode==="winners"?"payout to winners":"your charity"}</div>
+                    <div style={{fontSize:15,color:LF.hotpink,fontWeight:800,marginTop:3}}>{missed}/{admin.threshold} missed · {admin.payoutMode==="winners"?"payout to winners":"your charity"}</div>
                   </>
                 )}
               </div>
@@ -816,12 +812,12 @@ export default function App(){
         {/* ── GROUP ── */}
         {tab==="Group"&&(<>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{fontFamily:"'Outfit',sans-serif",fontSize:15,color:LF.teal,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>#{me.groupId} · This Period 🏆</div>
+            <div style={{fontFamily:"'Outfit',sans-serif",fontSize:15,color:LF.teal}}>#{me.groupId} · This Period 🏆</div>
             <button className="btn btn-teal" onClick={()=>loadMembers(me.groupId,me.name)} style={{fontSize:16,padding:"6px 12px"}}>↻ Refresh</button>
           </div>
           {me.isAdmin&&(
             <div className="card" style={{border:`2px solid ${LF.orange}55`,background:"#FF440011"}}>
-              <span className="lbl" style={{color:LF.orange,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>🔒 Goal Lock Controls</span>
+              <span className="lbl" style={{color:LF.orange}}>🔒 Goal Lock Controls</span>
               <div style={{fontSize:15,color:"#ffffff",fontWeight:800,marginBottom:10}}>
                 {isLocked?"Goals are currently locked. Members cannot lower their goals.":admin.changeWindowOpen?`🔓 Change window open — closes in ~${changeHoursLeft}h`:"Goals are unlocked. Members can change freely."}
               </div>
@@ -844,17 +840,17 @@ export default function App(){
           )}
           {!me.isAdmin&&admin.changeWindowOpen&&(
             <div className="card" style={{border:`2px solid ${LF.lime}55`,background:"#AAFF0011"}}>
-              <div style={{fontFamily:"'Outfit',sans-serif",fontSize:16,color:LF.lime,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",marginBottom:4}}>🔓 Goal Change Window is Open!</div>
+              <div style={{fontFamily:"'Outfit',sans-serif",fontSize:16,color:LF.lime,marginBottom:4}}>🔓 Goal Change Window is Open!</div>
               <div style={{fontSize:15,color:"#ffffff",fontWeight:800}}>You can adjust your goal until this window closes (~{changeHoursLeft}h left). Head to Stakes to update.</div>
             </div>
           )}
           {!me.isAdmin&&isLocked&&(
             <div className="card" style={{border:`2px solid ${LF.orange}44`}}>
-              <div style={{fontFamily:"'Outfit',sans-serif",fontSize:16,color:LF.orange,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",marginBottom:4}}>🔒 Goals Are Locked</div>
+              <div style={{fontFamily:"'Outfit',sans-serif",fontSize:16,color:LF.orange,marginBottom:4}}>🔒 Goals Are Locked</div>
               <div style={{fontSize:15,color:"#ffffff",fontWeight:800}}>The admin has locked goals. You can't lower your goal, but raising it is always allowed!</div>
             </div>
           )}
-          {sorted.length===0&&<div className="card" style={{textAlign:"center",padding:24}}><div style={{fontSize:32,marginBottom:8}}>🦄</div><div style={{fontFamily:"'Outfit',sans-serif",fontSize:15,color:LF.pink,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>No crew yet! Share <span style={{color:LF.yellow,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>#{me.groupId}</span></div></div>}
+          {sorted.length===0&&<div className="card" style={{textAlign:"center",padding:24}}><div style={{fontSize:32,marginBottom:8}}>🦄</div><div style={{fontFamily:"'Outfit',sans-serif",fontSize:15,color:LF.pink}}>No crew yet! Share <span style={{color:LF.yellow}}>#{me.groupId}</span></div></div>}
           {(()=>{
             const prizeLeader=admin.payoutMode==="prize"
               ?(admin.prizeMetric==="pct"
@@ -873,7 +869,7 @@ export default function App(){
                     <div style={{fontSize:20}}>{w.avatar}</div>
                     <div style={{flex:1}}>
                       <div style={{fontFamily:"'Outfit',sans-serif",fontSize:15,color:w.isYou?LF.yellow:LF.white}}>
-                        {w.name}{w.isYou&&<span style={{fontSize:15,color:LF.hotpink,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}> ← you!</span>}{w.isAdmin&&<span style={{fontSize:15,color:LF.yellow,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}> ⭐</span>}
+                        {w.name}{w.isYou&&<span style={{fontSize:15,color:LF.hotpink}}> ← you!</span>}{w.isAdmin&&<span style={{fontSize:15,color:LF.yellow}}> ⭐</span>}
                         {isPrizeLeader&&<span style={{fontSize:15,background:`linear-gradient(135deg,${LF.teal},${LF.blue})`,color:LF.white,padding:"1px 7px",borderRadius:20,marginLeft:4}}>🎁 Leading</span>}
                       </div>
                       <div style={{fontSize:15,color:"#ffffff",fontWeight:800}}>{w.goalType==="words"?`${w.progressThisWeek?.toLocaleString()||0}/${w.goalValue?.toLocaleString()||0}w`:`${w.progressThisWeek||0}/${w.goalValue||0}m`} · 💝 {(w.charityName||w.charity)||"—"}</div>
@@ -885,7 +881,7 @@ export default function App(){
               );
             });
           })()}
-          <div className="card" style={{textAlign:"center"}}><div style={{fontSize:15,color:"#ffffff",fontWeight:800}}>🌈 Invite with Group ID: <span style={{color:LF.yellow,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontFamily:"'Outfit',sans-serif",fontSize:15}}>#{me.groupId}</span></div></div>
+          <div className="card" style={{textAlign:"center"}}><div style={{fontSize:15,color:"#ffffff",fontWeight:800}}>🌈 Invite with Group ID: <span style={{color:LF.yellow,fontFamily:"'Outfit',sans-serif",fontSize:15}}>#{me.groupId}</span></div></div>
         </>)}
 
         {/* ── CHAT ── */}
@@ -906,7 +902,7 @@ export default function App(){
               {pollOpts.map((o,i)=>(
                 <div key={i} style={{display:"flex",gap:6,marginBottom:8}}>
                   <input className="inp" placeholder={`Option ${i+1}`} value={o} onChange={e=>{const opts=[...pollOpts];opts[i]=e.target.value;setPollOpts(opts);}} style={{flex:1}}/>
-                  {pollOpts.length>2&&<button onClick={()=>setPollOpts(pollOpts.filter((_,j)=>j!==i))} style={{background:"none",border:`2px solid ${LF.pink}55`,borderRadius:10,padding:"0 12px",cursor:"pointer",color:LF.pink,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>✕</button>}
+                  {pollOpts.length>2&&<button onClick={()=>setPollOpts(pollOpts.filter((_,j)=>j!==i))} style={{background:"none",border:`2px solid ${LF.pink}55`,borderRadius:10,padding:"0 12px",cursor:"pointer",color:LF.pink}}>✕</button>}
                 </div>
               ))}
               {pollOpts.length<6&&<button onClick={()=>setPollOpts([...pollOpts,""])} style={{background:"none",border:"2px dashed #ffffff33",borderRadius:10,padding:8,width:"100%",cursor:"pointer",color:"#ffffff",fontSize:15,marginBottom:10}}>+ Add Option</button>}
@@ -1034,18 +1030,18 @@ export default function App(){
 
         {/* ── STATS ── */}
         {tab==="Stats"&&(<>
-          <div style={{fontFamily:"'Outfit',sans-serif",fontSize:16,color:LF.teal,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>📊 Group Stats & Ledger</div>
+          <div style={{fontFamily:"'Outfit',sans-serif",fontSize:16,color:LF.teal}}>📊 Group Stats & Ledger</div>
 
           {/* Group totals */}
           <div className="card" style={{background:`linear-gradient(135deg,#FF2D9B11,#BF5FFF11)`}}>
             <span className="lbl">🌍 Total Group Output — All Time</span>
             <div style={{display:"flex",gap:0}}>
               {totalGroupWords>0&&<div style={{flex:1,textAlign:"center",borderRight:totalGroupMinutes>0?`1px solid ${LF.purple}33`:"none"}}>
-                <div style={{fontFamily:"'Outfit',sans-serif",fontSize:26,color:LF.pink,textShadow:`0 0 10px ${LF.pink}88`}}>{totalGroupWords.toLocaleString()}</div>
+                <div style={{fontFamily:"'Outfit',sans-serif",fontSize:26,color:LF.pink}}>{totalGroupWords.toLocaleString()}</div>
                 <div style={{fontSize:16,color:"#ffffff",fontWeight:800,marginTop:2}}>Total Words ✍️</div>
               </div>}
               {totalGroupMinutes>0&&<div style={{flex:1,textAlign:"center"}}>
-                <div style={{fontFamily:"'Outfit',sans-serif",fontSize:26,color:LF.teal,textShadow:`0 0 10px ${LF.teal}88`}}>{Math.round(totalGroupMinutes/60)}h {totalGroupMinutes%60}m</div>
+                <div style={{fontFamily:"'Outfit',sans-serif",fontSize:26,color:LF.teal}}>{Math.round(totalGroupMinutes/60)}h {totalGroupMinutes%60}m</div>
                 <div style={{fontSize:16,color:"#ffffff",fontWeight:800,marginTop:2}}>Total Writing Time ⏱️</div>
               </div>}
               {totalGroupWords===0&&totalGroupMinutes===0&&<div style={{flex:1,textAlign:"center",padding:16,color:"#ffffff",fontWeight:700,fontSize:13}}>No progress logged yet 🌈</div>}
@@ -1057,42 +1053,42 @@ export default function App(){
             <span className="lbl">💸 Money Ledger</span>
             <div style={{display:"flex",gap:0,marginBottom:14}}>
               <div style={{flex:1,textAlign:"center",borderRight:`1px solid ${LF.purple}33`}}>
-                <div style={{fontFamily:"'Outfit',sans-serif",fontSize:20,color:LF.lime,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>{fmtMoney(totalCharity)}</div>
+                <div style={{fontFamily:"'Outfit',sans-serif",fontSize:20,color:LF.lime}}>{fmtMoney(totalCharity)}</div>
                 <div style={{fontSize:15,color:"#ffffff",fontWeight:800,marginTop:2}}>Donated 💝</div>
               </div>
               <div style={{flex:1,textAlign:"center",borderRight:`1px solid ${LF.purple}33`}}>
-                <div style={{fontFamily:"'Outfit',sans-serif",fontSize:20,color:LF.yellow,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>{fmtMoney(totalPayouts)}</div>
+                <div style={{fontFamily:"'Outfit',sans-serif",fontSize:20,color:LF.yellow}}>{fmtMoney(totalPayouts)}</div>
                 <div style={{fontSize:15,color:"#ffffff",fontWeight:800,marginTop:2}}>To Winners 🏆</div>
               </div>
               <div style={{flex:1,textAlign:"center"}}>
-                <div style={{fontFamily:"'Outfit',sans-serif",fontSize:20,color:LF.teal,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>{totalPrizes}</div>
+                <div style={{fontFamily:"'Outfit',sans-serif",fontSize:20,color:LF.teal}}>{totalPrizes}</div>
                 <div style={{fontSize:15,color:"#ffffff",fontWeight:800,marginTop:2}}>Prizes Awarded 🎁</div>
               </div>
             </div>
 
             {Object.entries(ledger.charityTotals||{}).length>0&&(<>
-              <div style={{fontSize:16,color:LF.teal,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Charity Breakdown</div>
+              <div style={{fontSize:16,color:LF.teal,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Charity Breakdown</div>
               {Object.entries(ledger.charityTotals).map(([c,amt])=>(
                 <div key={c} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${LF.purple}22`,fontSize:15,fontWeight:800}}>
-                  <span style={{color:"#ffffff"}}>💝 {c}</span><span style={{color:LF.lime,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>{fmtMoney(amt)}</span>
+                  <span style={{color:"#ffffff"}}>💝 {c}</span><span style={{color:LF.lime}}>{fmtMoney(amt)}</span>
                 </div>
               ))}
             </>)}
 
             {Object.entries(ledger.payoutTotals||{}).length>0&&(<>
-              <div style={{fontSize:16,color:LF.yellow,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginTop:10,marginBottom:6}}>Winner Payouts</div>
+              <div style={{fontSize:16,color:LF.yellow,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginTop:10,marginBottom:6}}>Winner Payouts</div>
               {Object.entries(ledger.payoutTotals).map(([name,amt])=>(
                 <div key={name} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${LF.purple}22`,fontSize:15,fontWeight:800}}>
-                  <span style={{color:"#ffffff"}}>🏆 {name}</span><span style={{color:LF.yellow,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>{fmtMoney(amt)}</span>
+                  <span style={{color:"#ffffff"}}>🏆 {name}</span><span style={{color:LF.yellow}}>{fmtMoney(amt)}</span>
                 </div>
               ))}
             </>)}
 
             {Object.entries(ledger.prizeTotals||{}).length>0&&(<>
-              <div style={{fontSize:16,color:LF.teal,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginTop:10,marginBottom:6}}>Admin Prizes Awarded</div>
+              <div style={{fontSize:16,color:LF.teal,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginTop:10,marginBottom:6}}>Admin Prizes Awarded</div>
               {Object.entries(ledger.prizeTotals).map(([name,desc])=>(
                 <div key={name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${LF.purple}22`,fontSize:15,fontWeight:800,gap:8}}>
-                  <span style={{color:"#ffffff"}}>🎁 {name}</span><span style={{color:LF.teal,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",textAlign:"right",flex:1}}>{desc}</span>
+                  <span style={{color:"#ffffff"}}>🎁 {name}</span><span style={{color:LF.teal,textAlign:"right",flex:1}}>{desc}</span>
                 </div>
               ))}
             </>)}
@@ -1111,7 +1107,7 @@ export default function App(){
                   <div style={{fontSize:16,color:"#ffffff",fontWeight:800}}>💝 {(w.charityName||w.charity)||"—"}</div>
                 </div>
                 <div style={{textAlign:"right"}}>
-                  <div style={{fontFamily:"'Outfit',sans-serif",fontSize:16,color:LF.teal,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>{w.goalType==="words"?`${(w.totalProgress||0).toLocaleString()}w`:`${Math.round((w.totalProgress||0)/60)}h`}</div>
+                  <div style={{fontFamily:"'Outfit',sans-serif",fontSize:16,color:LF.teal}}>{w.goalType==="words"?`${(w.totalProgress||0).toLocaleString()}w`:`${Math.round((w.totalProgress||0)/60)}h`}</div>
                 </div>
               </div>
             ))}
@@ -1138,7 +1134,7 @@ export default function App(){
         {tab==="Stakes"&&(<>
           <div className="card">
             <span className="lbl">Goal Type & Target</span>
-            {isLocked&&<div style={{fontSize:15,color:LF.orange,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800,marginBottom:10}}>🔒 Goals locked — you can raise your goal but not lower it{admin.changeWindowOpen?` (change window open for ~${changeHoursLeft}h)`:"."}.</div>}
+            {isLocked&&<div style={{fontSize:15,color:LF.orange,fontWeight:800,marginBottom:10}}>🔒 Goals locked — you can raise your goal but not lower it{admin.changeWindowOpen?` (change window open for ~${changeHoursLeft}h)`:"."}.</div>}
             <div className="pill" style={{marginBottom:12}}>
               <button onClick={()=>setGoalTypeEdit("words")} style={{background:goalTypeEdit==="words"?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"transparent",color:goalTypeEdit==="words"?LF.white:LF.purple}}>✍️ Words</button>
               <button onClick={()=>setGoalTypeEdit("time")} style={{background:goalTypeEdit==="time"?`linear-gradient(135deg,${LF.teal},${LF.blue})`:"transparent",color:goalTypeEdit==="time"?LF.white:LF.teal}}>⏱️ Time</button>
@@ -1147,7 +1143,7 @@ export default function App(){
               <input className="inp" type="number" value={goalInput} onChange={e=>setGoalInput(e.target.value)} style={{flex:1}}/>
               <button className="btn" onClick={updateGoal} style={{padding:"11px 18px"}}>Set ✨</button>
             </div>
-            <div style={{fontSize:15,color:LF.hotpink,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",marginTop:8,fontWeight:800}}>Current: {fmtGoal(me)}/week</div>
+            <div style={{fontSize:15,color:LF.hotpink,marginTop:8,fontWeight:800}}>Current: {fmtGoal(me)}/week</div>
           </div>
 
           {admin.payoutMode==="charity"&&(
@@ -1161,7 +1157,7 @@ export default function App(){
               placeholder="https://www.redcross.org"
               style={{marginBottom:8,borderColor:me.charity&&!isValidUrl(me.charity)?LF.pink:me.charity&&isValidUrl(me.charity)?"#E040FB":undefined}}
             />
-            {me.charity&&!isValidUrl(me.charity)&&<div style={{fontSize:15,color:LF.pink,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)",fontWeight:800,marginBottom:8}}>Please enter a valid URL</div>}
+            {me.charity&&!isValidUrl(me.charity)&&<div style={{fontSize:15,color:LF.pink,fontWeight:800,marginBottom:8}}>Please enter a valid URL</div>}
             {me.charity&&isValidUrl(me.charity)&&<div style={{fontSize:15,color:"#E040FB",fontWeight:800,marginBottom:8}}>✓ {me.charityName||me.charity}</div>}
             <div style={{fontSize:15,color:"#ffffff",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Quick picks</div>
             <div style={{display:"flex",flexDirection:"column",gap:5}}>
@@ -1178,21 +1174,21 @@ export default function App(){
 
           <div className="card" style={{background:"#ffffff11",border:`2px solid #ffffff33`,textAlign:"center"}}>
             <div style={{fontSize:16,color:"#ffffff",fontWeight:700,lineHeight:2}}>
-              Miss <span style={{color:LF.yellow,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>{fmtGoal(me)}</span> for <span style={{color:LF.yellow,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>{admin.threshold} check-ins</span><br/>
-              → <span style={{color:LF.pink,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>{fmtMoney(admin.stake)}</span>{" "}
+              Miss <span style={{color:LF.yellow}}>{fmtGoal(me)}</span> for <span style={{color:LF.yellow}}>{admin.threshold} check-ins</span><br/>
+              → <span style={{color:LF.pink}}>{fmtMoney(admin.stake)}</span>{" "}
               {admin.payoutMode==="winners"&&<span>split among 🏆 members who hit their goals</span>}
               {admin.payoutMode==="pain"&&<span style={{color:"#FF4444"}}>😈 you'll be publicly roasted by the winners</span>}
               {admin.payoutMode==="charity"&&<span>goes to 💝 {me.charityName||me.charity||"your charity"}</span>}
               {admin.payoutMode==="prize"&&<span>— plus 🎁 admin prize for top performer</span>}
-              {admin.prizeEnabled&&admin.payoutMode!=="prize"&&<><br/><span style={{fontSize:14,color:LF.yellow,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>🎁 + Admin prize: {admin.prizeDescription||"TBA"}</span></>}
+              {admin.prizeEnabled&&admin.payoutMode!=="prize"&&<><br/><span style={{fontSize:14,color:LF.yellow}}>🎁 + Admin prize: {admin.prizeDescription||"TBA"}</span></>}
             </div>
           </div>
         </>)}
 
         {/* ── HISTORY ── */}
         {tab==="History"&&(<>
-          <div style={{fontFamily:"'Outfit',sans-serif",fontSize:15,color:LF.teal,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>📅 Your Writing History</div>
-          {history.length===0&&<div className="card" style={{textAlign:"center",padding:24}}><div style={{fontSize:28,marginBottom:8}}>🌈</div><div style={{fontFamily:"'Outfit',sans-serif",fontSize:16,color:LF.pink,textShadow:"-1px -1px 0 rgba(0,0,0,0.9),1px -1px 0 rgba(0,0,0,0.9),-1px 1px 0 rgba(0,0,0,0.9),1px 1px 0 rgba(0,0,0,0.9)"}}>History appears at end of each period.</div></div>}
+          <div style={{fontFamily:"'Outfit',sans-serif",fontSize:15,color:LF.teal}}>📅 Your Writing History</div>
+          {history.length===0&&<div className="card" style={{textAlign:"center",padding:24}}><div style={{fontSize:28,marginBottom:8}}>🌈</div><div style={{fontFamily:"'Outfit',sans-serif",fontSize:16,color:LF.pink}}>History appears at end of each period.</div></div>}
           {history.map((h,i)=>(
             <div key={i} className="card" style={{border:`2px solid ${h.met?LF.lime:LF.pink}44`}}>
               <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -1213,7 +1209,7 @@ export default function App(){
               <div style={{display:"flex"}}>
                 {[{l:"Periods",v:history.length,c:LF.teal},{l:"Nailed it",v:history.filter(h=>h.met).length,c:LF.lime},{l:"Missed",v:history.filter(h=>!h.met).length,c:LF.pink}].map((s,i)=>(
                   <div key={i} style={{flex:1,textAlign:"center",borderRight:i<2?`1px solid ${LF.purple}33`:"none"}}>
-                    <div style={{fontFamily:"'Outfit',sans-serif",fontSize:24,color:s.c,textShadow:`0 0 10px ${s.c}88`}}>{s.v}</div>
+                    <div style={{fontFamily:"'Outfit',sans-serif",fontSize:24,color:s.c}}>{s.v}</div>
                     <div style={{fontSize:16,color:"#ffffff",fontWeight:800,marginTop:2}}>{s.l}</div>
                   </div>
                 ))}
