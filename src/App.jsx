@@ -86,8 +86,8 @@ const G=`
 // ── Helpers ──────────────────────────────────────────────────────
 function getWeekKey(){const now=new Date(),j=new Date(now.getFullYear(),0,1),w=Math.ceil(((now-j)/86400000+j.getDay()+1)/7);return`${now.getFullYear()}-W${w}`;}
 function todayIdx(){return(new Date().getDay()+6)%7;}
-function fmtGoal(m){if(m.goalType==="words")return`${m.goalValue.toLocaleString()} words`;const h=Math.floor(m.goalValue/60),mn=m.goalValue%60;return h>0?`${h}h${mn>0?" "+mn+"m":""}`:mn+"m";}
-function fmtProg(m){if(m.goalType==="words")return`${m.progressThisWeek.toLocaleString()} words`;const h=Math.floor(m.progressThisWeek/60),mn=m.progressThisWeek%60;return h>0?`${h}h${mn>0?" "+mn+"m":""}`:mn+"m";}
+function fmtGoal(m){if(m.goalType==="words")return`${m.goalValue.toLocaleString()} words`;const h=Math.floor(m.goalValue/60),mn=m.goalValue%60;return h>0?"${h}h"+(mn>0?" "+mn+"m":""):mn+"m";}
+function fmtProg(m){if(m.goalType==="words")return`${m.progressThisWeek.toLocaleString()} words`;const h=Math.floor(m.progressThisWeek/60),mn=m.progressThisWeek%60;return h>0?"${h}h"+(mn>0?" "+mn+"m":""):mn+"m";}
 function fmtDate(ts){return new Date(ts).toLocaleDateString("en-US",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});}
 function fmtTimer(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;if(h>0)return`${h}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;return`${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;}
 function fmtMoney(n){return`$${n.toFixed(2)}`;}
@@ -632,8 +632,8 @@ export default function App(){
             <span className="lbl">What happens when someone fails?</span>
             <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
               {[
-                {mode:"charity", icon:"💝", label:"To Charity", desc:"Winners' stakes donated to each winner's chosen charity.", grad:`linear-gradient(135deg,${LF.pink},${LF.purple})`, col:LF.white},
-                {mode:"winners", icon:"🏆", label:"Cash to Winners", desc:"Failed stakes split equally among members who hit their goals.", grad:`linear-gradient(135deg,${LF.yellow},${LF.orange})`, col:"#1A0030"},
+                {mode:"charity", icon:"💝", label:"To Charity", desc:"Winners' stakes donated to each winner's chosen charity.", grad:"linear-gradient(135deg,${LF.pink},"+(LF.purple)+")", col:LF.white},
+                {mode:"winners", icon:"🏆", label:"Cash to Winners", desc:"Failed stakes split equally among members who hit their goals.", grad:"linear-gradient(135deg,${LF.yellow},"+(LF.orange)+")", col:"#1A0030"},
                 {mode:"pain",    icon:"😈", label:"To The Pain", desc:"Not ready for money stakes? Whoever fails gets mercilessly ridiculed by those who made their goals.", grad:`linear-gradient(135deg,#FF4444,#FF7A00)`, col:"#ffffff"},
               ].map(({mode,icon,label,desc,grad,col})=>(
                 <button key={mode} onClick={()=>setAdminDraft(s=>({...s,payoutMode:mode}))} style={{background:adminDraft.payoutMode===mode?grad:"#ffffff18",border:"2px solid "+adminDraft.payoutMode===mode?"transparent":LF.purple+"44"+"",borderRadius:14,padding:"10px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
@@ -818,7 +818,7 @@ export default function App(){
             <div className="card" style={{border:"2px solid "+LF.orange+"55",background:"#FF440011"}}>
               <span className="lbl" style={{color:LF.orange}}>🔒 Goal Lock Controls</span>
               <div style={{fontSize:15,color:"#ffffff",fontWeight:800,marginBottom:10}}>
-                {isLocked?"Goals are currently locked. Members cannot lower their goals.":admin.changeWindowOpen?`🔓 Change window open — closes in ~${changeHoursLeft}h`:"Goals are unlocked. Members can change freely."}
+                {isLocked?"Goals are currently locked. Members cannot lower their goals.":admin.changeWindowOpen?"🔓 Change window open — closes in ~"+(changeHoursLeft||"?")+"h":"Goals are unlocked. Members can change freely."}
               </div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 <button className={admin.goalsLocked?"btn btn-teal":"btn btn-red"} onClick={toggleGoalLock} style={{fontSize:15,padding:"8px 16px"}}>
@@ -860,7 +860,7 @@ export default function App(){
               const p=Math.min(Math.round((w.progressThisWeek/w.goalValue)*100),100);
               const medals=["🥇","🥈","🥉"];
               const isPrizeLeader=prizeLeader&&w.name===prizeLeader.name;
-              const bar=p>=100?`linear-gradient(90deg,${LF.lime},${LF.teal})`:i===0?`linear-gradient(90deg,${LF.yellow},${LF.orange})`:`linear-gradient(90deg,${LF.pink},${LF.purple})`;
+              const bar=p>=100?"linear-gradient(90deg,${LF.lime},"+(LF.teal)+")":i===0?"linear-gradient(90deg,${LF.yellow},"+(LF.orange)+")":"linear-gradient(90deg,${LF.pink},"+(LF.purple)+")";
               return(
                 <div key={w.name} className="card" style={{border:"2px solid "+isPrizeLeader?LF.teal:w.isYou?LF.pink:LF.purple+"44",background:isPrizeLeader?"#E040FB11":w.isYou?"#FF2D9B11":""}}>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
@@ -1195,7 +1195,7 @@ export default function App(){
                 <div style={{flex:1}}>
                   <div style={{fontSize:15,color:"#ffffff",fontWeight:800,marginBottom:2}}>{h.week}</div>
                   <div style={{fontFamily:"'Outfit',sans-serif",fontSize:17,color:h.met?LF.lime:LF.pink}}>
-                    {h.goalType==="words"?`${h.progress?.toLocaleString()||0} words`:`${h.progress||0} min`}
+                    {h.goalType==="words"?(h.progress?.toLocaleString()||0)+" words":(h.progress||0)+" min"}
                     <span style={{fontSize:15,color:"#ffffff",fontFamily:"'Outfit',sans-serif",fontWeight:800}}> / {h.goalType==="words"?""+h.goal?.toLocaleString()||0+"w":""+h.goal||0+"m"}</span>
                   </div>
                 </div>
