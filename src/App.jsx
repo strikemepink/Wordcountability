@@ -606,7 +606,7 @@ export default function App(){
             {isLocked&&<span className="locked-badge">🔒 Goals Locked</span>}
             {admin.changeWindowOpen&&<span className="open-badge">🔓 Change Window Open</span>}
           </div>
-          {endDate&&<div style={{fontSize:16,color:LF.teal,fontWeight:800,marginTop:3}}>🏁 {daysLeft}d left · {admin.frequency} check-ins · {admin.payoutMode==="winners"?"🏆 Payout to winners":admin.payoutMode==="pain"?"😈 To The Pain":`🎁 Prize for top ${admin.prizeMetric==="pct"?"% achiever":"performer"}`:("💝 Donate to charity")}</div>}
+          {endDate&&<div style={{fontSize:16,color:LF.teal,fontWeight:800,marginTop:3}}>🏁 {daysLeft}d left · {admin.frequency} check-ins · {admin.payoutMode==="winners"?"🏆 Payout to winners":admin.payoutMode==="pain"?"😈 To The Pain":"🎁 Prize for top "+(admin.prizeMetric==="pct"?"% achiever":"performer"):("💝 Donate to charity")}</div>}
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
           {me.isAdmin&&<button className="btn btn-yellow" onClick={()=>{setAdminDraft({...admin});setShowAdmin(true);}} style={{fontSize:16,padding:"6px 10px"}}>⚙️ Admin</button>}
