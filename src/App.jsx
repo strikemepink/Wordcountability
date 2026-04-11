@@ -28,6 +28,7 @@ const pollsDocRef   = (gid)       => doc(db, "groups", gid, "data", "polls");
 const adminDocRef   = (gid)       => doc(db, "groups", gid, "data", "admin");
 const ledgerDocRef  = (gid)       => doc(db, "groups", gid, "data", "ledger");
 const membersColRef = (gid)       => collection(db, "groups", gid, "members");
+const memberUidDocRef = (gid, uid) => doc(db, "groups", gid, "memberUids", uid);
 
 async function fsGet(ref) {
   try { const s = await getDoc(ref); return s.exists() ? s.data().value : null; } catch { return null; }
@@ -139,6 +140,54 @@ const CHARITY_SUGGESTIONS=[
   {name:"Planned Parenthood",       url:"https://www.plannedparenthood.org"},
   {name:"826 National",             url:"https://826national.org"},
 ];
+
+// ── PWA Install Prompt ───────────────────────────────────────────
+function PwaPrompt({onClose}){
+  const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid=/android/i.test(navigator.userAgent);
+  return(
+    <div className="modal-bg" onClick={onClose}>
+      <div className="card modal" onClick={e=>e.stopPropagation()} style={{textAlign:"center"}}>
+        <div style={{fontSize:40,marginBottom:12}}>📲</div>
+        <div style={{fontSize:20,fontWeight:900,color:"#FFC200",marginBottom:8}}>Install Wordcountability</div>
+        <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,lineHeight:1.7,marginBottom:20}}>
+          Install the app to your home screen to get writing reminders and quick access. It takes 5 seconds!
+        </div>
+        {isIos&&(
+          <div style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
+            <div style={{fontSize:13,fontWeight:900,color:"#FF6EC7",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>On iPhone / iPad</div>
+            <div style={{fontSize:14,color:"#fff",fontWeight:700,lineHeight:2}}>
+              1. Tap the <span style={{color:"#FFC200"}}>Share</span> button at the bottom of Safari ⬆️<br/>
+              2. Scroll down and tap <span style={{color:"#FFC200"}}>Add to Home Screen</span><br/>
+              3. Tap <span style={{color:"#FFC200"}}>Add</span> ✅
+            </div>
+          </div>
+        )}
+        {isAndroid&&(
+          <div style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
+            <div style={{fontSize:13,fontWeight:900,color:"#FF6EC7",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>On Android</div>
+            <div style={{fontSize:14,color:"#fff",fontWeight:700,lineHeight:2}}>
+              1. Tap the <span style={{color:"#FFC200"}}>menu</span> (⋮) in your browser<br/>
+              2. Tap <span style={{color:"#FFC200"}}>Add to Home Screen</span><br/>
+              3. Tap <span style={{color:"#FFC200"}}>Add</span> ✅
+            </div>
+          </div>
+        )}
+        {!isIos&&!isAndroid&&(
+          <div style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
+            <div style={{fontSize:14,color:"#fff",fontWeight:700,lineHeight:2}}>
+              On <span style={{color:"#FFC200"}}>iPhone</span>: Safari Share ⬆️ → Add to Home Screen<br/>
+              On <span style={{color:"#FFC200"}}>Android</span>: Browser menu ⋮ → Add to Home Screen
+            </div>
+          </div>
+        )}
+        <div style={{fontSize:12,color:"#ffffff66",marginBottom:16}}>Push notifications only work after installing. 🔔</div>
+        <button className="btn" onClick={onClose} style={{width:"100%"}}>Got it! ✨</button>
+        <button onClick={onClose} style={{background:"none",border:"none",color:"#ffffff44",fontSize:12,cursor:"pointer",marginTop:10,fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>Maybe later</button>
+      </div>
+    </div>
+  );
+}
 
 // ── Privacy Policy Modal ─────────────────────────────────────────
 function PrivacyModal({onClose}){
@@ -315,6 +364,7 @@ export default function App(){
   const [saving,setSaving]=useState(false);
   const [showPrivacy,setShowPrivacy]=useState(false);
   const [shareCopied,setShareCopied]=useState(false);
+  const [showPwaPrompt,setShowPwaPrompt]=useState(false);
   // timer
   const [timerRunning,setTimerRunning]=useState(false);
   const [timerSecs,setTimerSecs]=useState(0);
@@ -332,7 +382,7 @@ export default function App(){
   const [pollOpts,setPollOpts]=useState(["",""]);
   const [pollDeadline,setPollDeadline]=useState("");
   // admin
-  const DEFAULT_ADMIN={duration:"1 Month",frequency:"Weekly",startDate:null,endDate:null,
+  const DEFAULT_ADMIN={duration:"1 Month",frequency:"Weekly",startDate:null,endDate:null,firstCheckIn:null,
     payoutMode:"charity",prizeMetric:"absolute",prizeDescription:"",goalsLocked:false,
     changeWindowOpen:false,changeWindowEnd:null,changeWindowDays:3,stake:25,threshold:3};
   const [admin,setAdmin]=useState(DEFAULT_ADMIN);
@@ -375,7 +425,7 @@ export default function App(){
       }
       setMe(d); setGoalInput(String(d.goalValue)); setGoalTypeEdit(d.goalType);
       setReady(true);
-      if(d.groupId){loadMembers(d.groupId,d.name);loadChat(d.groupId);loadPolls(d.groupId);loadAdminData(d.groupId);loadLedger(d.groupId);}
+      if(d.groupId){loadMembers(d.groupId,d.name);loadChat(d.groupId);loadPolls(d.groupId);loadAdminData(d.groupId);loadLedger(d.groupId);fsSet(memberUidDocRef(d.groupId,uid),JSON.stringify({uid,joinedAt:Date.now()})).catch(()=>{});}
     }catch(e){console.error("loadAll",e);setReady(true);}
   }
 
@@ -409,7 +459,9 @@ export default function App(){
     setMe(d); setGoalInput(String(goalValue)); setGoalTypeEdit(goalType); setReady(true);
     await fsSet(userDocRef(uid),JSON.stringify(d));
     pub(d).catch(()=>{});
+    fsSet(memberUidDocRef(groupId,uid),JSON.stringify({uid,joinedAt:Date.now()})).catch(()=>{});
     loadMembers(groupId,name); loadChat(groupId); loadPolls(groupId); loadAdminData(groupId); loadLedger(groupId);
+    if(!localStorage.getItem("pwaPromptShown")){setShowPwaPrompt(true);localStorage.setItem("pwaPromptShown","1");}
   }
 
   async function saveProgress(n){
@@ -479,10 +531,18 @@ export default function App(){
     }
   }
 
+  function cadenceDays(freq){return freq==="Daily"?1:freq==="Weekly"?7:freq==="Bi-Weekly"?14:30;}
+  function calcChallengeStart(firstCheckIn,frequency){
+    if(!firstCheckIn)return new Date();
+    const d=new Date(firstCheckIn);
+    d.setDate(d.getDate()-cadenceDays(frequency));
+    return d;
+  }
   function saveAdminSettings(){
     const dur=DURATIONS.find(d=>d.label===adminDraft.duration);
-    const start=new Date(),end=new Date(); end.setDate(end.getDate()+(dur?dur.days:30));
-    const upd={...adminDraft,startDate:start.toISOString(),endDate:end.toISOString()};
+    const challengeStart=calcChallengeStart(adminDraft.firstCheckIn,adminDraft.frequency);
+    const end=new Date(challengeStart); end.setDate(end.getDate()+(dur?dur.days:30));
+    const upd={...adminDraft,startDate:challengeStart.toISOString(),endDate:end.toISOString()};
     setAdmin(upd); setAdminDraft(upd); setShowAdmin(false);
     fsSet(adminDocRef(me.groupId),JSON.stringify(upd));
   }
@@ -597,6 +657,12 @@ export default function App(){
   const now=new Date();
   const endDate=admin.endDate?new Date(admin.endDate):null;
   const daysLeft=endDate?Math.max(0,Math.ceil((endDate-now)/86400000)):null;
+  const challengeStartDate=admin.startDate?new Date(admin.startDate):null;
+  const challengeNotStarted=challengeStartDate&&challengeStartDate>now;
+  const countdownMs=challengeNotStarted?(challengeStartDate-now):0;
+  const countdownDays=Math.floor(countdownMs/86400000);
+  const countdownHours=Math.floor((countdownMs%86400000)/3600000);
+  const countdownMins=Math.floor((countdownMs%3600000)/60000);
   const isLocked=admin.goalsLocked&&!admin.changeWindowOpen;
   const changeWindowEnds=admin.changeWindowEnd?new Date(admin.changeWindowEnd):null;
   const changeHoursLeft=changeWindowEnds?Math.max(0,Math.ceil((changeWindowEnds-now)/3600000)):null;
@@ -611,6 +677,7 @@ export default function App(){
     <div className={`root leopard leopard-${tab.toLowerCase()}`}>
       <style>{G}</style>
       {showPrivacy&&<PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
+      {showPwaPrompt&&<PwaPrompt onClose={()=>setShowPwaPrompt(false)}/>}
 
       {/* ── Header ── */}
       <div style={{width:"100%",maxWidth:500,padding:"22px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -647,6 +714,17 @@ export default function App(){
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
               {FREQUENCIES.map(f=><button key={f} onClick={()=>setAdminDraft(s=>({...s,frequency:f}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.frequency===f?LF.teal:"#ffffff22"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:14,background:adminDraft.frequency===f?`linear-gradient(135deg,${LF.teal},${LF.blue})`:"#ffffff18",color:"#fff"}}>{f}</button>)}
             </div>
+
+            <span className="lbl">First Check-in Date &amp; Time</span>
+            <input className="inp" type="datetime-local" value={adminDraft.firstCheckIn||""} onChange={e=>setAdminDraft(s=>({...s,firstCheckIn:e.target.value}))} style={{marginBottom:6}}/>
+            {adminDraft.firstCheckIn&&(()=>{
+              const start=new Date(adminDraft.firstCheckIn);
+              start.setDate(start.getDate()-(adminDraft.frequency==="Daily"?1:adminDraft.frequency==="Weekly"?7:adminDraft.frequency==="Bi-Weekly"?14:30));
+              return <div style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:12,padding:"10px 14px",marginBottom:14,fontSize:13,color:LF.lime,fontWeight:800}}>
+                🚀 Challenge starts: {start.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {start.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
+              </div>;
+            })()}
+            {!adminDraft.firstCheckIn&&<div style={{fontSize:12,color:"#ffffff88",fontWeight:700,marginBottom:14}}>Pick a date to see when the challenge will start.</div>}
 
             <span className="lbl">What happens when someone fails?</span>
             <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
@@ -714,6 +792,20 @@ export default function App(){
 
         {/* ── DASHBOARD ── */}
         {tab==="Dashboard"&&(<>
+          {challengeNotStarted&&(
+            <div className="card" style={{border:`2px solid ${LF.teal}88`,background:"#E040FB11",textAlign:"center"}}>
+              <div style={{fontSize:13,color:LF.teal,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>⏳ Challenge Countdown</div>
+              <div style={{fontSize:32,fontWeight:900,color:LF.yellow,letterSpacing:2,marginBottom:4}}>
+                {countdownDays>0&&<span>{countdownDays}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>d</span></span>}
+                {countdownHours>0&&<span>{countdownHours}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>h</span></span>}
+                <span>{countdownMins}<span style={{fontSize:14,color:"#ffffffcc"}}>m</span></span>
+              </div>
+              <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800}}>
+                Challenge starts {challengeStartDate.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {challengeStartDate.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
+              </div>
+              <div style={{fontSize:12,color:"#ffffff88",fontWeight:700,marginTop:4}}>First check-in: {admin.firstCheckIn?new Date(admin.firstCheckIn).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div>
+            </div>
+          )}
           <div className="card" style={{border:`2px solid ${pct>=100?LF.lime:LF.pink}66`,position:"relative"}}>
             {spark>0&&Array.from({length:6},(_,i)=><span key={`${spark}-${i}`} style={{position:"absolute",left:`${15+Math.random()*70}%`,top:`${10+Math.random()*80}%`,fontSize:16,animation:"pop 0.5s ease forwards",pointerEvents:"none"}}>{"✨⭐💫🌟"[i%4]}</span>)}
             <div style={{display:"flex",alignItems:"center",gap:18}}>
@@ -802,6 +894,20 @@ export default function App(){
             <div style={{fontSize:14,color:LF.teal,fontWeight:800}}>#{me.groupId} · This Period 🏆</div>
             <button className="btn btn-teal" onClick={()=>loadMembers(me.groupId,me.name)} style={{fontSize:13,padding:"6px 12px"}}>↻ Refresh</button>
           </div>
+          {challengeNotStarted&&(
+            <div className="card" style={{border:`2px solid ${LF.teal}88`,background:"#E040FB11",textAlign:"center"}}>
+              <div style={{fontSize:13,color:LF.teal,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>⏳ Challenge Countdown</div>
+              <div style={{fontSize:32,fontWeight:900,color:LF.yellow,letterSpacing:2,marginBottom:4}}>
+                {countdownDays>0&&<span>{countdownDays}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>d</span></span>}
+                {countdownHours>0&&<span>{countdownHours}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>h</span></span>}
+                <span>{countdownMins}<span style={{fontSize:14,color:"#ffffffcc"}}>m</span></span>
+              </div>
+              <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800}}>
+                Challenge starts {challengeStartDate.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {challengeStartDate.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
+              </div>
+              <div style={{fontSize:12,color:"#ffffff88",fontWeight:700,marginTop:4}}>First check-in: {admin.firstCheckIn?new Date(admin.firstCheckIn).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div>
+            </div>
+          )}
 
           {/* Share invite card */}
           <div className="card" style={{border:`2px solid ${LF.purple}55`}}>
