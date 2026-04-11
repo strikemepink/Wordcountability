@@ -48,6 +48,7 @@ const FREQUENCIES = ["Daily","Weekly","Bi-Weekly","Monthly"];
 const APP_URL     = "https://wordcountability.vercel.app";
 
 const LF = {
+  // NOTE: 'teal' is misnamed — it's actually a purple/violet (#E040FB). Rename in a future refactor.
   pink:"#FF2D9B", hotpink:"#FF6EC7", teal:"#E040FB", yellow:"#FFC200",
   purple:"#C97FFF", blue:"#C77DFF", orange:"#FF7A00", lime:"#CCFF66",
   white:"#FFFFFF", offwhite:"#FFF0FA",
@@ -74,7 +75,7 @@ const G = `
   .btn-yellow{background:linear-gradient(135deg,#FFC200,#FF7A00)!important;color:#1A0030!important;box-shadow:0 4px 20px #FFC20044!important;}
   .btn-red{background:linear-gradient(135deg,#FF4444,#FF2D9B)!important;box-shadow:0 4px 20px #FF444455!important;}
   .inp{background:#ffffff18;border:2px solid #ffffff44;border-radius:14px;padding:11px 16px;color:#fff;font-family:'Outfit',sans-serif;font-size:16px;font-weight:600;outline:none;transition:all 0.2s;width:100%;}
-  .inp::placeholder{color:#ffffffaa;}
+  .inp::placeholder{color:#ffffffbb;}
   .inp:focus{border-color:#FF2D9B;background:#ffffff22;}
   .tab{background:none;border:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;letter-spacing:0.5px;padding:10px 12px 14px;transition:color 0.2s;white-space:nowrap;text-transform:uppercase;color:#fff;}
   .pill{display:flex;background:#ffffff18;border:2px solid #ffffff33;border-radius:50px;padding:4px;gap:4px;}
@@ -110,7 +111,7 @@ function isValidUrl(s){s=normalizeUrl(s);try{const u=new URL(s);return(u.protoco
 
 // ── Share helper ─────────────────────────────────────────────────
 async function shareGroup(groupId, setCopied) {
-  const msg = `Join my writing accountability group on Wordcountability! 📝🌈\n${APP_URL}\nGroup ID: ${groupId}`;
+  const msg = `Join my writing accountability group on Wordcountability! 📝🌈\n${APP_URL}\nGroup ID: ${groupId}\n\nTo get writing reminders, install the app: on iPhone tap Share → Add to Home Screen. On Android tap the menu → Add to Home Screen.`;
   if (navigator.share) {
     try { await navigator.share({ title: "Wordcountability", text: msg, url: APP_URL }); } catch {}
   } else {
@@ -181,9 +182,9 @@ function PwaPrompt({onClose}){
             </div>
           </div>
         )}
-        <div style={{fontSize:12,color:"#ffffff66",marginBottom:16}}>Push notifications only work after installing. 🔔</div>
+        <div style={{fontSize:12,color:"#ffffffbb",marginBottom:16}}>Push notifications only work after installing. 🔔</div>
         <button className="btn" onClick={onClose} style={{width:"100%"}}>Got it! ✨</button>
-        <button onClick={onClose} style={{background:"none",border:"none",color:"#ffffff44",fontSize:12,cursor:"pointer",marginTop:10,fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>Maybe later</button>
+        <button onClick={onClose} style={{background:"none",border:"none",color:"#ffffffaa",fontSize:12,cursor:"pointer",marginTop:10,fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>Maybe later</button>
       </div>
     </div>
   );
@@ -196,10 +197,10 @@ function PrivacyModal({onClose}){
       <div className="privacy-modal" onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div style={{fontSize:20,fontWeight:900,color:LF.yellow}}>🔒 Privacy Policy</div>
-          <button onClick={onClose} style={{background:"none",border:"none",color:"#ffffff88",fontSize:22,cursor:"pointer",lineHeight:1}}>✕</button>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"#ffffffcc",fontSize:22,cursor:"pointer",lineHeight:1}}>✕</button>
         </div>
         <div style={{fontSize:14,color:"#ffffffdd",lineHeight:1.8,display:"flex",flexDirection:"column",gap:16}}>
-          <div style={{fontSize:12,color:"#ffffff88"}}>Last updated: April 2026</div>
+          <div style={{fontSize:12,color:"#ffffffcc"}}>Last updated: April 2026</div>
 
           <div>
             <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>What is Wordcountability?</div>
@@ -229,13 +230,13 @@ function PrivacyModal({onClose}){
           <div>
             <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>Deleting your data</div>
             You can delete your own data at any time using the "Reset all data" option in the Stakes tab. To request complete account deletion, email us at{" "}
-            <a href="mailto:erica.kritt.author@gmail.com" style={{color:LF.teal}}>erica.kritt.author@gmail.com</a>.
+            <a href="mailto:erica.kritt.author@gmail.com" style={{color:LF.lime}}>erica.kritt.author@gmail.com</a>.
           </div>
 
           <div>
             <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>Contact</div>
             Questions about this policy? Email{" "}
-            <a href="mailto:erica.kritt.author@gmail.com" style={{color:LF.teal}}>erica.kritt.author@gmail.com</a>.
+            <a href="mailto:erica.kritt.author@gmail.com" style={{color:LF.lime}}>erica.kritt.author@gmail.com</a>.
           </div>
         </div>
         <button className="btn" onClick={onClose} style={{width:"100%",marginTop:24}}>Got it ✨</button>
@@ -278,10 +279,10 @@ function SignIn({onPrivacy}){
           {loading?"Signing in…":"Continue with Google"}
         </button>
         {error&&<div style={{color:LF.pink,fontWeight:800,fontSize:15}}>{error}</div>}
-        <div style={{fontSize:13,color:"#ffffff99",lineHeight:1.6}}>
+        <div style={{fontSize:13,color:"#ffffffcc",lineHeight:1.6}}>
           Your progress syncs across devices using your Google account.<br/>No separate password needed.
         </div>
-        <button onClick={onPrivacy} style={{background:"none",border:"none",color:"#ffffff66",fontSize:13,cursor:"pointer",fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>
+        <button onClick={onPrivacy} style={{background:"none",border:"none",color:"#ffffffbb",fontSize:13,cursor:"pointer",fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>
           Privacy Policy
         </button>
       </div>
@@ -338,7 +339,7 @@ function Setup({user,onSave}){
         <button className="btn" onClick={handleGo} style={{fontSize:17,padding:16,opacity:ok?1:0.4}}>
           Let's GO! 🚀
         </button>
-        <button onClick={()=>signOut(auth)} style={{background:"none",border:"none",cursor:"pointer",color:"#ffffff66",fontSize:13,fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>
+        <button onClick={()=>signOut(auth)} style={{background:"none",border:"none",cursor:"pointer",color:"#ffffffbb",fontSize:13,fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>
           Sign out
         </button>
       </div>
@@ -691,7 +692,7 @@ export default function App(){
             {isLocked&&<span className="locked-badge">🔒 Locked</span>}
             {admin.changeWindowOpen&&<span className="open-badge">🔓 Window Open</span>}
           </div>
-          {endDate&&<div style={{fontSize:13,color:LF.teal,fontWeight:800,marginTop:3}}>🏁 {daysLeft}d left · {admin.frequency}</div>}
+          {endDate&&<div style={{fontSize:13,color:LF.lime,fontWeight:800,marginTop:3}}>🏁 {daysLeft}d left · {admin.frequency}</div>}
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
           {me.isAdmin&&<button className="btn btn-yellow" onClick={()=>{setAdminDraft({...admin});setShowAdmin(true);}} style={{fontSize:13,padding:"6px 10px"}}>⚙️ Admin</button>}
@@ -724,7 +725,7 @@ export default function App(){
                 🚀 Challenge starts: {start.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {start.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
               </div>;
             })()}
-            {!adminDraft.firstCheckIn&&<div style={{fontSize:12,color:"#ffffff88",fontWeight:700,marginBottom:14}}>Pick a date to see when the challenge will start.</div>}
+            {!adminDraft.firstCheckIn&&<div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginBottom:14}}>Pick a date to see when the challenge will start.</div>}
 
             <span className="lbl">What happens when someone fails?</span>
             <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
@@ -794,7 +795,7 @@ export default function App(){
         {tab==="Dashboard"&&(<>
           {challengeNotStarted&&(
             <div className="card" style={{border:`2px solid ${LF.teal}88`,background:"#E040FB11",textAlign:"center"}}>
-              <div style={{fontSize:13,color:LF.teal,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>⏳ Challenge Countdown</div>
+              <div style={{fontSize:13,color:LF.lime,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>⏳ Challenge Countdown</div>
               <div style={{fontSize:32,fontWeight:900,color:LF.yellow,letterSpacing:2,marginBottom:4}}>
                 {countdownDays>0&&<span>{countdownDays}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>d</span></span>}
                 {countdownHours>0&&<span>{countdownHours}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>h</span></span>}
@@ -803,7 +804,7 @@ export default function App(){
               <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800}}>
                 Challenge starts {challengeStartDate.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {challengeStartDate.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
               </div>
-              <div style={{fontSize:12,color:"#ffffff88",fontWeight:700,marginTop:4}}>First check-in: {admin.firstCheckIn?new Date(admin.firstCheckIn).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div>
+              <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginTop:4}}>First check-in: {admin.firstCheckIn?new Date(admin.firstCheckIn).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div>
             </div>
           )}
           <div className="card" style={{border:`2px solid ${pct>=100?LF.lime:LF.pink}66`,position:"relative"}}>
@@ -818,7 +819,7 @@ export default function App(){
               <div style={{flex:1}}>
                 <div style={{fontSize:20,color:LF.white,fontWeight:800,marginBottom:2}}>{fmtProg(me)}</div>
                 <div style={{fontSize:14,color:LF.hotpink,fontWeight:800,marginBottom:2}}>of {fmtGoal(me)}</div>
-                <div style={{fontSize:14,color:pct>=100?LF.lime:LF.teal,fontWeight:800}}>{pct>=100?"🌟 GOAL CRUSHED! 🌟":fmtLeft()}</div>
+                <div style={{fontSize:14,color:pct>=100?LF.lime:LF.yellow,fontWeight:800}}>{pct>=100?"🌟 GOAL CRUSHED! 🌟":fmtLeft()}</div>
                 {history.filter(h=>h.met).length>0&&<div style={{fontSize:14,marginTop:4,color:LF.yellow,fontWeight:800}}>{"🔥".repeat(Math.min(history.filter(h=>h.met).length,3))} {history.filter(h=>h.met).length}wk streak!</div>}
               </div>
             </div>
@@ -826,7 +827,7 @@ export default function App(){
               {WEEK_DAYS.map((d,i)=>(
                 <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
                   <div style={{width:"100%",height:8,borderRadius:4,background:me.dailyChecks[i]?`linear-gradient(90deg,${LF.pink},${LF.purple})`:i===todayIdx()?LF.pink+"33":"#ffffff18"}}/>
-                  <span style={{fontSize:12,color:i===todayIdx()?LF.pink:"#ffffff88",fontWeight:800}}>{d}</span>
+                  <span style={{fontSize:12,color:i===todayIdx()?LF.pink:"#ffffffcc",fontWeight:800}}>{d}</span>
                 </div>
               ))}
             </div>
@@ -856,8 +857,8 @@ export default function App(){
               </div>
               {timerSessions.length>0&&(
                 <div style={{marginTop:12,borderTop:`1px solid ${LF.purple}33`,paddingTop:10}}>
-                  <div style={{fontSize:12,color:LF.teal,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Today's Sessions</div>
-                  {timerSessions.map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,color:"#fff",fontWeight:800,padding:"2px 0"}}><span>Session {i+1}</span><span style={{color:LF.teal}}>{s.mins}m ✓</span></div>)}
+                  <div style={{fontSize:12,color:LF.lime,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Today's Sessions</div>
+                  {timerSessions.map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,color:"#fff",fontWeight:800,padding:"2px 0"}}><span>Session {i+1}</span><span style={{color:LF.lime}}>{s.mins}m ✓</span></div>)}
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:800,marginTop:6,color:LF.yellow}}><span>Total today</span><span>{timerSessions.reduce((a,s)=>a+s.mins,0)}m 🔥</span></div>
                 </div>
               )}
@@ -891,12 +892,12 @@ export default function App(){
         {/* ── GROUP ── */}
         {tab==="Group"&&(<>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{fontSize:14,color:LF.teal,fontWeight:800}}>#{me.groupId} · This Period 🏆</div>
+            <div style={{fontSize:14,color:LF.lime,fontWeight:800}}>#{me.groupId} · This Period 🏆</div>
             <button className="btn btn-teal" onClick={()=>loadMembers(me.groupId,me.name)} style={{fontSize:13,padding:"6px 12px"}}>↻ Refresh</button>
           </div>
           {challengeNotStarted&&(
             <div className="card" style={{border:`2px solid ${LF.teal}88`,background:"#E040FB11",textAlign:"center"}}>
-              <div style={{fontSize:13,color:LF.teal,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>⏳ Challenge Countdown</div>
+              <div style={{fontSize:13,color:LF.lime,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>⏳ Challenge Countdown</div>
               <div style={{fontSize:32,fontWeight:900,color:LF.yellow,letterSpacing:2,marginBottom:4}}>
                 {countdownDays>0&&<span>{countdownDays}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>d</span></span>}
                 {countdownHours>0&&<span>{countdownHours}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>h</span></span>}
@@ -905,7 +906,7 @@ export default function App(){
               <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800}}>
                 Challenge starts {challengeStartDate.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {challengeStartDate.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
               </div>
-              <div style={{fontSize:12,color:"#ffffff88",fontWeight:700,marginTop:4}}>First check-in: {admin.firstCheckIn?new Date(admin.firstCheckIn).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div>
+              <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginTop:4}}>First check-in: {admin.firstCheckIn?new Date(admin.firstCheckIn).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div>
             </div>
           )}
 
@@ -925,7 +926,7 @@ export default function App(){
             >
               {shareCopied?"✓ Copied to clipboard!":"📤 Share Invite"}
             </button>
-            <div style={{fontSize:12,color:"#ffffff88",marginTop:8,textAlign:"center"}}>
+            <div style={{fontSize:12,color:"#ffffffcc",marginTop:8,textAlign:"center"}}>
               On mobile, this opens your share sheet (iMessage, WhatsApp, email, etc.)
             </div>
           </div>
@@ -1022,16 +1023,16 @@ export default function App(){
           <div style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:20,padding:12,display:"flex",flexDirection:"column",gap:10,minHeight:240,maxHeight:480,overflowY:"auto"}}>
             {(()=>{
               const items=[...messages.map(m=>({...m,_type:"msg"})),...polls.map(p=>({...p,_type:"poll"}))].sort((a,b)=>a.ts-b.ts);
-              if(items.length===0)return <div style={{textAlign:"center",padding:36,color:"#ffffff99",fontSize:15}}>Say hi to your crew! 🌈</div>;
+              if(items.length===0)return <div style={{textAlign:"center",padding:36,color:"#ffffffcc",fontSize:15}}>Say hi to your crew! 🌈</div>;
               return items.map(item=>{
                 if(item._type==="msg"){
                   const msg=item; const isMe=msg.author===me.name;
                   return(
                     <div key={msg.id} className="msg-in" style={{display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3}}>
-                      {!isMe&&<div style={{fontSize:12,color:"#ffffff99",fontWeight:800,paddingLeft:4}}>{msg.avatar} {msg.author}</div>}
+                      {!isMe&&<div style={{fontSize:12,color:"#ffffffcc",fontWeight:800,paddingLeft:4}}>{msg.avatar} {msg.author}</div>}
                       <div style={{maxWidth:"80%",background:isMe?`linear-gradient(135deg,${LF.pink}cc,${LF.purple}cc)`:"#ffffff18",border:`1px solid ${isMe?LF.pink:"#ffffff33"}`,borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px",padding:"9px 13px"}}>
                         <div style={{fontSize:14,fontWeight:700,color:"#fff",lineHeight:1.5}}>{msg.text}</div>
-                        <div style={{fontSize:11,color:"#ffffff66",marginTop:3}}>{fmtDate(msg.ts)}</div>
+                        <div style={{fontSize:11,color:"#ffffffbb",marginTop:3}}>{fmtDate(msg.ts)}</div>
                       </div>
                       <div style={{display:"flex",flexWrap:"wrap",gap:3,paddingLeft:isMe?0:4,paddingRight:isMe?4:0,justifyContent:isMe?"flex-end":"flex-start",alignItems:"center"}}>
                         {REACTIONS.filter(r=>(msg.reactions[r]||[]).length>0).map(r=>{
@@ -1066,13 +1067,13 @@ export default function App(){
                   <div key={poll.id} className="msg-in" style={{background:"#2D006E99",border:`2px solid ${resolved?"#CCFF66":expired?"#ffffff33":LF.pink}55`,borderRadius:16,padding:12}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                       <div>
-                        <div style={{fontSize:11,color:"#ffffff77",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>📊 {poll.author} · poll</div>
+                        <div style={{fontSize:11,color:"#ffffffcc",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>📊 {poll.author} · poll</div>
                         <div style={{fontSize:15,fontWeight:900,color:"#fff"}}>{poll.question}</div>
-                        {deadlineDate&&<div style={{fontSize:11,color:expired?"#ff8888":hoursLeft&&hoursLeft<24?LF.yellow:"#ffffff99",fontWeight:700,marginTop:2}}>{expired?"⏰ Voting closed":`⏰ ${hoursLeft}h left`}</div>}
+                        {deadlineDate&&<div style={{fontSize:11,color:expired?"#ff8888":hoursLeft&&hoursLeft<24?LF.yellow:"#ffffffcc",fontWeight:700,marginTop:2}}>{expired?"⏰ Voting closed":`⏰ ${hoursLeft}h left`}</div>}
                         {resolved&&<div style={{fontSize:12,color:LF.lime,fontWeight:800,marginTop:2}}>✅ Result: {resolved}</div>}
                       </div>
                       {(me.isAdmin||poll.author===me.name)&&(
-                        <button onClick={()=>deletePoll(poll.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:15,color:"#ffffff55",padding:"0 4px"}}>🗑️</button>
+                        <button onClick={()=>deletePoll(poll.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:15,color:"#ffffffbb",padding:"0 4px"}}>🗑️</button>
                       )}
                     </div>
                     <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:8}}>
@@ -1094,12 +1095,12 @@ export default function App(){
                       })}
                     </div>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
-                      <div style={{fontSize:12,color:"#ffffff77",fontWeight:700}}>{myVoteIdx>=0?"✓ You voted":canVote?"Tap an option to vote":"Voting closed"}</div>
+                      <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700}}>{myVoteIdx>=0?"✓ You voted":canVote?"Tap an option to vote":"Voting closed"}</div>
                       {me.isAdmin&&!resolved&&(
                         <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
-                          <span style={{fontSize:11,color:"#ffffff44",fontWeight:700}}>override:</span>
+                          <span style={{fontSize:11,color:"#ffffffaa",fontWeight:700}}>override:</span>
                           {poll.options.map((o,i)=>(
-                            <button key={i} onClick={()=>overridePollResult(poll.id,o.text)} style={{background:"#ffffff11",border:"1px solid #ffffff22",borderRadius:8,padding:"2px 8px",cursor:"pointer",fontSize:11,color:"#ffffff66",fontWeight:700}}>{o.text}</button>
+                            <button key={i} onClick={()=>overridePollResult(poll.id,o.text)} style={{background:"#ffffff11",border:"1px solid #ffffff22",borderRadius:8,padding:"2px 8px",cursor:"pointer",fontSize:11,color:"#ffffffbb",fontWeight:700}}>{o.text}</button>
                           ))}
                         </div>
                       )}
@@ -1118,16 +1119,16 @@ export default function App(){
 
         {/* ── STATS ── */}
         {tab==="Stats"&&(<>
-          <div style={{fontSize:15,color:LF.teal,fontWeight:800}}>📊 Group Stats &amp; Ledger</div>
+          <div style={{fontSize:15,color:LF.white,fontWeight:800}}>📊 Group Stats &amp; Ledger</div>
           <div className="card">
             <span className="lbl">🌍 Total Group Output — All Time</span>
             <div style={{display:"flex"}}>
               {totalGroupWords>0&&<div style={{flex:1,textAlign:"center",borderRight:totalGroupMinutes>0?`1px solid ${LF.purple}33`:"none"}}>
-                <div style={{fontSize:24,color:LF.pink,fontWeight:900}}>{totalGroupWords.toLocaleString()}</div>
+                <div style={{fontSize:24,color:LF.yellow,fontWeight:900}}>{totalGroupWords.toLocaleString()}</div>
                 <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800,marginTop:2}}>Total Words ✍️</div>
               </div>}
               {totalGroupMinutes>0&&<div style={{flex:1,textAlign:"center"}}>
-                <div style={{fontSize:24,color:LF.teal,fontWeight:900}}>{Math.round(totalGroupMinutes/60)}h {totalGroupMinutes%60}m</div>
+                <div style={{fontSize:24,color:LF.yellow,fontWeight:900}}>{Math.round(totalGroupMinutes/60)}h {totalGroupMinutes%60}m</div>
                 <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800,marginTop:2}}>Total Time ⏱️</div>
               </div>}
               {totalGroupWords===0&&totalGroupMinutes===0&&<div style={{flex:1,textAlign:"center",padding:16,color:"#ffffffcc",fontSize:13}}>No progress logged yet 🌈</div>}
@@ -1138,7 +1139,7 @@ export default function App(){
             <span className="lbl">💸 Money Ledger</span>
             <div style={{display:"flex",marginBottom:14}}>
               <div style={{flex:1,textAlign:"center",borderRight:`1px solid ${LF.purple}33`}}>
-                <div style={{fontSize:20,color:LF.lime,fontWeight:900}}>{fmtMoney(totalCharity)}</div>
+                <div style={{fontSize:20,color:LF.white,fontWeight:900}}>{fmtMoney(totalCharity)}</div>
                 <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800,marginTop:2}}>Donated 💝</div>
               </div>
               <div style={{flex:1,textAlign:"center",borderRight:`1px solid ${LF.purple}33`}}>
@@ -1146,7 +1147,7 @@ export default function App(){
                 <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800,marginTop:2}}>To Winners 🏆</div>
               </div>
               <div style={{flex:1,textAlign:"center"}}>
-                <div style={{fontSize:20,color:LF.teal,fontWeight:900}}>{totalPrizes}</div>
+                <div style={{fontSize:20,color:LF.white,fontWeight:900}}>{totalPrizes}</div>
                 <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800,marginTop:2}}>Prizes 🎁</div>
               </div>
             </div>
@@ -1162,7 +1163,7 @@ export default function App(){
                   <div style={{fontSize:14,fontWeight:700,color:w.isYou?LF.yellow:LF.white}}>{w.name}{w.isYou?" (you)":""}</div>
                   <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700}}>💝 {(w.charityName||w.charity)||"—"}</div>
                 </div>
-                <div style={{fontSize:15,color:LF.teal,fontWeight:800}}>{w.goalType==="words"?`${(w.totalProgress||0).toLocaleString()}w`:`${Math.round((w.totalProgress||0)/60)}h`}</div>
+                <div style={{fontSize:15,color:LF.white,fontWeight:800}}>{w.goalType==="words"?`${(w.totalProgress||0).toLocaleString()}w`:`${Math.round((w.totalProgress||0)/60)}h`}</div>
               </div>
             ))}
           </div>
@@ -1204,7 +1205,7 @@ export default function App(){
               <span className="lbl">Your Personal Charity 💝</span>
               <input className="inp" value={me.charity||""} onChange={e=>updateMyCharity(e.target.value)} placeholder="https://www.redcross.org" style={{marginBottom:8,borderColor:me.charity&&!isValidUrl(me.charity)?LF.pink:me.charity&&isValidUrl(me.charity)?LF.teal:undefined}}/>
               {me.charity&&!isValidUrl(me.charity)&&<div style={{fontSize:13,color:LF.pink,fontWeight:800,marginBottom:8}}>Please enter a valid URL</div>}
-              {me.charity&&isValidUrl(me.charity)&&<div style={{fontSize:13,color:LF.teal,fontWeight:800,marginBottom:8}}>✓ {me.charityName||me.charity}</div>}
+              {me.charity&&isValidUrl(me.charity)&&<div style={{fontSize:13,color:LF.lime,fontWeight:800,marginBottom:8}}>✓ {me.charityName||me.charity}</div>}
               <div style={{fontSize:12,color:"#fff",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Quick picks</div>
               <div style={{display:"flex",flexDirection:"column",gap:5}}>
                 {CHARITY_SUGGESTIONS.map(c=>{
@@ -1229,14 +1230,14 @@ export default function App(){
           </div>
 
           <div style={{textAlign:"center",marginTop:4,display:"flex",flexDirection:"column",gap:8,alignItems:"center"}}>
-            <button onClick={()=>setShowPrivacy(true)} style={{background:"none",border:"none",color:"#ffffff66",fontSize:12,cursor:"pointer",fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>Privacy Policy</button>
-            <button onClick={handleReset} style={{background:"none",border:"none",color:"#ffffff44",fontSize:12,cursor:"pointer",fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>Reset all data…</button>
+            <button onClick={()=>setShowPrivacy(true)} style={{background:"none",border:"none",color:"#ffffffbb",fontSize:12,cursor:"pointer",fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>Privacy Policy</button>
+            <button onClick={handleReset} style={{background:"none",border:"none",color:"#ffffffaa",fontSize:12,cursor:"pointer",fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>Reset all data…</button>
           </div>
         </>)}
 
         {/* ── HISTORY ── */}
         {tab==="History"&&(<>
-          <div style={{fontSize:14,color:LF.teal,fontWeight:800}}>📅 Your Writing History</div>
+          <div style={{fontSize:14,color:LF.lime,fontWeight:800}}>📅 Your Writing History</div>
           {history.length===0&&<div className="card" style={{textAlign:"center",padding:24}}><div style={{fontSize:28,marginBottom:8}}>🌈</div><div style={{fontSize:14,color:LF.pink,fontWeight:800}}>History appears at end of each period.</div></div>}
           {history.map((h,i)=>(
             <div key={i} className="card" style={{border:`2px solid ${h.met?LF.lime:LF.pink}44`}}>
@@ -1256,7 +1257,7 @@ export default function App(){
           {history.length>0&&(
             <div className="card">
               <div style={{display:"flex"}}>
-                {[{l:"Periods",v:history.length,c:LF.teal},{l:"Nailed it",v:history.filter(h=>h.met).length,c:LF.lime},{l:"Missed",v:history.filter(h=>!h.met).length,c:LF.pink}].map((s,i)=>(
+                {[{l:"Periods",v:history.length,c:LF.lime},{l:"Nailed it",v:history.filter(h=>h.met).length,c:LF.lime},{l:"Missed",v:history.filter(h=>!h.met).length,c:LF.pink}].map((s,i)=>(
                   <div key={i} style={{flex:1,textAlign:"center",borderRight:i<2?`1px solid ${LF.purple}33`:"none"}}>
                     <div style={{fontSize:22,color:s.c,fontWeight:900}}>{s.v}</div>
                     <div style={{fontSize:12,color:LF.white,fontWeight:800,marginTop:2}}>{s.l}</div>
