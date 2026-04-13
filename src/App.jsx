@@ -30,6 +30,7 @@ const ledgerDocRef  = (gid)       => doc(db, "groups", gid, "data", "ledger");
 const membersColRef = (gid)       => collection(db, "groups", gid, "members");
 const memberUidDocRef    = (gid, uid) => doc(db, "groups", gid, "memberUids", uid);
 const notifDocRef        = (uid)       => doc(db, "users",  uid, "data", "notifications");
+const userIndexDocRef    = (uid)       => doc(db, "_index", "users", "members", uid);
 
 async function fsGet(ref) {
   try { const s = await getDoc(ref); return s.exists() ? s.data().value : null; } catch { return null; }
@@ -38,6 +39,20 @@ async function fsSet(ref, value) {
   try { await setDoc(ref, { value }, { merge: false }); } catch (e) { console.warn("fsSet", e); }
 }
 async function fsDel(ref) { try { await deleteDoc(ref); } catch {} }
+async function writeUserIndex(uid, d){
+  // Lightweight record used by cron-reminders to find users due for a reminder
+  try{
+    await fsSet(userIndexDocRef(uid),JSON.stringify({
+      uid,
+      groupId:     d.groupId||null,
+      reminderTime:    d.notifPrefs?.reminderTime||"09:00",
+      reminderFrequency: d.notifPrefs?.reminderFrequency||"Daily",
+      writingReminder:  !!(d.notifPrefs?.writingReminder),
+      oneSignalPlayerId: d.oneSignalPlayerId||null,
+      updatedAt:   Date.now(),
+    }));
+  }catch(e){console.warn("writeUserIndex",e);}
+}
 
 // ── Constants ────────────────────────────────────────────────────
 const TABS        = ["Dashboard","Group","Chat","Stats","Stakes","History"];
@@ -508,11 +523,13 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
         // Save player ID to user record
         const upd={...me,notifPrefs:updated,oneSignalPlayerId:result};
         await fsSet(doc(db,"users",uid),JSON.stringify(upd));
+        writeUserIndex(uid,upd);
         return;
       }
     }
     const upd={...me,notifPrefs:updated};
     await fsSet(doc(db,"users",uid),JSON.stringify(upd));
+    writeUserIndex(uid,upd);
   }
 
   async function handlePrefChange(key,value){
@@ -520,6 +537,7 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
     setNotifPrefs(updated);
     const upd={...me,notifPrefs:updated};
     await fsSet(doc(db,"users",uid),JSON.stringify(upd));
+    writeUserIndex(uid,upd);
   }
 
   const firstName=me.name?.split(" ")[0]||me.name||"?";
@@ -820,6 +838,7 @@ export default function App(){
       setMe(d); setGoalInput(String(d.goalValue)); setGoalTypeEdit(d.goalType);
       setReady(true);
       initOneSignal();
+      writeUserIndex(uid,d);
       // Load in-app notifications
       const notifVal=await fsGet(notifDocRef(uid));
       if(notifVal)setInAppNotifs(JSON.parse(notifVal));
@@ -856,6 +875,7 @@ export default function App(){
       progressThisWeek:0,totalProgress:0,dailyChecks:[false,false,false,false,false,false,false],lastResetWeek:getWeekKey()};
     setMe(d); setGoalInput(String(goalValue)); setGoalTypeEdit(goalType); setReady(true);
     await fsSet(userDocRef(uid),JSON.stringify(d));
+    writeUserIndex(uid,d).catch(()=>{});
     pub(d).catch(()=>{});
     fsSet(memberUidDocRef(groupId,uid),JSON.stringify({uid,joinedAt:Date.now()})).catch(()=>{});
     loadMembers(groupId,name); loadChat(groupId); loadPolls(groupId); loadAdminData(groupId); loadLedger(groupId);
@@ -1071,12 +1091,41 @@ export default function App(){
     const nowOver=newProgress>=me.goalValue;
     if(wasUnder&&nowOver){
       await addInAppNotif("memberHitGoal","🌟 Goal crushed!",`You hit your ${fmtGoal(me)} goal this week. Amazing work!`);
+      // Push fan-out: notify group members who want "memberHitGoal" notifications
+      if(me?.groupId){
+        fetch("/api/notify",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            groupId:me.groupId,
+            notifType:"memberHitGoal",
+            excludeUid:uid,
+            title:`🌟 ${me.name} crushed their goal!`,
+            body:`${me.avatar} ${me.name} just hit their ${fmtGoal(me)} goal. Get inspired!`,
+          }),
+        }).catch(()=>{});
+      }
     }
   }
 
   // Called when a new poll is submitted — notifies group members (push via server later)
   async function notifyNewPoll(question){
+    // In-app notif for self
     await addInAppNotif("newPoll","📊 New poll","\""+question+"\" — cast your vote in Chat!");
+    // Push fan-out to all group members who want poll notifications (excludes self)
+    if(me?.groupId){
+      fetch("/api/notify",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          groupId:me.groupId,
+          notifType:"newPoll",
+          excludeUid:uid,
+          title:"📊 New poll in "+me.groupId,
+          body:"\""+question+"\" — cast your vote!",
+        }),
+      }).catch(()=>{});
+    }
   }
 
   // Called when a member's poll is closing within an hour
