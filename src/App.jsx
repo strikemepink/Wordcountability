@@ -28,7 +28,8 @@ const pollsDocRef   = (gid)       => doc(db, "groups", gid, "data", "polls");
 const adminDocRef   = (gid)       => doc(db, "groups", gid, "data", "admin");
 const ledgerDocRef  = (gid)       => doc(db, "groups", gid, "data", "ledger");
 const membersColRef = (gid)       => collection(db, "groups", gid, "members");
-const memberUidDocRef = (gid, uid) => doc(db, "groups", gid, "memberUids", uid);
+const memberUidDocRef    = (gid, uid) => doc(db, "groups", gid, "memberUids", uid);
+const notifDocRef        = (uid)       => doc(db, "users",  uid, "data", "notifications");
 
 async function fsGet(ref) {
   try { const s = await getDoc(ref); return s.exists() ? s.data().value : null; } catch { return null; }
@@ -46,6 +47,36 @@ const REACTIONS   = ["👍","👎","🦄","🌈","💖","⭐","🔥","🐬","✨
 const DURATIONS   = [{label:"1 Month",days:30},{label:"1 Quarter",days:90},{label:"6 Months",days:180},{label:"1 Year",days:365}];
 const FREQUENCIES = ["Daily","Weekly","Bi-Weekly","Monthly"];
 const APP_URL     = "https://wordcountability.vercel.app";
+
+const ONESIGNAL_APP_ID     = import.meta.env.VITE_ONESIGNAL_APP_ID     || "";
+const ONESIGNAL_SAFARI_ID  = import.meta.env.VITE_ONESIGNAL_SAFARI_WEB_ID || "";
+
+const MOTIVATIONAL_MESSAGES = [
+  "Yoda says: Become writer only by writing.",
+  "Frankly my dear, sit down and write!",
+  "You coulda been a published author, you coulda been a Booker Prize winner, instead of a bum who avoids the blank page.",
+  "Dirty Harry says: Go ahead, write your story.",
+  "Jerry Maguire says: Show me the finished draft.",
+  "You can't handle the blank page!",
+  "Houston, we have a future author.",
+  "Cher wants you to snap out of your writer's block.",
+  "A finished first draft, for lack of a better project, is better than an unfinished polished draft.",
+  "Cookie Monster says: Me want story!!!!",
+];
+
+const DEFAULT_NOTIF_PREFS = {
+  writingReminder:      true,
+  reminderFrequency:    "Daily",
+  reminderTime:         "09:00",
+  checkInWarning:       true,
+  missedCheckIn:        true,
+  challengeStarting:    true,
+  memberHitGoal:        true,
+  newPoll:              true,
+  pollClosingSoon:      true,
+  newChatMessage:       true,
+  chatFrequency:        "Every message",
+};
 
 const LF = {
   // NOTE: 'teal' is misnamed — it's actually a purple/violet (#E040FB). Rename in a future refactor.
@@ -96,7 +127,19 @@ const G = `
   .btn-google{background:#fff;color:#1A0030;border:none;border-radius:50px;padding:12px 28px;font-family:'Outfit',sans-serif;font-size:17px;cursor:pointer;font-weight:700;box-shadow:0 4px 24px #00000044;transition:transform 0.15s,box-shadow 0.15s;display:flex;align-items:center;gap:10px;}
   .btn-google:hover{transform:translateY(-2px);box-shadow:0 6px 32px #00000066;}
   .privacy-modal{max-width:500px;width:100%;max-height:88vh;overflow-y:auto;background:#2D006Eee;border:1.5px solid #ffffff33;border-radius:20px;padding:28px;backdrop-filter:blur(12px);}
-`;
+  .settings-panel{position:fixed;top:0;right:0;height:100%;width:min(380px,100%);background:#1A0044f5;border-left:1.5px solid #ffffff22;backdrop-filter:blur(16px);z-index:200;display:flex;flex-direction:column;overflow:hidden;transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);}
+  .settings-panel-overlay{position:fixed;inset:0;background:#00000066;z-index:199;}
+  .settings-section{padding:18px 20px 0;}
+  .settings-section-title{font-size:11px;color:#ffffffbb;text-transform:uppercase;letter-spacing:2px;font-weight:900;margin-bottom:10px;}
+  .notif-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #ffffff11;}
+  .toggle{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;}
+  .toggle input{opacity:0;width:0;height:0;}
+  .toggle-slider{position:absolute;inset:0;background:#ffffff33;border-radius:24px;cursor:pointer;transition:background 0.2s;}
+  .toggle-slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform 0.2s;}
+  .toggle input:checked+.toggle-slider{background:linear-gradient(135deg,#FF2D9B,#BF5FFF);}
+  .toggle input:checked+.toggle-slider:before{transform:translateX(20px);}
+  .notif-feed{position:fixed;top:0;right:0;height:100%;width:min(380px,100%);background:#1A0044f5;border-left:1.5px solid #ffffff22;backdrop-filter:blur(16px);z-index:200;display:flex;flex-direction:column;overflow:hidden;}
+  @keyframes slideInRight{from{transform:translateX(100%);}to{transform:translateX(0);}}`;
 
 // ── Helpers ──────────────────────────────────────────────────────
 function getWeekKey(){const now=new Date(),j=new Date(now.getFullYear(),0,1),w=Math.ceil(((now-j)/86400000+j.getDay()+1)/7);return`${now.getFullYear()}-W${w}`;}
@@ -228,6 +271,12 @@ function PrivacyModal({onClose}){
           </div>
 
           <div>
+            <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>Push Notifications</div>
+            If you enable push notifications, a push subscription token is stored in your account and shared with OneSignal, Inc. to enable delivery of notifications to your device. OneSignal does not receive your email address or writing data. OneSignal's privacy policy is available at{" "}
+            <a href="https://onesignal.com/privacy" target="_blank" rel="noreferrer" style={{color:LF.lime}}>onesignal.com/privacy</a>.
+          </div>
+
+          <div>
             <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>Deleting your data</div>
             You can delete your own data at any time using the "Reset all data" option in the Stakes tab. To request complete account deletion, email us at{" "}
             <a href="mailto:erica.kritt.author@gmail.com" style={{color:LF.lime}}>erica.kritt.author@gmail.com</a>.
@@ -347,6 +396,347 @@ function Setup({user,onSave}){
   );
 }
 
+// ── OneSignal helpers ─────────────────────────────────────────────
+function initOneSignal(){
+  if(!ONESIGNAL_APP_ID||typeof window==="undefined")return;
+  if(window.__oneSignalInitialized)return;
+  window.__oneSignalInitialized=true;
+  const script=document.createElement("script");
+  script.src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+  script.defer=true;
+  script.onload=()=>{
+    window.OneSignalDeferred=window.OneSignalDeferred||[];
+    window.OneSignalDeferred.push(async(OneSignal)=>{
+      await OneSignal.init({
+        appId:ONESIGNAL_APP_ID,
+        safari_web_id:ONESIGNAL_SAFARI_ID,
+        notifyButton:{enable:false},
+        allowLocalhostAsSecureOrigin:true,
+      });
+    });
+  };
+  document.head.appendChild(script);
+}
+
+async function requestNotifPermission(){
+  if(typeof window==="undefined"||!window.OneSignalDeferred)return null;
+  return new Promise(resolve=>{
+    window.OneSignalDeferred.push(async(OneSignal)=>{
+      try{
+        const state=await OneSignal.Notifications.permissionNative;
+        if(state==="denied"){resolve("denied");return;}
+        await OneSignal.Notifications.requestPermission();
+        const id=await OneSignal.User.PushSubscription.id;
+        resolve(id||null);
+      }catch{resolve(null);}
+    });
+  });
+}
+
+async function getOneSignalPlayerId(){
+  if(typeof window==="undefined"||!window.OneSignalDeferred)return null;
+  return new Promise(resolve=>{
+    window.OneSignalDeferred.push(async(OneSignal)=>{
+      try{const id=await OneSignal.User.PushSubscription.id;resolve(id||null);}
+      catch{resolve(null);}
+    });
+  });
+}
+
+async function getNotifPermissionState(){
+  if(typeof window==="undefined"||!window.OneSignalDeferred)return "default";
+  return new Promise(resolve=>{
+    window.OneSignalDeferred.push(async(OneSignal)=>{
+      try{const s=await OneSignal.Notifications.permissionNative;resolve(s||"default");}
+      catch{resolve("default");}
+    });
+  });
+}
+
+// Called from App whenever a notif-worthy event occurs
+async function sendNotifToSelf(uid, db, type, title, body){
+  // Store in-app notification
+  try{
+    const ref=notifDocRef(uid);
+    const val=await fsGet(ref);
+    const existing=val?JSON.parse(val):[];
+    const notif={id:Date.now(),type,title,body,ts:Date.now(),read:false};
+    const updated=[notif,...existing].slice(0,50);
+    await fsSet(ref,JSON.stringify(updated));
+  }catch(e){console.warn("notif store",e);}
+  // Push via Vercel function (scaffold — will be active once /api/notify exists)
+  try{
+    const playerId=await getOneSignalPlayerId();
+    if(!playerId)return;
+    await fetch("/api/notify",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({playerId,title,body,type}),
+    });
+  }catch{/* function doesn't exist yet — silent fail */}
+}
+
+// ── SettingsPanel ─────────────────────────────────────────────────
+function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenAdmin, onOpenPrivacy}){
+  const [section,setSection]=useState("profile"); // profile | notifications | accolades | about
+  const [notifPerms,setNotifPerms]=useState("default"); // default | granted | denied
+  const [notifPrefs,setNotifPrefs]=useState(me.notifPrefs||DEFAULT_NOTIF_PREFS);
+  const [selectedAvatar,setSelectedAvatar]=useState(me.avatar);
+  const [savingAvatar,setSavingAvatar]=useState(false);
+
+  useEffect(()=>{
+    initOneSignal();
+    getNotifPermissionState().then(s=>setNotifPerms(s));
+  },[]);
+
+  async function handleAvatarSave(){
+    if(selectedAvatar===me.avatar)return;
+    setSavingAvatar(true);
+    await onAvatarChange(selectedAvatar);
+    setSavingAvatar(false);
+  }
+
+  async function handleNotifToggle(key,value){
+    const updated={...notifPrefs,[key]:value};
+    setNotifPrefs(updated);
+    // If enabling any toggle and permission not yet granted, request it
+    if(value&&notifPerms==="default"){
+      const result=await requestNotifPermission();
+      if(result==="denied"){setNotifPerms("denied");return;}
+      if(result){
+        setNotifPerms("granted");
+        // Save player ID to user record
+        const upd={...me,notifPrefs:updated,oneSignalPlayerId:result};
+        await fsSet(doc(db,"users",uid),JSON.stringify(upd));
+        return;
+      }
+    }
+    const upd={...me,notifPrefs:updated};
+    await fsSet(doc(db,"users",uid),JSON.stringify(upd));
+  }
+
+  async function handlePrefChange(key,value){
+    const updated={...notifPrefs,[key]:value};
+    setNotifPrefs(updated);
+    const upd={...me,notifPrefs:updated};
+    await fsSet(doc(db,"users",uid),JSON.stringify(upd));
+  }
+
+  const firstName=me.name?.split(" ")[0]||me.name||"?";
+
+  const NOTIF_ROWS=[
+    {key:"writingReminder",   label:"Writing Reminder",        icon:"✍️"},
+    {key:"checkInWarning",    label:"Check-in deadline (24h)", icon:"⏰"},
+    {key:"missedCheckIn",     label:"Missed check-in",         icon:"💔"},
+    {key:"challengeStarting", label:"Challenge starting (24h)",icon:"🚀"},
+    {key:"memberHitGoal",     label:"Member hit their goal",   icon:"🌟"},
+    {key:"newPoll",           label:"New poll posted",         icon:"📊"},
+    {key:"pollClosingSoon",   label:"Poll closing soon",       icon:"⏳"},
+    {key:"newChatMessage",    label:"New chat message",        icon:"💬"},
+  ];
+
+  return(
+    <>
+      <div className="settings-panel-overlay" onClick={onClose}/>
+      <div className="settings-panel" style={{animation:"slideInRight 0.3s cubic-bezier(0.4,0,0.2,1)"}}>
+        {/* Header */}
+        <div style={{padding:"20px 20px 14px",borderBottom:"1px solid #ffffff18",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div style={{fontSize:18,fontWeight:900,color:LF.white}}>Settings</div>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"#ffffffcc",fontSize:22,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
+        </div>
+
+        {/* Section tabs */}
+        <div style={{display:"flex",borderBottom:"1px solid #ffffff18",flexShrink:0,overflowX:"auto"}}>
+          {[{id:"profile",icon:"👤"},{id:"notifications",icon:"🔔"},{id:"accolades",icon:"🏆"},{id:"about",icon:"ℹ️"}].map(s=>(
+            <button key={s.id} onClick={()=>setSection(s.id)} style={{flex:1,background:"none",border:"none",borderBottom:`3px solid ${section===s.id?LF.pink:"transparent"}`,color:section===s.id?LF.pink:"#ffffffaa",fontFamily:"'Outfit',sans-serif",fontSize:11,fontWeight:900,textTransform:"uppercase",letterSpacing:1,padding:"10px 4px",cursor:"pointer",whiteSpace:"nowrap",transition:"color 0.2s"}}>
+              {s.icon}
+            </button>
+          ))}
+        </div>
+
+        {/* Scrollable content */}
+        <div style={{flex:1,overflowY:"auto",paddingBottom:24}}>
+
+          {/* ── PROFILE ── */}
+          {section==="profile"&&(
+            <div className="settings-section">
+              <div style={{textAlign:"center",padding:"20px 0 16px"}}>
+                <div style={{fontSize:56,marginBottom:8}}>{selectedAvatar}</div>
+                <div style={{fontSize:18,fontWeight:900,color:LF.white}}>{me.name}</div>
+                <div style={{fontSize:13,color:"#ffffffbb",fontWeight:700,marginTop:2}}>#{me.groupId}</div>
+              </div>
+              <div style={{marginBottom:16}}>
+                <div className="settings-section-title">Change Avatar</div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center"}}>
+                  {AVATARS.map(a=>(
+                    <button key={a} onClick={()=>setSelectedAvatar(a)} style={{width:52,height:52,fontSize:26,border:`2px solid ${selectedAvatar===a?LF.pink:"#ffffff33"}`,borderRadius:14,cursor:"pointer",background:selectedAvatar===a?"#FF2D9B22":"#ffffff18",transition:"all 0.2s",transform:selectedAvatar===a?"scale(1.1)":"scale(1)",boxShadow:selectedAvatar===a?"0 0 14px #FF2D9B66":"none"}}>{a}</button>
+                  ))}
+                </div>
+                {selectedAvatar!==me.avatar&&(
+                  <button className="btn" onClick={handleAvatarSave} disabled={savingAvatar} style={{width:"100%",marginTop:12,fontSize:15}}>
+                    {savingAvatar?"Saving…":"Save Avatar ✨"}
+                  </button>
+                )}
+              </div>
+              <div style={{borderTop:"1px solid #ffffff18",paddingTop:16,display:"flex",flexDirection:"column",gap:8}}>
+                <button onClick={onOpenPrivacy} style={{background:"#ffffff11",border:"1px solid #ffffff22",borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Outfit',sans-serif",color:"#fff",fontSize:14,fontWeight:700}}>
+                  🔒 Privacy Policy
+                </button>
+                {me.isAdmin&&(
+                  <button onClick={()=>{onOpenAdmin();onClose();}} style={{background:`linear-gradient(135deg,${LF.yellow}33,${LF.orange}33)`,border:`1px solid ${LF.yellow}44`,borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Outfit',sans-serif",color:LF.yellow,fontSize:14,fontWeight:800}}>
+                    ⚙️ Admin Settings
+                  </button>
+                )}
+                <button onClick={onSignOut} style={{background:"#FF444411",border:"1px solid #FF444433",borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Outfit',sans-serif",color:"#FF8888",fontSize:14,fontWeight:700}}>
+                  ↩ Sign Out
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── NOTIFICATIONS ── */}
+          {section==="notifications"&&(
+            <div className="settings-section">
+              <div style={{marginBottom:16,marginTop:12}}>
+                {notifPerms==="denied"?(
+                  <div style={{background:"#FF444411",border:"2px solid #FF444433",borderRadius:14,padding:"12px 14px",marginBottom:16}}>
+                    <div style={{fontSize:14,fontWeight:800,color:"#FF8888",marginBottom:4}}>🚫 Notifications blocked</div>
+                    <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700,lineHeight:1.6}}>
+                      You've blocked notifications for this site. To re-enable, go to your browser or device Settings → Notifications → Wordcountability and allow notifications.
+                    </div>
+                  </div>
+                ):notifPerms==="granted"?(
+                  <div style={{background:"#CCFF6611",border:"1px solid #CCFF6633",borderRadius:14,padding:"10px 14px",marginBottom:16,fontSize:13,color:LF.lime,fontWeight:700}}>
+                    ✅ Push notifications are enabled
+                  </div>
+                ):(
+                  <div style={{background:"#ffffff0a",border:"1px solid #ffffff22",borderRadius:14,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#ffffffcc",fontWeight:700}}>
+                    🔔 Tap any toggle to enable push notifications
+                  </div>
+                )}
+
+                {NOTIF_ROWS.map(({key,label,icon})=>(
+                  <div key={key}>
+                    <div className="notif-row">
+                      <div style={{display:"flex",alignItems:"center",gap:10}}>
+                        <span style={{fontSize:18}}>{icon}</span>
+                        <span style={{fontSize:14,color:LF.white,fontWeight:700}}>{label}</span>
+                      </div>
+                      <label className="toggle">
+                        <input type="checkbox" checked={!!notifPrefs[key]} onChange={e=>handleNotifToggle(key,e.target.checked)}/>
+                        <span className="toggle-slider"/>
+                      </label>
+                    </div>
+
+                    {/* Writing reminder sub-options */}
+                    {key==="writingReminder"&&notifPrefs.writingReminder&&(
+                      <div style={{background:"#ffffff08",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px",display:"flex",flexDirection:"column",gap:8}}>
+                        <div>
+                          <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                            {["Daily","Weekly","Monthly"].map(f=>(
+                              <button key={f} onClick={()=>handlePrefChange("reminderFrequency",f)} style={{padding:"5px 12px",border:`2px solid ${notifPrefs.reminderFrequency===f?LF.pink:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:notifPrefs.reminderFrequency===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
+                          <input type="time" value={notifPrefs.reminderTime||"09:00"} onChange={e=>handlePrefChange("reminderTime",e.target.value)} className="inp" style={{maxWidth:140,padding:"8px 12px",fontSize:14}}/>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Chat frequency sub-option */}
+                    {key==="newChatMessage"&&notifPrefs.newChatMessage&&(
+                      <div style={{background:"#ffffff08",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px"}}>
+                        <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
+                        <div style={{display:"flex",gap:6}}>
+                          {["Every message","Digest"].map(f=>(
+                            <button key={f} onClick={()=>handlePrefChange("chatFrequency",f)} style={{padding:"5px 12px",border:`2px solid ${notifPrefs.chatFrequency===f?LF.teal:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:notifPrefs.chatFrequency===f?`linear-gradient(135deg,${LF.teal},${LF.blue})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── ACCOLADES ── */}
+          {section==="accolades"&&(
+            <div className="settings-section" style={{paddingTop:20}}>
+              <div className="card" style={{textAlign:"center",padding:"32px 20px",border:`2px solid ${LF.yellow}33`}}>
+                <div style={{fontSize:48,marginBottom:12}}>🏆</div>
+                <div style={{fontSize:18,fontWeight:900,color:LF.yellow,marginBottom:8}}>Accolades</div>
+                <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,lineHeight:1.6}}>
+                  Earn badges as you write, hit goals, and show up for your crew. Coming soon!
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── ABOUT ── */}
+          {section==="about"&&(
+            <div className="settings-section" style={{paddingTop:20,display:"flex",flexDirection:"column",gap:12}}>
+              <div className="card" style={{border:`2px solid ${LF.purple}44`}}>
+                <div style={{fontSize:15,fontWeight:900,color:LF.hotpink,marginBottom:8}}>About Wordcountability</div>
+                <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,lineHeight:1.7,fontStyle:"italic"}}>Content coming soon ✍️</div>
+              </div>
+              <div className="card" style={{border:`2px solid ${LF.purple}44`}}>
+                <div style={{fontSize:15,fontWeight:900,color:LF.hotpink,marginBottom:8}}>About the Developer</div>
+                <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,lineHeight:1.7,fontStyle:"italic"}}>Content coming soon 🌈</div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── NotifFeed ─────────────────────────────────────────────────────
+function NotifFeed({notifications, onClose, onMarkAllRead}){
+  const unread=notifications.filter(n=>!n.read).length;
+  return(
+    <>
+      <div className="settings-panel-overlay" onClick={onClose}/>
+      <div className="notif-feed" style={{animation:"slideInRight 0.3s cubic-bezier(0.4,0,0.2,1)"}}>
+        <div style={{padding:"20px 20px 14px",borderBottom:"1px solid #ffffff18",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div style={{fontSize:18,fontWeight:900,color:LF.white}}>Notifications{unread>0&&<span style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,color:"#fff",fontSize:12,fontWeight:800,padding:"2px 8px",borderRadius:20,marginLeft:8}}>{unread}</span>}</div>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            {unread>0&&<button onClick={onMarkAllRead} style={{background:"none",border:"none",color:LF.hotpink,fontSize:12,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontWeight:800,textDecoration:"underline"}}>Mark all read</button>}
+            <button onClick={onClose} style={{background:"none",border:"none",color:"#ffffffcc",fontSize:22,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
+          </div>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"8px 0"}}>
+          {notifications.length===0?(
+            <div style={{textAlign:"center",padding:"48px 24px",color:"#ffffffcc",fontSize:14,fontWeight:700}}>
+              <div style={{fontSize:40,marginBottom:12}}>🔔</div>
+              No notifications yet
+            </div>
+          ):(
+            notifications.map(n=>(
+              <div key={n.id} style={{padding:"12px 20px",borderBottom:"1px solid #ffffff0a",background:n.read?"transparent":"#FF2D9B08",display:"flex",gap:12,alignItems:"flex-start"}}>
+                <div style={{fontSize:20,flexShrink:0,marginTop:2}}>
+                  {n.type==="writingReminder"?"✍️":n.type==="checkInWarning"?"⏰":n.type==="missedCheckIn"?"💔":n.type==="challengeStarting"?"🚀":n.type==="memberHitGoal"?"🌟":n.type==="newPoll"?"📊":n.type==="pollClosingSoon"?"⏳":"💬"}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:14,fontWeight:n.read?700:900,color:n.read?"#ffffffcc":LF.white,marginBottom:2}}>{n.title}</div>
+                  <div style={{fontSize:13,color:"#ffffffaa",fontWeight:700,lineHeight:1.5}}>{n.body}</div>
+                  <div style={{fontSize:11,color:"#ffffff66",fontWeight:700,marginTop:4}}>{fmtDate(n.ts)}</div>
+                </div>
+                {!n.read&&<div style={{width:8,height:8,borderRadius:"50%",background:LF.pink,flexShrink:0,marginTop:6}}/>}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Main App ─────────────────────────────────────────────────────
 export default function App(){
   const [authUser,setAuthUser]=useState(undefined);
@@ -366,6 +756,9 @@ export default function App(){
   const [showPrivacy,setShowPrivacy]=useState(false);
   const [shareCopied,setShareCopied]=useState(false);
   const [showPwaPrompt,setShowPwaPrompt]=useState(false);
+  const [showSettings,setShowSettings]=useState(false);
+  const [showNotifFeed,setShowNotifFeed]=useState(false);
+  const [inAppNotifs,setInAppNotifs]=useState([]);
   // timer
   const [timerRunning,setTimerRunning]=useState(false);
   const [timerSecs,setTimerSecs]=useState(0);
@@ -426,6 +819,10 @@ export default function App(){
       }
       setMe(d); setGoalInput(String(d.goalValue)); setGoalTypeEdit(d.goalType);
       setReady(true);
+      initOneSignal();
+      // Load in-app notifications
+      const notifVal=await fsGet(notifDocRef(uid));
+      if(notifVal)setInAppNotifs(JSON.parse(notifVal));
       if(d.groupId){loadMembers(d.groupId,d.name);loadChat(d.groupId);loadPolls(d.groupId);loadAdminData(d.groupId);loadLedger(d.groupId);fsSet(memberUidDocRef(d.groupId,uid),JSON.stringify({uid,joinedAt:Date.now()})).catch(()=>{});}
     }catch(e){console.error("loadAll",e);setReady(true);}
   }
@@ -469,10 +866,12 @@ export default function App(){
     if(!n||n<=0||!me)return;
     const checks=[...me.dailyChecks]; checks[todayIdx()]=true;
     const newTotal=(me.totalProgress||0)+n;
-    const upd={...me,progressThisWeek:me.progressThisWeek+n,totalProgress:newTotal,dailyChecks:checks};
+    const newWeekProgress=me.progressThisWeek+n;
+    const upd={...me,progressThisWeek:newWeekProgress,totalProgress:newTotal,dailyChecks:checks};
     setMe(upd); setSpark(s=>s+1);
     fsSet(userDocRef(uid),JSON.stringify(upd)); pub(upd);
     loadMembers(me.groupId,me.name); updateLedgerProgress(n);
+    maybeNotifyGoalHit(newWeekProgress);
   }
 
   async function updateLedgerProgress(n){
@@ -598,6 +997,7 @@ export default function App(){
     const upd=[...polls,poll];
     setPolls(upd); setPollQ(""); setPollOpts(["",""]); setPollDeadline(""); setShowPollForm(false);
     fsSet(pollsDocRef(me.groupId),JSON.stringify(upd));
+    notifyNewPoll(poll.question);
   }
   function deletePoll(pollId){
     if(!window.confirm("Delete this poll?"))return;
@@ -628,6 +1028,80 @@ export default function App(){
     }
     setMe(null); setReady(false); setHistory([]); setMembers([]);
     setMessages([]); setPolls([]); setLedger({charityTotals:{},payoutTotals:{},prizeTotals:{},totalWords:0,totalMinutes:0,entries:[]});
+  }
+
+  async function handleAvatarChange(newAvatar){
+    const upd={...me,avatar:newAvatar};
+    setMe(upd);
+    await fsSet(userDocRef(uid),JSON.stringify(upd));
+    await pub(upd,uid);
+    loadMembers(me.groupId,me.name);
+  }
+
+  async function addInAppNotif(type,title,body){
+    const notif={id:Date.now(),type,title,body,ts:Date.now(),read:false};
+    setInAppNotifs(prev=>{
+      const updated=[notif,...prev].slice(0,50);
+      fsSet(notifDocRef(uid),JSON.stringify(updated));
+      return updated;
+    });
+    // Also attempt push (silent fail until /api/notify exists)
+    try{
+      const playerId=await getOneSignalPlayerId();
+      if(playerId){
+        await fetch("/api/notify",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({playerId,title,body,type}),
+        });
+      }
+    }catch{}
+  }
+
+  async function markAllNotifsRead(){
+    const updated=inAppNotifs.map(n=>({...n,read:true}));
+    setInAppNotifs(updated);
+    await fsSet(notifDocRef(uid),JSON.stringify(updated));
+  }
+
+  // ── Notification event triggers ──
+  // Called when the current user hits 100% — notifies themselves (group push handled server-side later)
+  async function maybeNotifyGoalHit(newProgress){
+    const wasUnder=me.progressThisWeek<me.goalValue;
+    const nowOver=newProgress>=me.goalValue;
+    if(wasUnder&&nowOver){
+      await addInAppNotif("memberHitGoal","🌟 Goal crushed!",`You hit your ${fmtGoal(me)} goal this week. Amazing work!`);
+    }
+  }
+
+  // Called when a new poll is submitted — notifies group members (push via server later)
+  async function notifyNewPoll(question){
+    await addInAppNotif("newPoll","📊 New poll","\""+question+"\" — cast your vote in Chat!");
+  }
+
+  // Called when a member's poll is closing within an hour
+  async function notifyPollClosingSoon(question){
+    await addInAppNotif("pollClosingSoon","⏳ Poll closing soon","\""+question+"\" closes in under an hour. Vote if you haven't!");
+  }
+
+  // Called when challenge is 24h away
+  async function notifyChallengeSoon(){
+    await addInAppNotif("challengeStarting","🚀 Challenge starting soon","Your writing challenge begins in less than 24 hours. Get ready!");
+  }
+
+  // Called on missed check-in (can be triggered at deadline evaluation)
+  async function notifyMissedCheckIn(){
+    await addInAppNotif("missedCheckIn","💔 Missed check-in",`You missed this check-in. ${me.goalType==="words"?`Goal was ${fmtGoal(me)}.`:"Keep going — you've got this!"}`);
+  }
+
+  // Check-in deadline warning (24h before) — called when admin settings include a firstCheckIn
+  async function maybeNotifyCheckInWarning(){
+    if(!admin.firstCheckIn)return;
+    const deadline=new Date(admin.firstCheckIn);
+    const msLeft=deadline-new Date();
+    if(msLeft>0&&msLeft<=86400000){
+      await addInAppNotif("checkInWarning","⏰ Check-in tomorrow",`Your check-in deadline is in less than 24 hours. Goal: ${fmtGoal(me)}.`);
+    }
   }
 
   // ── Auth/loading states ──
@@ -679,6 +1153,8 @@ export default function App(){
       <style>{G}</style>
       {showPrivacy&&<PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
       {showPwaPrompt&&<PwaPrompt onClose={()=>setShowPwaPrompt(false)}/>}
+      {showSettings&&<SettingsPanel me={me} uid={uid} db={db} onClose={()=>setShowSettings(false)} onAvatarChange={handleAvatarChange} onSignOut={()=>signOut(auth)} onOpenAdmin={()=>{setAdminDraft({...admin});setShowAdmin(true);}} onOpenPrivacy={()=>{setShowSettings(false);setShowPrivacy(true);}}/>}
+      {showNotifFeed&&<NotifFeed notifications={inAppNotifs} onClose={()=>setShowNotifFeed(false)} onMarkAllRead={markAllNotifsRead}/>}
 
       {/* ── Header ── */}
       <div style={{width:"100%",maxWidth:500,padding:"22px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -695,8 +1171,17 @@ export default function App(){
           {endDate&&<div style={{fontSize:13,color:LF.lime,fontWeight:800,marginTop:3}}>🏁 {daysLeft}d left · {admin.frequency}</div>}
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
-          {me.isAdmin&&<button className="btn btn-yellow" onClick={()=>{setAdminDraft({...admin});setShowAdmin(true);}} style={{fontSize:13,padding:"6px 10px"}}>⚙️ Admin</button>}
-          <button onClick={()=>signOut(auth)} style={{background:"#ffffff18",border:"1px solid #ffffff33",borderRadius:50,padding:"6px 10px",cursor:"pointer",fontSize:13,color:"#fff",fontFamily:"'Outfit',sans-serif",fontWeight:700}}>↩ Out</button>
+          {/* Bell icon */}
+          <button onClick={()=>setShowNotifFeed(true)} style={{position:"relative",background:"#ffffff18",border:"1px solid #ffffff33",borderRadius:50,width:38,height:38,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
+            🔔
+            {inAppNotifs.filter(n=>!n.read).length>0&&(
+              <span style={{position:"absolute",top:2,right:2,width:10,height:10,background:LF.pink,borderRadius:"50%",border:"2px solid #1A0044"}}/>
+            )}
+          </button>
+          {/* Avatar / settings icon */}
+          <button onClick={()=>setShowSettings(true)} style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,border:"none",borderRadius:50,width:38,height:38,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:900,flexShrink:0,boxShadow:`0 2px 12px ${LF.pink}44`}}>
+            {me.avatar}
+          </button>
         </div>
       </div>
 
