@@ -42,6 +42,7 @@ async function fsDel(ref) { try { await deleteDoc(ref); } catch {} }
 async function writeUserIndex(uid, d){
   // Lightweight record used by cron-reminders to find users due for a reminder
   try{
+    const tz=Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC";
     await fsSet(userIndexDocRef(uid),JSON.stringify({
       uid,
       groupId:     d.groupId||null,
@@ -49,6 +50,7 @@ async function writeUserIndex(uid, d){
       reminderFrequency: d.notifPrefs?.reminderFrequency||"Daily",
       writingReminder:  !!(d.notifPrefs?.writingReminder),
       oneSignalPlayerId: d.oneSignalPlayerId||null,
+      timezone:    tz,
       updatedAt:   Date.now(),
     }));
   }catch(e){console.warn("writeUserIndex",e);}
@@ -193,11 +195,11 @@ function Ring({pct,size=100,stroke=8}){
 
 // ── Charity suggestions ──────────────────────────────────────────
 const CHARITY_SUGGESTIONS=[
-  {name:"Doctors Without Borders", url:"https://www.msf.org"},
-  {name:"NAACP Legal Defense Fund", url:"https://www.naacpldf.org"},
-  {name:"WWF",                      url:"https://www.worldwildlife.org"},
+  {name:"Red Cross",                url:"https://www.redcross.org"},
+  {name:"World Central Kitchen",    url:"https://www.wck.org"},
   {name:"Planned Parenthood",       url:"https://www.plannedparenthood.org"},
-  {name:"826 National",             url:"https://826national.org"},
+  {name:"NAACP Legal Defense Fund", url:"https://www.naacpldf.org"},
+  {name:"Doctors Without Borders",  url:"https://www.msf.org"},
 ];
 
 // ── PWA Install Prompt ───────────────────────────────────────────
@@ -793,6 +795,13 @@ export default function App(){
   const [pollQ,setPollQ]=useState("");
   const [pollOpts,setPollOpts]=useState(["",""]);
   const [pollDeadline,setPollDeadline]=useState("");
+  // charity picker modal
+  const [showCharityModal,setShowCharityModal]=useState(false);
+  const [charityCustomUrl,setCharityCustomUrl]=useState("");
+  const [charityFetchedName,setCharityFetchedName]=useState(null);
+  const [charityFetchLoading,setCharityFetchLoading]=useState(false);
+  const [charityEditName,setCharityEditName]=useState("");
+  const [charityCustomStep,setCharityCustomStep]=useState("url"); // "url" | "confirm"
   // admin
   const DEFAULT_ADMIN={duration:"1 Month",frequency:"Weekly",startDate:null,endDate:null,firstCheckIn:null,
     payoutMode:"charity",prizeMetric:"absolute",prizeDescription:"",goalsLocked:false,
@@ -815,6 +824,13 @@ export default function App(){
       setAdmin(upd); fsSet(adminDocRef(me.groupId),JSON.stringify(upd));
     }
   },[admin,me]);
+
+  // Show charity picker when user opens Stakes tab and hasn't picked yet (charity mode, not locked)
+  useEffect(()=>{
+    if(tab==="Stakes"&&admin.payoutMode==="charity"&&me&&!me.charityName&&!isLocked){
+      setShowCharityModal(true);
+    }
+  },[tab]);
 
   async function loadAll(uid){
     try{
@@ -930,15 +946,13 @@ export default function App(){
 
   async function fetchCharityName(url){
     try{
-      const base=new URL(url.startsWith("http")?url:"https://"+url).origin;
-      const res=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(base)}`);
-      const data=await res.json(); const html=data.contents||"";
-      const og=html.match(/<meta[^>]*property=["']og:site_name["'][^>]*content=["']([^"'<]+)["']/i);
-      if(og)return og[1].trim();
-      const title=html.match(/<title[^>]*>([^<]+)<\/title>/i);
-      if(title)return title[1].trim().split(/[|\-–]/)[0].trim();
-      const host=new URL(url.startsWith("http")?url:"https://"+url).hostname.replace(/^www\./,"").split(".")[0];
-      return host.charAt(0).toUpperCase()+host.slice(1);
+      const res=await fetch("/api/fetch-title",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({url}),
+      });
+      const data=await res.json();
+      return data.name||null;
     }catch{return null;}
   }
 
@@ -949,6 +963,18 @@ export default function App(){
       const name=await fetchCharityName(normalizeUrl(url));
       if(name){const upd2={...upd,charityName:name};setMe(upd2);fsSet(userDocRef(uid),JSON.stringify(upd2));pub(upd2);}
     }
+  }
+
+  async function saveCharityFromModal(name, url){
+    const upd={...me,charity:url||"",charityName:name};
+    setMe(upd);
+    await fsSet(userDocRef(uid),JSON.stringify(upd));
+    pub(upd);
+    setShowCharityModal(false);
+    setCharityCustomUrl("");
+    setCharityFetchedName(null);
+    setCharityEditName("");
+    setCharityCustomStep("url");
   }
 
   function cadenceDays(freq){return freq==="Daily"?1:freq==="Weekly"?7:freq==="Bi-Weekly"?14:30;}
@@ -963,8 +989,14 @@ export default function App(){
     const challengeStart=calcChallengeStart(adminDraft.firstCheckIn,adminDraft.frequency);
     const end=new Date(challengeStart); end.setDate(end.getDate()+(dur?dur.days:30));
     const upd={...adminDraft,startDate:challengeStart.toISOString(),endDate:end.toISOString()};
+    const wasCharity=admin.payoutMode==="charity";
+    const nowCharity=upd.payoutMode==="charity";
     setAdmin(upd); setAdminDraft(upd); setShowAdmin(false);
     fsSet(adminDocRef(me.groupId),JSON.stringify(upd));
+    // If switching to charity mode and admin hasn't picked yet, show picker
+    if(nowCharity&&(!me.charityName)&&!isLocked){
+      setShowCharityModal(true);
+    }
   }
 
   function toggleGoalLock(){
@@ -1204,6 +1236,89 @@ export default function App(){
       {showPwaPrompt&&<PwaPrompt onClose={()=>setShowPwaPrompt(false)}/>}
       {showSettings&&<SettingsPanel me={me} uid={uid} db={db} onClose={()=>setShowSettings(false)} onAvatarChange={handleAvatarChange} onSignOut={()=>signOut(auth)} onOpenAdmin={()=>{setAdminDraft({...admin});setShowAdmin(true);}} onOpenPrivacy={()=>{setShowSettings(false);setShowPrivacy(true);}}/>}
       {showNotifFeed&&<NotifFeed notifications={inAppNotifs} onClose={()=>setShowNotifFeed(false)} onMarkAllRead={markAllNotifsRead}/>}
+
+      {/* ── Charity Picker Modal ── */}
+      {showCharityModal&&(
+        <div className="modal-bg">
+          <div className="card modal" style={{padding:24}}>
+            <div style={{fontSize:22,fontWeight:900,color:LF.pink,marginBottom:4}}>💝 Pick Your Charity</div>
+            <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,marginBottom:18,lineHeight:1.6}}>
+              {me.charityName
+                ? `Currently: ${me.charityName}. Choose a new one below.`
+                : "Stakes go to each member's chosen charity. Pick yours!"}
+            </div>
+
+            {/* Pre-populated options */}
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
+              {CHARITY_SUGGESTIONS.map(c=>{
+                const sel=me.charityName===c.name;
+                return(
+                  <button key={c.url} onClick={()=>saveCharityFromModal(c.name,c.url)}
+                    style={{background:sel?`linear-gradient(135deg,${LF.pink}33,${LF.purple}33)`:"#ffffff0a",border:`2px solid ${sel?LF.pink:"#ffffff22"}`,borderRadius:14,padding:"12px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
+                    <div style={{fontSize:15,fontWeight:800,color:sel?LF.pink:LF.white}}>{sel?"✨ ":""}{c.name}</div>
+                  </button>
+                );
+              })}
+
+              {/* Custom option */}
+              <div style={{border:`2px solid ${charityCustomStep==="confirm"?LF.teal:"#ffffff22"}`,borderRadius:14,padding:"12px 14px",background:"#ffffff0a"}}>
+                <div style={{fontSize:15,fontWeight:800,color:LF.white,marginBottom:charityCustomStep==="url"?10:0}}>🔗 Custom charity</div>
+
+                {charityCustomStep==="url"&&(<>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <input className="inp" placeholder="https://www.yourcharity.org" value={charityCustomUrl}
+                      onChange={e=>{setCharityCustomUrl(e.target.value);setCharityFetchedName(null);setCharityCustomStep("url");}}
+                      style={{flex:1,fontSize:14,padding:"8px 12px"}}/>
+                    <button className="btn btn-teal" style={{padding:"8px 14px",fontSize:13,flexShrink:0}}
+                      disabled={charityFetchLoading||!isValidUrl(charityCustomUrl)}
+                      onClick={async()=>{
+                        if(!isValidUrl(charityCustomUrl))return;
+                        setCharityFetchLoading(true);
+                        const name=await fetchCharityName(normalizeUrl(charityCustomUrl));
+                        setCharityFetchLoading(false);
+                        setCharityFetchedName(name||"");
+                        setCharityEditName(name||"");
+                        setCharityCustomStep("confirm");
+                      }}>
+                      {charityFetchLoading?"…":"Look up"}
+                    </button>
+                  </div>
+                  {charityCustomUrl&&!isValidUrl(charityCustomUrl)&&(
+                    <div style={{fontSize:12,color:LF.pink,fontWeight:800,marginTop:6}}>Please enter a valid URL</div>
+                  )}
+                </>)}
+
+                {charityCustomStep==="confirm"&&(<>
+                  <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700,marginTop:6,marginBottom:8}}>
+                    We found this name — edit if needed:
+                  </div>
+                  <input className="inp" value={charityEditName} onChange={e=>setCharityEditName(e.target.value)}
+                    placeholder="Charity name" style={{marginBottom:10,fontSize:14}}/>
+                  <div style={{display:"flex",gap:8}}>
+                    <button className="btn" style={{flex:1,fontSize:13}}
+                      disabled={!charityEditName.trim()}
+                      onClick={()=>saveCharityFromModal(charityEditName.trim(),normalizeUrl(charityCustomUrl))}>
+                      Save ✨
+                    </button>
+                    <button onClick={()=>{setCharityCustomStep("url");setCharityFetchedName(null);}}
+                      style={{flex:1,background:"#ffffff18",border:"2px solid #ffffff22",borderRadius:50,cursor:"pointer",fontSize:13,color:"#fff",fontFamily:"'Outfit',sans-serif",fontWeight:700}}>
+                      ← Back
+                    </button>
+                  </div>
+                </>)}
+              </div>
+            </div>
+
+            {/* Skip / close — only if they already have a charity */}
+            {me.charityName&&(
+              <button onClick={()=>setShowCharityModal(false)}
+                style={{width:"100%",background:"none",border:"none",color:"#ffffffaa",fontSize:13,cursor:"pointer",fontFamily:"'Outfit',sans-serif",textDecoration:"underline",marginTop:4}}>
+                Keep current ({me.charityName})
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Header ── */}
       <div style={{width:"100%",maxWidth:500,padding:"22px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -1737,19 +1852,29 @@ export default function App(){
           {admin.payoutMode==="charity"&&(
             <div className="card">
               <span className="lbl">Your Personal Charity 💝</span>
-              <input className="inp" value={me.charity||""} onChange={e=>updateMyCharity(e.target.value)} placeholder="https://www.redcross.org" style={{marginBottom:8,borderColor:me.charity&&!isValidUrl(me.charity)?LF.pink:me.charity&&isValidUrl(me.charity)?LF.teal:undefined}}/>
-              {me.charity&&!isValidUrl(me.charity)&&<div style={{fontSize:13,color:LF.pink,fontWeight:800,marginBottom:8}}>Please enter a valid URL</div>}
-              {me.charity&&isValidUrl(me.charity)&&<div style={{fontSize:13,color:LF.lime,fontWeight:800,marginBottom:8}}>✓ {me.charityName||me.charity}</div>}
-              <div style={{fontSize:12,color:"#fff",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Quick picks</div>
-              <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                {CHARITY_SUGGESTIONS.map(c=>{
-                  const sel=me.charity===c.url;
-                  return <button key={c.url} onClick={()=>updateMyCharity(c.url)} style={{background:sel?"#FF2D9B22":"transparent",border:`2px solid ${sel?LF.pink:"#ffffff33"}`,borderRadius:10,padding:"8px 12px",cursor:"pointer",textAlign:"left"}}>
-                    <div style={{fontSize:14,fontWeight:800,color:sel?LF.pink:LF.white}}>{sel?"✨ ":""}{c.name}</div>
-                    <div style={{fontSize:12,color:"#ffffffcc"}}>{c.url}</div>
-                  </button>;
-                })}
-              </div>
+              {me.charityName?(
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+                  <div>
+                    <div style={{fontSize:17,fontWeight:900,color:LF.lime}}>✨ {me.charityName}</div>
+                    <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginTop:2}}>Your stakes go here if you miss your goal.</div>
+                  </div>
+                  {!isLocked&&(
+                    <button className="btn btn-teal" onClick={()=>setShowCharityModal(true)} style={{fontSize:13,padding:"8px 14px",flexShrink:0}}>
+                      Change
+                    </button>
+                  )}
+                </div>
+              ):(
+                <div>
+                  <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,marginBottom:12}}>You haven't picked a charity yet!</div>
+                  {!isLocked&&(
+                    <button className="btn" onClick={()=>setShowCharityModal(true)} style={{width:"100%",fontSize:15}}>
+                      💝 Pick My Charity
+                    </button>
+                  )}
+                  {isLocked&&<div style={{fontSize:13,color:LF.orange,fontWeight:800}}>🔒 Goals are locked — charity can't be changed.</div>}
+                </div>
+              )}
             </div>
           )}
 
