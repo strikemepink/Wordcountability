@@ -2,12 +2,6 @@
   "functions": {
     "api/notify.js": {
       "maxDuration": 10
-    },
-    "api/cron-reminders.cjs": {
-      "maxDuration": 30
-    },
-    "api/fetch-title.cjs": {
-      "maxDuration": 10
     }
   }
 }
