@@ -1,15 +1,12 @@
 {
   "functions": {
     "api/notify.js": {
-      "memory": 256,
       "maxDuration": 10
     },
-    "api/cron-reminders.js": {
-      "memory": 256,
+    "api/cron-reminders.cjs": {
       "maxDuration": 30
     },
-    "api/fetch-title.js": {
-      "memory": 256,
+    "api/fetch-title.cjs": {
       "maxDuration": 10
     }
   }
