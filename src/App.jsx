@@ -507,7 +507,8 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
   const [reminderTimeDraft,setReminderTimeDraft]=useState(me.notifPrefs?.reminderTime||"09:00");
   const [reminderFreqDraft,setReminderFreqDraft]=useState(me.notifPrefs?.reminderFrequency||"Daily");
   const [savingReminder,setSavingReminder]=useState(false);
-  const [reminderSaved,setReminderSaved]=useState(false);
+  const [reminderSaved,setReminderSaved]=useState(!!(me.notifPrefs?.reminderTime&&me.notifPrefs?.writingReminder));
+  const [resettingReminder,setResettingReminder]=useState(false);
 
   useEffect(()=>{
     initOneSignal();
@@ -572,7 +573,19 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
     writeUserIndex(uid,upd);
     setSavingReminder(false);
     setReminderSaved(true);
-    setTimeout(()=>setReminderSaved(false),2500);
+  }
+
+  // Reset reminder — clears reminderTime and turns off writingReminder in Firestore
+  async function handleReminderReset(){
+    setResettingReminder(true);
+    const updated={...notifPrefs,writingReminder:false,reminderTime:null};
+    setNotifPrefs(updated);
+    const upd={...me,notifPrefs:updated};
+    await fsSet(doc(db,"users",uid),JSON.stringify(upd));
+    writeUserIndex(uid,upd);
+    setReminderSaved(false);
+    setReminderTimeDraft("09:00");
+    setResettingReminder(false);
   }
 
   async function handlePrefChange(key,value){
@@ -721,26 +734,46 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
                     {/* Writing reminder sub-options */}
                     {key==="writingReminder"&&notifPrefs.writingReminder&&(
                       <div style={{background:"#ffffff08",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px",display:"flex",flexDirection:"column",gap:8}}>
-                        <div>
-                          <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
-                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                            {["Daily","Weekly","Monthly"].map(f=>(
-                              <button key={f} onClick={()=>setReminderFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${reminderFreqDraft===f?LF.pink:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:reminderFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
-                          <input type="time" value={reminderTimeDraft} onChange={e=>setReminderTimeDraft(e.target.value)} className="inp" style={{maxWidth:140,padding:"8px 12px",fontSize:14}}/>
-                        </div>
-                        <button
-                          className="btn"
-                          onClick={handleReminderSave}
-                          disabled={savingReminder}
-                          style={{fontSize:14,padding:"10px 20px",alignSelf:"flex-start"}}
-                        >
-                          {reminderSaved?"✅ Saved!":savingReminder?"Saving…":"Save Reminder ✨"}
-                        </button>
+                        {reminderSaved?(
+                          <>
+                            <div style={{fontSize:13,color:LF.lime,fontWeight:800}}>
+                              ✅ Reminder set for {(()=>{const[h,m]=reminderTimeDraft.split(":");const hr=parseInt(h);return`${hr===0?12:hr>12?hr-12:hr}:${m} ${hr<12?"AM":"PM"}`;})()}  · {reminderFreqDraft}
+                            </div>
+                            <button
+                              className="btn btn-red"
+                              onClick={handleReminderReset}
+                              disabled={resettingReminder}
+                              style={{fontSize:13,padding:"8px 16px",alignSelf:"flex-start"}}
+                            >
+                              {resettingReminder?"Resetting…":"Reset Reminder"}
+                            </button>
+                          </>
+                        ):(
+                          <>
+                            <div>
+                              <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
+                              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                                {["Daily","Weekly","Monthly"].map(f=>(
+                                  <button key={f} onClick={()=>setReminderFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${reminderFreqDraft===f?LF.pink:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:reminderFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
+                              <select value={reminderTimeDraft} onChange={e=>setReminderTimeDraft(e.target.value)} className="inp" style={{maxWidth:160,padding:"8px 12px",fontSize:14}}>
+                                {Array.from({length:24},(_,i)=>{const h=i%12===0?12:i%12;const ampm=i<12?"AM":"PM";const val=`${String(i).padStart(2,"0")}:00`;return(<option key={i} value={val}>{h}:00 {ampm}</option>);})}
+                              </select>
+                            </div>
+                            <button
+                              className="btn"
+                              onClick={handleReminderSave}
+                              disabled={savingReminder}
+                              style={{fontSize:14,padding:"10px 20px",alignSelf:"flex-start"}}
+                            >
+                              {savingReminder?"Saving…":"Save Reminder ✨"}
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
 
