@@ -504,6 +504,8 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
   const [selectedAvatar,setSelectedAvatar]=useState(me.avatar);
   const [savingAvatar,setSavingAvatar]=useState(false);
   const [enableStatus,setEnableStatus]=useState(null); // null | "enabling" | "success" | "denied"
+  const [syncStatus,setSyncStatus]=useState(null); // null | "syncing" | "success" | "failed"
+  const [hasPlayerId,setHasPlayerId]=useState(!!me.oneSignalPlayerId);
   const [reminderTimeDraft,setReminderTimeDraft]=useState(me.notifPrefs?.reminderTime||"09:00");
   const [reminderFreqDraft,setReminderFreqDraft]=useState(me.notifPrefs?.reminderFrequency||"Daily");
   const [savingReminder,setSavingReminder]=useState(false);
@@ -521,6 +523,7 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
           const upd={...me,oneSignalPlayerId:id};
           await fsSet(doc(db,"users",uid),JSON.stringify(upd));
           writeUserIndex(uid,upd);
+          setHasPlayerId(true);
         }
       }
     });
@@ -548,10 +551,28 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
       const upd={...me,notifPrefs,oneSignalPlayerId:result};
       await fsSet(doc(db,"users",uid),JSON.stringify(upd));
       writeUserIndex(uid,upd);
+      setHasPlayerId(true);
       return;
     }
     // Permission prompt dismissed without granting
     setEnableStatus(null);
+  }
+
+  // Manual sync — re-fetches player ID from OneSignal and saves to Firestore
+  async function handleSyncPlayerId(){
+    setSyncStatus("syncing");
+    // Give OneSignal a moment to fully initialize before asking for the ID
+    await new Promise(r=>setTimeout(r,1500));
+    const id=await getOneSignalPlayerId();
+    if(id){
+      const upd={...me,oneSignalPlayerId:id};
+      await fsSet(doc(db,"users",uid),JSON.stringify(upd));
+      writeUserIndex(uid,upd);
+      setHasPlayerId(true);
+      setSyncStatus("success");
+    }else{
+      setSyncStatus("failed");
+    }
   }
 
   // Toggles only save prefs — no permission request
@@ -682,8 +703,24 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
                     </div>
                   </div>
                 ):notifPerms==="granted"?(
-                  <div style={{background:"#CCFF6611",border:"1px solid #CCFF6633",borderRadius:14,padding:"10px 14px",marginBottom:16,fontSize:13,color:LF.lime,fontWeight:700}}>
-                    ✅ Push notifications are enabled
+                  <div style={{background:"#CCFF6611",border:"1px solid #CCFF6633",borderRadius:14,padding:"10px 14px",marginBottom:16}}>
+                    {hasPlayerId?(
+                      <div style={{fontSize:13,color:LF.lime,fontWeight:700}}>✅ Push notifications are enabled</div>
+                    ):(
+                      <>
+                        <div style={{fontSize:13,color:LF.yellow,fontWeight:700,marginBottom:10}}>⚠️ Notifications are allowed but not fully connected. Tap below to finish setup.</div>
+                        {syncStatus==="success"&&<div style={{fontSize:13,color:LF.lime,fontWeight:700,marginBottom:8}}>✅ Connected! You're all set.</div>}
+                        {syncStatus==="failed"&&<div style={{fontSize:13,color:"#FF8888",fontWeight:700,marginBottom:8}}>Couldn't connect — try closing and reopening the app, then tap again.</div>}
+                        <button
+                          className="btn"
+                          onClick={handleSyncPlayerId}
+                          disabled={syncStatus==="syncing"||syncStatus==="success"}
+                          style={{fontSize:14,padding:"10px 20px",width:"100%"}}
+                        >
+                          {syncStatus==="syncing"?"Connecting…":syncStatus==="success"?"✅ Connected!":"🔗 Finish Notification Setup"}
+                        </button>
+                      </>
+                    )}
                   </div>
                 ):(
                   <>
