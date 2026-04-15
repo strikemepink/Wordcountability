@@ -171,7 +171,7 @@ function isValidUrl(s){s=normalizeUrl(s);try{const u=new URL(s);return(u.protoco
 
 // ── Share helper ─────────────────────────────────────────────────
 async function shareGroup(groupId, setCopied) {
-  const msg = `Join my writing accountability group on Wordcountability! 📝🌈\n${APP_URL}\nGroup ID: ${groupId}\n\nTo get writing reminders, install the app: on iPhone tap Share → Add to Home Screen. On Android tap the menu → Add to Home Screen.`;
+  const msg = `Join my writing accountability group on Wordcountability! 📝🌈\n${APP_URL}\nGroup ID: ${groupId}\n\n📲 Install the app to get writing reminders:\n⚠️ iPhone users: you MUST open the link in Safari (not Chrome) first, then tap Share ⬆️ → Add to Home Screen.\n🤖 Android users: open the link in Chrome, tap the menu ⋮ → Add to Home Screen.`;
   if (navigator.share) {
     try { await navigator.share({ title: "Wordcountability", text: msg, url: APP_URL }); } catch {}
   } else {
@@ -217,6 +217,9 @@ function PwaPrompt({onClose}){
         {isIos&&(
           <div style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
             <div style={{fontSize:13,fontWeight:900,color:"#FF6EC7",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>On iPhone / iPad</div>
+            <div style={{background:"#FF2D9B22",border:"1.5px solid #FF2D9B55",borderRadius:10,padding:"8px 12px",marginBottom:10,fontSize:13,color:LF.hotpink,fontWeight:800,lineHeight:1.6}}>
+              ⚠️ You must use <span style={{color:LF.yellow}}>Safari</span> — this won't work in Chrome or other browsers on iPhone.
+            </div>
             <div style={{fontSize:14,color:"#fff",fontWeight:700,lineHeight:2}}>
               1. Tap the <span style={{color:"#FFC200"}}>Share</span> button at the bottom of Safari ⬆️<br/>
               2. Scroll down and tap <span style={{color:"#FFC200"}}>Add to Home Screen</span><br/>
@@ -237,8 +240,8 @@ function PwaPrompt({onClose}){
         {!isIos&&!isAndroid&&(
           <div style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
             <div style={{fontSize:14,color:"#fff",fontWeight:700,lineHeight:2}}>
-              On <span style={{color:"#FFC200"}}>iPhone</span>: Safari Share ⬆️ → Add to Home Screen<br/>
-              On <span style={{color:"#FFC200"}}>Android</span>: Browser menu ⋮ → Add to Home Screen
+              On <span style={{color:"#FFC200"}}>iPhone</span>: open in <span style={{color:"#FFC200"}}>Safari</span> ⬆️ Share → Add to Home Screen<br/>
+              On <span style={{color:"#FFC200"}}>Android</span>: Chrome menu ⋮ → Add to Home Screen
             </div>
           </div>
         )}
@@ -500,10 +503,26 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
   const [notifPrefs,setNotifPrefs]=useState(me.notifPrefs||DEFAULT_NOTIF_PREFS);
   const [selectedAvatar,setSelectedAvatar]=useState(me.avatar);
   const [savingAvatar,setSavingAvatar]=useState(false);
+  const [enableStatus,setEnableStatus]=useState(null); // null | "enabling" | "success" | "denied"
+  const [reminderTimeDraft,setReminderTimeDraft]=useState(me.notifPrefs?.reminderTime||"09:00");
+  const [reminderFreqDraft,setReminderFreqDraft]=useState(me.notifPrefs?.reminderFrequency||"Daily");
+  const [savingReminder,setSavingReminder]=useState(false);
+  const [reminderSaved,setReminderSaved]=useState(false);
 
   useEffect(()=>{
     initOneSignal();
-    getNotifPermissionState().then(s=>setNotifPerms(s));
+    getNotifPermissionState().then(async(s)=>{
+      setNotifPerms(s);
+      // If permission already granted but player ID missing, silently retry saving it
+      if(s==="granted"&&!me.oneSignalPlayerId){
+        const id=await getOneSignalPlayerId();
+        if(id){
+          const upd={...me,oneSignalPlayerId:id};
+          await fsSet(doc(db,"users",uid),JSON.stringify(upd));
+          writeUserIndex(uid,upd);
+        }
+      }
+    });
   },[]);
 
   async function handleAvatarSave(){
@@ -513,25 +532,47 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
     setSavingAvatar(false);
   }
 
+  // Explicit enable button — clean single user gesture, no async before requestPermission
+  async function handleEnableNotifs(){
+    setEnableStatus("enabling");
+    const result=await requestNotifPermission();
+    if(result==="denied"){
+      setEnableStatus("denied");
+      setNotifPerms("denied");
+      return;
+    }
+    if(result){
+      setEnableStatus("success");
+      setNotifPerms("granted");
+      const upd={...me,notifPrefs,oneSignalPlayerId:result};
+      await fsSet(doc(db,"users",uid),JSON.stringify(upd));
+      writeUserIndex(uid,upd);
+      return;
+    }
+    // Permission prompt dismissed without granting
+    setEnableStatus(null);
+  }
+
+  // Toggles only save prefs — no permission request
   async function handleNotifToggle(key,value){
     const updated={...notifPrefs,[key]:value};
     setNotifPrefs(updated);
-    // If enabling any toggle and permission not yet granted, request it
-    if(value&&notifPerms==="default"){
-      const result=await requestNotifPermission();
-      if(result==="denied"){setNotifPerms("denied");return;}
-      if(result){
-        setNotifPerms("granted");
-        // Save player ID to user record
-        const upd={...me,notifPrefs:updated,oneSignalPlayerId:result};
-        await fsSet(doc(db,"users",uid),JSON.stringify(upd));
-        writeUserIndex(uid,upd);
-        return;
-      }
-    }
     const upd={...me,notifPrefs:updated};
     await fsSet(doc(db,"users",uid),JSON.stringify(upd));
     writeUserIndex(uid,upd);
+  }
+
+  // Save reminder time + frequency explicitly
+  async function handleReminderSave(){
+    setSavingReminder(true);
+    const updated={...notifPrefs,reminderTime:reminderTimeDraft,reminderFrequency:reminderFreqDraft};
+    setNotifPrefs(updated);
+    const upd={...me,notifPrefs:updated};
+    await fsSet(doc(db,"users",uid),JSON.stringify(upd));
+    writeUserIndex(uid,upd);
+    setSavingReminder(false);
+    setReminderSaved(true);
+    setTimeout(()=>setReminderSaved(false),2500);
   }
 
   async function handlePrefChange(key,value){
@@ -618,6 +659,8 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
           {section==="notifications"&&(
             <div className="settings-section">
               <div style={{marginBottom:16,marginTop:12}}>
+
+                {/* Status banner */}
                 {notifPerms==="denied"?(
                   <div style={{background:"#FF444411",border:"2px solid #FF444433",borderRadius:14,padding:"12px 14px",marginBottom:16}}>
                     <div style={{fontSize:14,fontWeight:800,color:"#FF8888",marginBottom:4}}>🚫 Notifications blocked</div>
@@ -630,9 +673,29 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
                     ✅ Push notifications are enabled
                   </div>
                 ):(
-                  <div style={{background:"#ffffff0a",border:"1px solid #ffffff22",borderRadius:14,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#ffffffcc",fontWeight:700}}>
-                    🔔 Tap any toggle to enable push notifications
-                  </div>
+                  <>
+                    <div style={{background:"#ffffff0a",border:"1px solid #ffffff22",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#ffffffcc",fontWeight:700}}>
+                      🔔 Enable push notifications to get writing reminders and group updates on your device.
+                    </div>
+                    {enableStatus==="success"&&(
+                      <div style={{background:"#CCFF6611",border:"1px solid #CCFF6633",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:LF.lime,fontWeight:700}}>
+                        ✅ Notifications enabled! You're all set.
+                      </div>
+                    )}
+                    {enableStatus==="denied"&&(
+                      <div style={{background:"#FF444411",border:"1px solid #FF444433",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#FF8888",fontWeight:700}}>
+                        🚫 Permission denied. Go to your browser settings to allow notifications for this site.
+                      </div>
+                    )}
+                    <button
+                      className="btn"
+                      onClick={handleEnableNotifs}
+                      disabled={enableStatus==="enabling"}
+                      style={{width:"100%",fontSize:15,marginBottom:16}}
+                    >
+                      {enableStatus==="enabling"?"Requesting permission…":"🔔 Enable Push Notifications"}
+                    </button>
+                  </>
                 )}
 
                 {NOTIF_ROWS.map(({key,label,icon})=>(
@@ -648,6 +711,13 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
                       </label>
                     </div>
 
+                    {/* Nudge if toggles on but permission not yet granted */}
+                    {notifPrefs[key]&&notifPerms==="default"&&(
+                      <div style={{fontSize:12,color:LF.hotpink,fontWeight:700,padding:"4px 0 6px 28px"}}>
+                        ↑ Tap "Enable Push Notifications" above to activate this.
+                      </div>
+                    )}
+
                     {/* Writing reminder sub-options */}
                     {key==="writingReminder"&&notifPrefs.writingReminder&&(
                       <div style={{background:"#ffffff08",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px",display:"flex",flexDirection:"column",gap:8}}>
@@ -655,14 +725,22 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
                           <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
                           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                             {["Daily","Weekly","Monthly"].map(f=>(
-                              <button key={f} onClick={()=>handlePrefChange("reminderFrequency",f)} style={{padding:"5px 12px",border:`2px solid ${notifPrefs.reminderFrequency===f?LF.pink:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:notifPrefs.reminderFrequency===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
+                              <button key={f} onClick={()=>setReminderFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${reminderFreqDraft===f?LF.pink:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:reminderFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
                             ))}
                           </div>
                         </div>
                         <div>
                           <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
-                          <input type="time" value={notifPrefs.reminderTime||"09:00"} onChange={e=>handlePrefChange("reminderTime",e.target.value)} className="inp" style={{maxWidth:140,padding:"8px 12px",fontSize:14}}/>
+                          <input type="time" value={reminderTimeDraft} onChange={e=>setReminderTimeDraft(e.target.value)} className="inp" style={{maxWidth:140,padding:"8px 12px",fontSize:14}}/>
                         </div>
+                        <button
+                          className="btn"
+                          onClick={handleReminderSave}
+                          disabled={savingReminder}
+                          style={{fontSize:14,padding:"10px 20px",alignSelf:"flex-start"}}
+                        >
+                          {reminderSaved?"✅ Saved!":savingReminder?"Saving…":"Save Reminder ✨"}
+                        </button>
                       </div>
                     )}
 
