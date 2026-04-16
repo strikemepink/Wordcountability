@@ -506,10 +506,12 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
   const [enableStatus,setEnableStatus]=useState(null); // null | "enabling" | "success" | "denied"
   const [syncStatus,setSyncStatus]=useState(null); // null | "syncing" | "success" | "failed"
   const [hasPlayerId,setHasPlayerId]=useState(!!me.oneSignalPlayerId);
-  const [reminderTimeDraft,setReminderTimeDraft]=useState(me.notifPrefs?.reminderTime||"09:00");
-  const [reminderFreqDraft,setReminderFreqDraft]=useState(me.notifPrefs?.reminderFrequency||"Daily");
+  // drafts initialized lazily from notifPrefs so they stay in sync after saves
+  const initPrefs=me.notifPrefs||DEFAULT_NOTIF_PREFS;
+  const [reminderTimeDraft,setReminderTimeDraft]=useState(initPrefs.reminderTime||"09:00");
+  const [reminderFreqDraft,setReminderFreqDraft]=useState(initPrefs.reminderFrequency||"Daily");
   const [savingReminder,setSavingReminder]=useState(false);
-  const [reminderSaved,setReminderSaved]=useState(!!(me.notifPrefs?.reminderTime&&me.notifPrefs?.writingReminder));
+  const [reminderSaved,setReminderSaved]=useState(!!(initPrefs.reminderTime&&initPrefs.writingReminder));
   const [resettingReminder,setResettingReminder]=useState(false);
 
   useEffect(()=>{
@@ -594,6 +596,9 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
     writeUserIndex(uid,upd);
     setSavingReminder(false);
     setReminderSaved(true);
+    // keep drafts in sync so reopening panel shows correct saved values
+    setReminderTimeDraft(reminderTimeDraft);
+    setReminderFreqDraft(reminderFreqDraft);
   }
 
   // Reset reminder — clears reminderTime and turns off writingReminder in Firestore
@@ -774,7 +779,7 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
                         {reminderSaved?(
                           <>
                             <div style={{fontSize:13,color:LF.lime,fontWeight:800}}>
-                              ✅ Reminder set for {(()=>{const[h,m]=reminderTimeDraft.split(":");const hr=parseInt(h);return`${hr===0?12:hr>12?hr-12:hr}:${m} ${hr<12?"AM":"PM"}`;})()}  · {reminderFreqDraft}
+                              ✅ Reminder set for {(()=>{const t=notifPrefs.reminderTime||"09:00";const[h,m]=t.split(":");const hr=parseInt(h);return`${hr===0?12:hr>12?hr-12:hr}:${m} ${hr<12?"AM":"PM"}`;})()}  · {notifPrefs.reminderFrequency||"Daily"}
                             </div>
                             <button
                               className="btn btn-red"
