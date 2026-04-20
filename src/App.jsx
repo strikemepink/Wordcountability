@@ -1230,11 +1230,17 @@ export default function App(){
 
   // Merges partial updates into the live me state and saves to Firestore + index
   // Used by SettingsPanel so it always writes against the latest me, never stale props
+  // IMPORTANT: only updates oneSignalPlayerId in the index if explicitly changed —
+  // prevents Mac/desktop saves from overwriting the iPhone player ID in the index
   async function handleUpdateMe(updates){
     const upd={...me,...updates};
     setMe(upd);
     await fsSet(userDocRef(uid),JSON.stringify(upd));
-    writeUserIndex(uid,upd);
+    if(updates.oneSignalPlayerId){
+      writeUserIndex(uid,upd);
+    }else{
+      writeUserIndex(uid,{...upd,oneSignalPlayerId:me.oneSignalPlayerId});
+    }
   }
 
   async function addInAppNotif(type,title,body){
