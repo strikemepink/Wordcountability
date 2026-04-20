@@ -43,12 +43,13 @@ function getLocalDay(utcDate, timezone) {
 }
 
 function shouldSendReminder(user, nowUtc) {
-  if (!user.writingReminder || !user.oneSignalPlayerId) return false;
+  const prefs = user.notifPrefs || {};
+  if (!prefs.writingReminder || !user.oneSignalPlayerId) return false;
   const timezone = user.timezone || "UTC";
   const localHour = getLocalHour(nowUtc, timezone);
-  const [reminderHour] = (user.reminderTime || "09:00").split(":").map(Number);
+  const [reminderHour] = (prefs.reminderTime || "09:00").split(":").map(Number);
   if (localHour !== reminderHour) return false;
-  const freq = user.reminderFrequency || "Daily";
+  const freq = prefs.reminderFrequency || "Daily";
   if (freq === "Daily") return true;
   if (freq === "Weekly") return getLocalWeekday(nowUtc, timezone) === "Mon";
   if (freq === "Monthly") return getLocalDay(nowUtc, timezone) === 1;
