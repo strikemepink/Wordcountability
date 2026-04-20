@@ -497,7 +497,7 @@ async function sendNotifToSelf(uid, db, type, title, body){
 }
 
 // ── SettingsPanel ─────────────────────────────────────────────────
-function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenAdmin, onOpenPrivacy}){
+function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenAdmin, onOpenPrivacy, onUpdateMe}){
   const [section,setSection]=useState("profile"); // profile | notifications | accolades | about
   const [notifPerms,setNotifPerms]=useState("default"); // default | granted | denied
   const [notifPrefs,setNotifPrefs]=useState(me.notifPrefs||DEFAULT_NOTIF_PREFS);
@@ -522,9 +522,7 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
       if(s==="granted"&&!me.oneSignalPlayerId){
         const id=await getOneSignalPlayerId();
         if(id){
-          const upd={...me,oneSignalPlayerId:id};
-          await fsSet(doc(db,"users",uid),JSON.stringify(upd));
-          writeUserIndex(uid,upd);
+          await onUpdateMe({oneSignalPlayerId:id});
           setHasPlayerId(true);
         }
       }
@@ -550,9 +548,7 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
     if(result){
       setEnableStatus("success");
       setNotifPerms("granted");
-      const upd={...me,notifPrefs,oneSignalPlayerId:result};
-      await fsSet(doc(db,"users",uid),JSON.stringify(upd));
-      writeUserIndex(uid,upd);
+      await onUpdateMe({notifPrefs,oneSignalPlayerId:result});
       setHasPlayerId(true);
       return;
     }
@@ -567,9 +563,7 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
     await new Promise(r=>setTimeout(r,1500));
     const id=await getOneSignalPlayerId();
     if(id){
-      const upd={...me,oneSignalPlayerId:id};
-      await fsSet(doc(db,"users",uid),JSON.stringify(upd));
-      writeUserIndex(uid,upd);
+      await onUpdateMe({oneSignalPlayerId:id});
       setHasPlayerId(true);
       setSyncStatus("success");
     }else{
@@ -581,9 +575,7 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
   async function handleNotifToggle(key,value){
     const updated={...notifPrefs,[key]:value};
     setNotifPrefs(updated);
-    const upd={...me,notifPrefs:updated};
-    await fsSet(doc(db,"users",uid),JSON.stringify(upd));
-    writeUserIndex(uid,upd);
+    await onUpdateMe({notifPrefs:updated});
   }
 
   // Save reminder time + frequency explicitly
@@ -591,12 +583,9 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
     setSavingReminder(true);
     const updated={...notifPrefs,reminderTime:reminderTimeDraft,reminderFrequency:reminderFreqDraft};
     setNotifPrefs(updated);
-    const upd={...me,notifPrefs:updated};
-    await fsSet(doc(db,"users",uid),JSON.stringify(upd));
-    writeUserIndex(uid,upd);
+    await onUpdateMe({notifPrefs:updated});
     setSavingReminder(false);
     setReminderSaved(true);
-    // keep drafts in sync so reopening panel shows correct saved values
     setReminderTimeDraft(reminderTimeDraft);
     setReminderFreqDraft(reminderFreqDraft);
   }
@@ -606,9 +595,7 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
     setResettingReminder(true);
     const updated={...notifPrefs,writingReminder:false,reminderTime:null};
     setNotifPrefs(updated);
-    const upd={...me,notifPrefs:updated};
-    await fsSet(doc(db,"users",uid),JSON.stringify(upd));
-    writeUserIndex(uid,upd);
+    await onUpdateMe({notifPrefs:updated});
     setReminderSaved(false);
     setReminderTimeDraft("09:00");
     setResettingReminder(false);
@@ -617,9 +604,7 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
   async function handlePrefChange(key,value){
     const updated={...notifPrefs,[key]:value};
     setNotifPrefs(updated);
-    const upd={...me,notifPrefs:updated};
-    await fsSet(doc(db,"users",uid),JSON.stringify(upd));
-    writeUserIndex(uid,upd);
+    await onUpdateMe({notifPrefs:updated});
   }
 
   const firstName=me.name?.split(" ")[0]||me.name||"?";
@@ -1243,6 +1228,15 @@ export default function App(){
     loadMembers(me.groupId,me.name);
   }
 
+  // Merges partial updates into the live me state and saves to Firestore + index
+  // Used by SettingsPanel so it always writes against the latest me, never stale props
+  async function handleUpdateMe(updates){
+    const upd={...me,...updates};
+    setMe(upd);
+    await fsSet(userDocRef(uid),JSON.stringify(upd));
+    writeUserIndex(uid,upd);
+  }
+
   async function addInAppNotif(type,title,body){
     const notif={id:Date.now(),type,title,body,ts:Date.now(),read:false};
     setInAppNotifs(prev=>{
@@ -1387,7 +1381,7 @@ export default function App(){
       <style>{G}</style>
       {showPrivacy&&<PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
       {showPwaPrompt&&<PwaPrompt onClose={()=>setShowPwaPrompt(false)}/>}
-      {showSettings&&<SettingsPanel me={me} uid={uid} db={db} onClose={()=>setShowSettings(false)} onAvatarChange={handleAvatarChange} onSignOut={()=>signOut(auth)} onOpenAdmin={()=>{setAdminDraft({...admin});setShowAdmin(true);}} onOpenPrivacy={()=>{setShowSettings(false);setShowPrivacy(true);}}/>}
+      {showSettings&&<SettingsPanel me={me} uid={uid} db={db} onClose={()=>setShowSettings(false)} onAvatarChange={handleAvatarChange} onSignOut={()=>signOut(auth)} onOpenAdmin={()=>{setAdminDraft({...admin});setShowAdmin(true);}} onOpenPrivacy={()=>{setShowSettings(false);setShowPrivacy(true);}} onUpdateMe={handleUpdateMe}/>}
       {showNotifFeed&&<NotifFeed notifications={inAppNotifs} onClose={()=>setShowNotifFeed(false)} onMarkAllRead={markAllNotifsRead}/>}
 
       {/* ── Charity Picker Modal ── */}
