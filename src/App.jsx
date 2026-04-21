@@ -40,18 +40,15 @@ async function fsSet(ref, value) {
 }
 async function fsDel(ref) { try { await deleteDoc(ref); } catch {} }
 async function writeUserIndex(uid, d){
-  // Lightweight record used by cron-reminders to find users due for a reminder
+  // Full user snapshot used by cron-reminders to find users due for a reminder.
+  // Must include notifPrefs (for reminderTime/writingReminder) and oneSignalPlayerId at top level.
   try{
     const tz=Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC";
     await fsSet(userIndexDocRef(uid),JSON.stringify({
+      ...d,
       uid,
-      groupId:     d.groupId||null,
-      reminderTime:    d.notifPrefs?.reminderTime||"09:00",
-      reminderFrequency: d.notifPrefs?.reminderFrequency||"Daily",
-      writingReminder:  !!(d.notifPrefs?.writingReminder),
-      oneSignalPlayerId: d.oneSignalPlayerId||null,
-      timezone:    tz,
-      updatedAt:   Date.now(),
+      timezone: tz,
+      updatedAt: Date.now(),
     }));
   }catch(e){console.warn("writeUserIndex",e);}
 }
@@ -1230,17 +1227,15 @@ export default function App(){
 
   // Merges partial updates into the live me state and saves to Firestore + index
   // Used by SettingsPanel so it always writes against the latest me, never stale props
-  // IMPORTANT: only updates oneSignalPlayerId in the index if explicitly changed —
-  // prevents Mac/desktop saves from overwriting the iPhone player ID in the index
+  // Always writes the Firestore oneSignalPlayerId to the index — never the live OneSignal ID
+  // from the current device, which may differ from the saved iPhone player ID.
   async function handleUpdateMe(updates){
     const upd={...me,...updates};
     setMe(upd);
     await fsSet(userDocRef(uid),JSON.stringify(upd));
-    if(updates.oneSignalPlayerId){
-      writeUserIndex(uid,upd);
-    }else{
-      writeUserIndex(uid,{...upd,oneSignalPlayerId:me.oneSignalPlayerId});
-    }
+    // Always use the oneSignalPlayerId already saved in Firestore for the index,
+    // so a Mac/desktop save never overwrites the iPhone player ID.
+    writeUserIndex(uid,upd);
   }
 
   async function addInAppNotif(type,title,body){
