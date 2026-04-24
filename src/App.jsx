@@ -160,7 +160,7 @@ const G = `
   @keyframes slideInRight{from{transform:translateX(100%);}to{transform:translateX(0);}}`;
 
 // ── Helpers ──────────────────────────────────────────────────────
-function getWeekKey(){const now=new Date(),j=new Date(now.getFullYear(),0,1),w=Math.ceil(((now-j)/86400000+j.getDay()+1)/7);return`${now.getFullYear()}-W${w}`;}
+function getWeekKey(){const now=new Date();const day=now.getDay();const monday=new Date(now);monday.setDate(now.getDate()-(day===0?6:day-1));return monday.toISOString().slice(0,10);}
 function todayIdx(){return(new Date().getDay()+6)%7;}
 function fmtGoal(m){if(m.goalType==="words")return`${m.goalValue.toLocaleString()} words`;const h=Math.floor(m.goalValue/60),mn=m.goalValue%60;return h>0?`${h}h`+(mn>0?` ${mn}m`:""):mn+"m";}
 function fmtProg(m){if(m.goalType==="words")return`${m.progressThisWeek.toLocaleString()} words`;const h=Math.floor(m.progressThisWeek/60),mn=m.progressThisWeek%60;return h>0?`${h}h`+(mn>0?` ${mn}m`:""):mn+"m";}
@@ -1146,22 +1146,20 @@ export default function App(){
     const now=new Date();
     const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
     let periodStart;
-    if(admin.firstCheckIn&&admin.startDate){
-      // Find the most recent check-in deadline that has already passed
-      const firstCI=new Date(admin.firstCheckIn);
+    const firstCI=admin.firstCheckIn?new Date(admin.firstCheckIn):null;
+    if(firstCI&&admin.startDate&&firstCI<=now){
+      // Challenge is underway — find the start of the current period
       const cadDays=cadenceDaysLocal(admin.frequency||"Weekly");
       let cursor=new Date(firstCI);
-      // Step backward to find the period start (last passed deadline minus one cadence)
       while(cursor<=now) cursor.setDate(cursor.getDate()+cadDays);
-      // cursor is now the NEXT upcoming deadline; step back one cadence for the start of this period
+      // cursor = next upcoming deadline; step back one cadence = start of this period
       cursor.setDate(cursor.getDate()-cadDays);
       const thisPeriodDeadline=new Date(cursor);
-      // period start = deadline minus one cadence
       const pStart=new Date(thisPeriodDeadline);
       pStart.setDate(pStart.getDate()-cadDays);
       periodStart=pStart>new Date(admin.startDate)?pStart:new Date(admin.startDate);
     } else {
-      // No active challenge — allow up to 7 days prior
+      // No active challenge yet, or firstCheckIn is still in the future — allow up to 7 days prior
       periodStart=new Date(today);
       periodStart.setDate(periodStart.getDate()-6);
     }
@@ -1173,6 +1171,27 @@ export default function App(){
       d.setDate(d.getDate()+1);
     }
     return days;
+  }
+
+  async function logPastDayInline(){
+    const n=parseInt(logInput);
+    if(!n||n<=0||!pastDaySelected)return;
+    setPastDaySaving(true);
+    const dayOfWeek=(pastDaySelected.getDay()+6)%7;
+    const checks=[...me.dailyChecks];
+    checks[dayOfWeek]=true;
+    const newTotal=(me.totalProgress||0)+n;
+    const newWeekProgress=me.progressThisWeek+n;
+    const upd={...me,progressThisWeek:newWeekProgress,totalProgress:newTotal,dailyChecks:checks};
+    setMe(upd); setSpark(s=>s+1);
+    await fsSet(userDocRef(uid),JSON.stringify(upd));
+    await pub(upd);
+    loadMembers(me.groupId,me.name);
+    updateLedgerProgress(n);
+    maybeNotifyGoalHit(newWeekProgress);
+    setLogInput("");
+    setPastDaySaving(false);
+    setPastDaySelected(null);
   }
 
   async function logPastDay(){
@@ -1875,34 +1894,113 @@ export default function App(){
 
           {me.goalType==="words"?(
             <div className="card">
-              <span className="lbl">📝 Log Today's Words</span>
-              <div style={{display:"flex",gap:10}}>
-                <input className="inp" type="number" placeholder="words written today" value={logInput} onChange={e=>setLogInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&logProgress()} style={{flex:1}}/>
-                <button className="btn" onClick={logProgress} disabled={saving} style={{padding:"11px 20px"}}>{saving?"✨":"+ Log"}</button>
-              </div>
+              {(()=>{
+                const pastDays=getPastDaysInPeriod();
+                const dayNames=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+                // null = today, otherwise a Date object
+                const isToday=pastDaySelected===null;
+                return(<>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                    <span className="lbl" style={{marginBottom:0}}>📝 Log Words</span>
+                    {pastDays.length>0&&(
+                      <select
+                        value={pastDaySelected?pastDaySelected.toDateString():"today"}
+                        onChange={e=>{
+                          if(e.target.value==="today"){setPastDaySelected(null);}
+                          else{const d=pastDays.find(d=>d.toDateString()===e.target.value);setPastDaySelected(d||null);}
+                        }}
+                        className="inp"
+                        style={{width:"auto",padding:"5px 10px",fontSize:13,maxWidth:160}}
+                      >
+                        <option value="today">Today</option>
+                        {[...pastDays].reverse().map((d,i)=>{
+                          const dow=(d.getDay()+6)%7;
+                          return <option key={i} value={d.toDateString()}>{dayNames[dow]}, {d.toLocaleDateString("en-US",{month:"short",day:"numeric"})}</option>;
+                        })}
+                      </select>
+                    )}
+                  </div>
+                  {!isToday&&(
+                    <div style={{fontSize:12,color:LF.yellow,fontWeight:800,marginBottom:8}}>
+                      📅 Logging for {(()=>{const dow=(pastDaySelected.getDay()+6)%7;return`${dayNames[dow]}, ${pastDaySelected.toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;})()}
+                    </div>
+                  )}
+                  <div style={{display:"flex",gap:10}}>
+                    <input className="inp" type="number" placeholder="words written" value={logInput} onChange={e=>setLogInput(e.target.value)}
+                      onKeyDown={e=>{if(e.key==="Enter"){isToday?logProgress():logPastDayInline();}}}
+                      style={{flex:1}}/>
+                    <button className="btn" onClick={isToday?logProgress:logPastDayInline} disabled={saving||pastDaySaving} style={{padding:"11px 20px"}}>
+                      {(saving||pastDaySaving)?"✨":"+ Log"}
+                    </button>
+                  </div>
+                </>);
+              })()}
             </div>
           ):(
             <div className="card" style={{border:`2px solid ${timerRunning?LF.teal:LF.pink}55`}}>
-              <span className="lbl">⏱️ Writing Timer</span>
-              <div style={{textAlign:"center",padding:"12px 0 16px"}}>
-                <div style={{fontSize:48,color:timerRunning?LF.pink:LF.yellow,letterSpacing:2,fontWeight:800}}>{fmtTimer(timerSecs)}</div>
-                <div style={{fontSize:14,fontWeight:800,marginTop:4,color:timerRunning?LF.pink:timerSecs>0?LF.yellow:"#ffffffcc"}}>{timerRunning?"● WRITING IN PROGRESS...":timerSecs>0?"⏸ Paused":"Hit Start when you begin ✨"}</div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                <span className="lbl" style={{marginBottom:0}}>⏱️ Writing Timer</span>
+                {(()=>{
+                  const pastDays=getPastDaysInPeriod();
+                  const dayNames=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+                  if(pastDays.length===0)return null;
+                  return(
+                    <select
+                      value={pastDaySelected?pastDaySelected.toDateString():"today"}
+                      onChange={e=>{
+                        if(e.target.value==="today"){setPastDaySelected(null);}
+                        else{const d=pastDays.find(d=>d.toDateString()===e.target.value);setPastDaySelected(d||null);}
+                      }}
+                      className="inp"
+                      style={{width:"auto",padding:"5px 10px",fontSize:13,maxWidth:160}}
+                    >
+                      <option value="today">Today</option>
+                      {[...pastDays].reverse().map((d,i)=>{
+                        const dow=(d.getDay()+6)%7;
+                        return <option key={i} value={d.toDateString()}>{dayNames[dow]}, {d.toLocaleDateString("en-US",{month:"short",day:"numeric"})}</option>;
+                      })}
+                    </select>
+                  );
+                })()}
               </div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                {!timerRunning
-                  ?<button className="btn" onClick={startTimer} style={{flex:1,fontSize:14}}>{timerSecs>0?"▶ Resume":"▶ Start"} Writing</button>
-                  :<button className="btn btn-teal" onClick={pauseTimer} style={{flex:1,fontSize:14}}>⏸ Pause</button>}
-                {timerSecs>0&&<button className="btn btn-red" onClick={()=>{clearInterval(timerRef.current);setTimerRunning(false);setTimerSecs(0);}} style={{flex:1,fontSize:14}}>⏹ Stop</button>}
-                {timerSecs>=60&&<button className="btn btn-yellow" onClick={stopAndSave} style={{width:"100%",fontSize:14,marginTop:4}}>✅ Save {Math.round(timerSecs/60)}m</button>}
-              </div>
-              {timerSessions.length>0&&(
-                <div style={{marginTop:12,borderTop:`1px solid ${LF.purple}33`,paddingTop:10}}>
-                  <div style={{fontSize:12,color:LF.lime,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Today's Sessions</div>
-                  {timerSessions.map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,color:"#fff",fontWeight:800,padding:"2px 0"}}><span>Session {i+1}</span><span style={{color:LF.lime}}>{s.mins}m ✓</span></div>)}
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:800,marginTop:6,color:LF.yellow}}><span>Total today</span><span>{timerSessions.reduce((a,s)=>a+s.mins,0)}m 🔥</span></div>
+              {pastDaySelected?(
+                // Past-day time entry for timer mode
+                <div>
+                  <div style={{fontSize:12,color:LF.yellow,fontWeight:800,marginBottom:8}}>
+                    📅 Logging for {(()=>{const dayNames=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];const dow=(pastDaySelected.getDay()+6)%7;return`${dayNames[dow]}, ${pastDaySelected.toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;})()}
+                  </div>
+                  <div style={{display:"flex",gap:10}}>
+                    <input className="inp" type="number" placeholder="minutes written" value={logInput} onChange={e=>setLogInput(e.target.value)}
+                      onKeyDown={e=>{if(e.key==="Enter")logPastDayInline();}}
+                      style={{flex:1}}/>
+                    <button className="btn" onClick={logPastDayInline} disabled={pastDaySaving} style={{padding:"11px 20px"}}>
+                      {pastDaySaving?"✨":"+ Log"}
+                    </button>
+                  </div>
                 </div>
+              ):(
+                <>
+                  <div style={{textAlign:"center",padding:"12px 0 16px"}}>
+                    <div style={{fontSize:48,color:timerRunning?LF.pink:LF.yellow,letterSpacing:2,fontWeight:800}}>{fmtTimer(timerSecs)}</div>
+                    <div style={{fontSize:14,fontWeight:800,marginTop:4,color:timerRunning?LF.pink:timerSecs>0?LF.yellow:"#ffffffcc"}}>{timerRunning?"● WRITING IN PROGRESS...":timerSecs>0?"⏸ Paused":"Hit Start when you begin ✨"}</div>
+                  </div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {!timerRunning
+                      ?<button className="btn" onClick={startTimer} style={{flex:1,fontSize:14}}>{timerSecs>0?"▶ Resume":"▶ Start"} Writing</button>
+                      :<button className="btn btn-teal" onClick={pauseTimer} style={{flex:1,fontSize:14}}>⏸ Pause</button>}
+                    {timerSecs>0&&<button className="btn btn-red" onClick={()=>{clearInterval(timerRef.current);setTimerRunning(false);setTimerSecs(0);}} style={{flex:1,fontSize:14}}>⏹ Stop</button>}
+                    {timerSecs>=60&&<button className="btn btn-yellow" onClick={stopAndSave} style={{width:"100%",fontSize:14,marginTop:4}}>✅ Save {Math.round(timerSecs/60)}m</button>}
+                  </div>
+                  {timerSessions.length>0&&(
+                    <div style={{marginTop:12,borderTop:`1px solid ${LF.purple}33`,paddingTop:10}}>
+                      <div style={{fontSize:12,color:LF.lime,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Today's Sessions</div>
+                      {timerSessions.map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,color:"#fff",fontWeight:800,padding:"2px 0"}}><span>Session {i+1}</span><span style={{color:LF.lime}}>{s.mins}m ✓</span></div>)}
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:800,marginTop:6,color:LF.yellow}}><span>Total today</span><span>{timerSessions.reduce((a,s)=>a+s.mins,0)}m 🔥</span></div>
+                    </div>
+                  )}
+                  <div style={{fontSize:12,color:"#ffffffaa",fontWeight:700,marginTop:10,textAlign:"center"}}>Sessions under 1 min aren't counted 🦄</div>
+                </>
               )}
-              <div style={{fontSize:12,color:"#ffffffaa",fontWeight:700,marginTop:10,textAlign:"center"}}>Sessions under 1 min aren't counted 🦄</div>
             </div>
           )}
 
@@ -1927,11 +2025,6 @@ export default function App(){
             {triggered&&admin.payoutMode==="charity"&&<button className="btn btn-red" onClick={()=>recordPayment("charity",me.name,admin.stake,me.charity)} style={{marginTop:12,width:"100%",fontSize:13}}>Record Donation →</button>}
             {triggered&&admin.payoutMode==="winners"&&<button className="btn btn-yellow" onClick={()=>recordPayment("payout",me.name,admin.stake,"")} style={{marginTop:12,width:"100%",fontSize:13}}>Record Payout of {fmtMoney(admin.stake)} →</button>}
           </div>
-
-          <button onClick={()=>setShowPastDayModal(true)}
-            style={{width:"100%",background:"#ffffff0a",border:"2px dashed #ffffff22",borderRadius:14,padding:"12px 16px",cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:14,color:"#ffffffbb",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-            📅 Log writing for a previous day
-          </button>
         </>)}
 
         {/* ── GROUP ── */}
