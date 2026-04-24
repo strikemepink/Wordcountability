@@ -90,6 +90,10 @@ const DEFAULT_NOTIF_PREFS = {
   pollClosingSoon:      true,
   newChatMessage:       true,
   chatFrequency:        "Every message",
+  progressNotif:        true,
+  progressNotifCombined: true,
+  progressNotifFrequency: "Daily",
+  progressNotifTime:    "09:00",
 };
 
 const LF = {
@@ -814,6 +818,62 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
                     )}
                   </div>
                 ))}
+
+                {/* ── Progress Check-in Notification ── */}
+                <div>
+                  <div className="notif-row">
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <span style={{fontSize:18}}>📊</span>
+                      <span style={{fontSize:14,color:LF.white,fontWeight:700}}>Progress Check-in</span>
+                    </div>
+                    <label className="toggle">
+                      <input type="checkbox" checked={!!notifPrefs.progressNotif} onChange={e=>handlePrefChange("progressNotif",e.target.checked)}/>
+                      <span className="toggle-slider"/>
+                    </label>
+                  </div>
+                  {notifPrefs.progressNotif&&notifPerms==="default"&&(
+                    <div style={{fontSize:12,color:LF.hotpink,fontWeight:700,padding:"4px 0 6px 28px"}}>
+                      ↑ Tap "Enable Push Notifications" above to activate this.
+                    </div>
+                  )}
+                  {notifPrefs.progressNotif&&(
+                    <div style={{background:"#ffffff08",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px",display:"flex",flexDirection:"column",gap:8}}>
+                      <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700,lineHeight:1.5}}>
+                        A personalised update on where you stand — on track, behind, or crushing it 🎉
+                      </div>
+                      <div className="notif-row" style={{padding:0}}>
+                        <span style={{fontSize:13,color:LF.white,fontWeight:700}}>Combine with writing reminder</span>
+                        <label className="toggle">
+                          <input type="checkbox" checked={notifPrefs.progressNotifCombined!==false} onChange={e=>handlePrefChange("progressNotifCombined",e.target.checked)}/>
+                          <span className="toggle-slider"/>
+                        </label>
+                      </div>
+                      {notifPrefs.progressNotifCombined!==false?(
+                        <div style={{fontSize:12,color:"#ffffffaa",fontWeight:700}}>
+                          ✅ Will arrive with your writing reminder ({notifPrefs.reminderFrequency||"Daily"} at {(()=>{const t=notifPrefs.reminderTime||"09:00";const[h,m]=t.split(":");const hr=parseInt(h);return`${hr===0?12:hr>12?hr-12:hr}:${m} ${hr<12?"AM":"PM"}`;})()})
+                        </div>
+                      ):(
+                        <>
+                          <div>
+                            <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
+                            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                              {["Daily","Weekly"].map(f=>(
+                                <button key={f} onClick={()=>handlePrefChange("progressNotifFrequency",f)} style={{padding:"5px 12px",border:`2px solid ${(notifPrefs.progressNotifFrequency||"Daily")===f?LF.pink:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:(notifPrefs.progressNotifFrequency||"Daily")===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
+                            <select value={notifPrefs.progressNotifTime||"09:00"} onChange={e=>handlePrefChange("progressNotifTime",e.target.value)} className="inp" style={{maxWidth:160,padding:"8px 12px",fontSize:14}}>
+                              {Array.from({length:24},(_,i)=>{const h=i%12===0?12:i%12;const ampm=i<12?"AM":"PM";const val=`${String(i).padStart(2,"0")}:00`;return(<option key={i} value={val}>{h}:00 {ampm}</option>);})}
+                            </select>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
               </div>
             </div>
           )}
@@ -919,6 +979,13 @@ export default function App(){
   const [timerSecs,setTimerSecs]=useState(0);
   const [timerSessions,setTimerSessions]=useState([]);
   const timerRef=useRef(null);
+  // past-day logging
+  const [showPastDayModal,setShowPastDayModal]=useState(false);
+  const [pastDaySelected,setPastDaySelected]=useState(null);
+  const [pastDayInput,setPastDayInput]=useState("");
+  const [pastDaySaving,setPastDaySaving]=useState(false);
+  // countdown tick
+  const [tick,setTick]=useState(0);
   // chat
   const [messages,setMessages]=useState([]);
   const [chatInput,setChatInput]=useState("");
@@ -951,6 +1018,7 @@ export default function App(){
     if(authUser?.uid){loadAll(authUser.uid);}
   },[authUser?.uid]);
   useEffect(()=>()=>clearInterval(timerRef.current),[]);
+  useEffect(()=>{const id=setInterval(()=>setTick(t=>t+1),60000);return()=>clearInterval(id);},[]);
   useEffect(()=>{if(chatEndRef.current)chatEndRef.current.scrollIntoView({behavior:"smooth"});},[messages]);
   useEffect(()=>{
     if(!admin.changeWindowOpen||!admin.changeWindowEnd||!me?.groupId)return;
@@ -1069,6 +1137,97 @@ export default function App(){
     const mins=Math.round(timerSecs/60);
     setTimerSessions(s=>[...s,{mins,ts:Date.now()}]); setTimerSecs(0);
     await saveProgress(mins);
+  }
+
+  // ── Period / past-day helpers ──
+  function cadenceDaysLocal(freq){return freq==="Daily"?1:freq==="Weekly"?7:freq==="Bi-Weekly"?14:30;}
+
+  function getPastDaysInPeriod(){
+    const now=new Date();
+    const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    let periodStart;
+    if(admin.firstCheckIn&&admin.startDate){
+      // Find the most recent check-in deadline that has already passed
+      const firstCI=new Date(admin.firstCheckIn);
+      const cadDays=cadenceDaysLocal(admin.frequency||"Weekly");
+      let cursor=new Date(firstCI);
+      // Step backward to find the period start (last passed deadline minus one cadence)
+      while(cursor<=now) cursor.setDate(cursor.getDate()+cadDays);
+      // cursor is now the NEXT upcoming deadline; step back one cadence for the start of this period
+      cursor.setDate(cursor.getDate()-cadDays);
+      const thisPeriodDeadline=new Date(cursor);
+      // period start = deadline minus one cadence
+      const pStart=new Date(thisPeriodDeadline);
+      pStart.setDate(pStart.getDate()-cadDays);
+      periodStart=pStart>new Date(admin.startDate)?pStart:new Date(admin.startDate);
+    } else {
+      // No active challenge — allow up to 7 days prior
+      periodStart=new Date(today);
+      periodStart.setDate(periodStart.getDate()-6);
+    }
+    const days=[];
+    const start=new Date(Math.max(periodStart.getTime(),today.getTime()-86400000*13));
+    let d=new Date(start.getFullYear(),start.getMonth(),start.getDate());
+    while(d<today){
+      days.push(new Date(d));
+      d.setDate(d.getDate()+1);
+    }
+    return days;
+  }
+
+  async function logPastDay(){
+    const n=parseInt(pastDayInput);
+    if(!n||n<=0||!pastDaySelected)return;
+    setPastDaySaving(true);
+    // Mark the correct day-of-week dot
+    const dayOfWeek=(pastDaySelected.getDay()+6)%7; // Mon=0
+    const checks=[...me.dailyChecks];
+    checks[dayOfWeek]=true;
+    const newTotal=(me.totalProgress||0)+n;
+    const newWeekProgress=me.progressThisWeek+n;
+    const upd={...me,progressThisWeek:newWeekProgress,totalProgress:newTotal,dailyChecks:checks};
+    setMe(upd); setSpark(s=>s+1);
+    await fsSet(userDocRef(uid),JSON.stringify(upd));
+    await pub(upd);
+    loadMembers(me.groupId,me.name);
+    updateLedgerProgress(n);
+    maybeNotifyGoalHit(newWeekProgress);
+    setPastDayInput("");
+    setPastDaySaving(false);
+    setShowPastDayModal(false);
+    setPastDaySelected(null);
+  }
+
+  // ── Check-in period info for countdown card ──
+  function getCheckInPeriodInfo(){
+    if(!admin.firstCheckIn||!admin.startDate)return null;
+    const now=new Date();
+    const firstCI=new Date(admin.firstCheckIn);
+    const cadDays=cadenceDaysLocal(admin.frequency||"Weekly");
+    const startDate=new Date(admin.startDate);
+    const endDate=admin.endDate?new Date(admin.endDate):null;
+    // Is the challenge active?
+    const isActive=now>=startDate&&(!endDate||now<=endDate);
+    const isUpcoming=now<startDate;
+    if(!isActive&&!isUpcoming)return null;
+    // Find next check-in deadline after now
+    let cursor=new Date(firstCI);
+    if(cursor>now){
+      // firstCheckIn is still in the future — it IS the next check-in
+    } else {
+      while(cursor<=now) cursor.setDate(cursor.getDate()+cadDays);
+    }
+    const nextCheckIn=new Date(cursor);
+    // Calculate period number: how many full cadence periods since firstCheckIn have passed
+    const msPerPeriod=cadDays*86400000;
+    const periodNumber=firstCI<=now?Math.floor((now-firstCI)/msPerPeriod)+1:0;
+    // Total periods in challenge
+    const totalPeriods=endDate&&firstCI?Math.round((endDate-startDate)/msPerPeriod):null;
+    const msLeft=nextCheckIn-now;
+    const dLeft=Math.floor(msLeft/86400000);
+    const hLeft=Math.floor((msLeft%86400000)/3600000);
+    const mLeft=Math.floor((msLeft%3600000)/60000);
+    return{nextCheckIn,periodNumber,totalPeriods,dLeft,hLeft,mLeft,isActive,isUpcoming};
   }
 
   async function updateGoal(){
@@ -1468,6 +1627,56 @@ export default function App(){
         </div>
       )}
 
+      {/* ── Past-Day Log Modal ── */}
+      {showPastDayModal&&(()=>{
+        const days=getPastDaysInPeriod();
+        const dayNames=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+        return(
+          <div className="modal-bg" onClick={()=>{setShowPastDayModal(false);setPastDaySelected(null);setPastDayInput("");}}>
+            <div className="card modal" style={{padding:24}} onClick={e=>e.stopPropagation()}>
+              <div style={{fontSize:20,fontWeight:900,color:LF.pink,marginBottom:4}}>📅 Log a Previous Day</div>
+              <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,marginBottom:16,lineHeight:1.6}}>
+                Pick a day from this check-in period and add your {me.goalType==="words"?"words":"minutes"}.
+              </div>
+              {days.length===0?(
+                <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,textAlign:"center",padding:"16px 0"}}>No previous days available in this period yet.</div>
+              ):(
+                <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16,maxHeight:220,overflowY:"auto"}}>
+                  {[...days].reverse().map((d,i)=>{
+                    const dow=(d.getDay()+6)%7;
+                    const label=`${dayNames[dow]}, ${d.toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;
+                    const sel=pastDaySelected&&pastDaySelected.toDateString()===d.toDateString();
+                    return(
+                      <button key={i} onClick={()=>setPastDaySelected(d)}
+                        style={{background:sel?`linear-gradient(135deg,${LF.pink}33,${LF.purple}33)`:"#ffffff0a",border:`2px solid ${sel?LF.pink:"#ffffff22"}`,borderRadius:14,padding:"10px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
+                        <div style={{fontSize:14,fontWeight:800,color:sel?LF.pink:LF.white}}>{sel?"✨ ":""}{label}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {pastDaySelected&&(
+                <div style={{marginBottom:16}}>
+                  <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>
+                    {me.goalType==="words"?"Words written":"Minutes written"}
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <input className="inp" type="number" placeholder={me.goalType==="words"?"e.g. 500":"e.g. 45"} value={pastDayInput} onChange={e=>setPastDayInput(e.target.value)} style={{flex:1}} autoFocus/>
+                    <button className="btn" onClick={logPastDay} disabled={pastDaySaving||!pastDayInput} style={{padding:"11px 18px"}}>
+                      {pastDaySaving?"✨":"+ Log"}
+                    </button>
+                  </div>
+                </div>
+              )}
+              <button onClick={()=>{setShowPastDayModal(false);setPastDaySelected(null);setPastDayInput("");}}
+                style={{width:"100%",background:"none",border:"none",color:"#ffffffaa",fontSize:13,cursor:"pointer",fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Header ── */}
       <div style={{width:"100%",maxWidth:500,padding:"22px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
         <div>
@@ -1604,6 +1813,40 @@ export default function App(){
               <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginTop:4}}>First check-in: {admin.firstCheckIn?new Date(admin.firstCheckIn).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div>
             </div>
           )}
+          {(()=>{
+            const info=getCheckInPeriodInfo();
+            if(!info)return null;
+            return(
+              <div className="card" style={{border:`2px solid ${info.isActive?LF.teal:LF.yellow}55`,background:info.isActive?"#00E5FF08":"#FFD60008"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:info.isActive?10:0}}>
+                  <div style={{fontSize:11,fontWeight:900,color:info.isActive?LF.teal:LF.yellow,textTransform:"uppercase",letterSpacing:2}}>
+                    {info.isActive?"🟢 Round Active":"⏳ Round Starting Soon"}
+                  </div>
+                  {info.totalPeriods&&info.periodNumber>0&&(
+                    <div style={{fontSize:12,fontWeight:800,color:"#ffffffcc",background:"#ffffff14",borderRadius:50,padding:"3px 10px"}}>
+                      Period {info.periodNumber} of {info.totalPeriods}
+                    </div>
+                  )}
+                </div>
+                {info.isActive&&(
+                  <div style={{display:"flex",alignItems:"center",gap:14}}>
+                    <div>
+                      <div style={{fontSize:11,color:"#ffffffaa",fontWeight:700,marginBottom:2}}>Next check-in in</div>
+                      <div style={{fontSize:26,fontWeight:900,color:LF.yellow,letterSpacing:1}}>
+                        {info.dLeft>0&&<span>{info.dLeft}<span style={{fontSize:12,color:"#ffffffcc",marginRight:4}}>d</span></span>}
+                        {info.hLeft>0&&<span>{info.hLeft}<span style={{fontSize:12,color:"#ffffffcc",marginRight:4}}>h</span></span>}
+                        <span>{info.mLeft}<span style={{fontSize:12,color:"#ffffffcc"}}>m</span></span>
+                      </div>
+                    </div>
+                    <div style={{fontSize:12,color:"#ffffffbb",fontWeight:700,lineHeight:1.5}}>
+                      {info.nextCheckIn.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}<br/>
+                      {info.nextCheckIn.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           <div className="card" style={{border:`2px solid ${pct>=100?LF.lime:LF.pink}66`,position:"relative"}}>
             {spark>0&&Array.from({length:6},(_,i)=><span key={`${spark}-${i}`} style={{position:"absolute",left:`${15+Math.random()*70}%`,top:`${10+Math.random()*80}%`,fontSize:16,animation:"pop 0.5s ease forwards",pointerEvents:"none"}}>{"✨⭐💫🌟"[i%4]}</span>)}
             <div style={{display:"flex",alignItems:"center",gap:18}}>
@@ -1684,6 +1927,11 @@ export default function App(){
             {triggered&&admin.payoutMode==="charity"&&<button className="btn btn-red" onClick={()=>recordPayment("charity",me.name,admin.stake,me.charity)} style={{marginTop:12,width:"100%",fontSize:13}}>Record Donation →</button>}
             {triggered&&admin.payoutMode==="winners"&&<button className="btn btn-yellow" onClick={()=>recordPayment("payout",me.name,admin.stake,"")} style={{marginTop:12,width:"100%",fontSize:13}}>Record Payout of {fmtMoney(admin.stake)} →</button>}
           </div>
+
+          <button onClick={()=>setShowPastDayModal(true)}
+            style={{width:"100%",background:"#ffffff0a",border:"2px dashed #ffffff22",borderRadius:14,padding:"12px 16px",cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:14,color:"#ffffffbb",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            📅 Log writing for a previous day
+          </button>
         </>)}
 
         {/* ── GROUP ── */}
