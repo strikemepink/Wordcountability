@@ -514,6 +514,11 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
   const [savingReminder,setSavingReminder]=useState(false);
   const [reminderSaved,setReminderSaved]=useState(!!(initPrefs.reminderTime&&initPrefs.writingReminder));
   const [resettingReminder,setResettingReminder]=useState(false);
+  const [progressTimeDraft,setProgressTimeDraft]=useState(initPrefs.progressNotifTime||"09:00");
+  const [progressFreqDraft,setProgressFreqDraft]=useState(initPrefs.progressNotifFrequency||"Daily");
+  const [savingProgress,setSavingProgress]=useState(false);
+  const [progressSaved,setProgressSaved]=useState(!!(initPrefs.progressNotifTime&&initPrefs.progressNotif&&initPrefs.progressNotifCombined===false));
+  const [resettingProgress,setResettingProgress]=useState(false);
 
   useEffect(()=>{
     initOneSignal();
@@ -600,6 +605,25 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
     setReminderSaved(false);
     setReminderTimeDraft("09:00");
     setResettingReminder(false);
+  }
+
+  async function handleProgressSave(){
+    setSavingProgress(true);
+    const updated={...notifPrefs,progressNotifTime:progressTimeDraft,progressNotifFrequency:progressFreqDraft};
+    setNotifPrefs(updated);
+    await onUpdateMe({notifPrefs:updated});
+    setSavingProgress(false);
+    setProgressSaved(true);
+  }
+
+  async function handleProgressReset(){
+    setResettingProgress(true);
+    const updated={...notifPrefs,progressNotif:false,progressNotifTime:null};
+    setNotifPrefs(updated);
+    await onUpdateMe({notifPrefs:updated});
+    setProgressSaved(false);
+    setProgressTimeDraft("09:00");
+    setResettingProgress(false);
   }
 
   async function handlePrefChange(key,value){
@@ -805,6 +829,87 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
                       </div>
                     )}
 
+                    {/* Progress Check-in — shown inline after writing reminder row */}
+                    {key==="writingReminder"&&(
+                      <div style={{marginTop:4}}>
+                        <div className="notif-row">
+                          <div style={{display:"flex",alignItems:"center",gap:10}}>
+                            <span style={{fontSize:18}}>📊</span>
+                            <span style={{fontSize:14,color:LF.white,fontWeight:700}}>Progress Check-in</span>
+                          </div>
+                          <label className="toggle">
+                            <input type="checkbox" checked={!!notifPrefs.progressNotif} onChange={e=>handlePrefChange("progressNotif",e.target.checked)}/>
+                            <span className="toggle-slider"/>
+                          </label>
+                        </div>
+                        {notifPrefs.progressNotif&&notifPerms==="default"&&(
+                          <div style={{fontSize:12,color:LF.hotpink,fontWeight:700,padding:"4px 0 6px 28px"}}>
+                            ↑ Tap "Enable Push Notifications" above to activate this.
+                          </div>
+                        )}
+                        {notifPrefs.progressNotif&&(
+                          <div style={{background:"#ffffff08",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px",display:"flex",flexDirection:"column",gap:8}}>
+                            <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700,lineHeight:1.5}}>
+                              A personalised update on where you stand — on track, behind, or crushing it 🎉
+                            </div>
+                            <div className="notif-row" style={{padding:0}}>
+                              <span style={{fontSize:13,color:LF.white,fontWeight:700}}>Combine with writing reminder</span>
+                              <label className="toggle">
+                                <input type="checkbox" checked={notifPrefs.progressNotifCombined!==false} onChange={e=>{handlePrefChange("progressNotifCombined",e.target.checked);setProgressSaved(false);}}/>
+                                <span className="toggle-slider"/>
+                              </label>
+                            </div>
+                            {notifPrefs.progressNotifCombined!==false?(
+                              <div style={{fontSize:12,color:"#ffffffaa",fontWeight:700}}>
+                                ✅ Will arrive with your writing reminder ({notifPrefs.reminderFrequency||"Daily"} at {(()=>{const t=notifPrefs.reminderTime||"09:00";const[h,m]=t.split(":");const hr=parseInt(h);return`${hr===0?12:hr>12?hr-12:hr}:${m} ${hr<12?"AM":"PM"}`;})()})
+                              </div>
+                            ):(
+                              progressSaved?(
+                                <>
+                                  <div style={{fontSize:13,color:LF.lime,fontWeight:800}}>
+                                    ✅ Progress check-in set for {(()=>{const t=notifPrefs.progressNotifTime||"09:00";const[h,m]=t.split(":");const hr=parseInt(h);return`${hr===0?12:hr>12?hr-12:hr}:${m} ${hr<12?"AM":"PM"}`;})()}  · {notifPrefs.progressNotifFrequency||"Daily"}
+                                  </div>
+                                  <button
+                                    className="btn btn-red"
+                                    onClick={handleProgressReset}
+                                    disabled={resettingProgress}
+                                    style={{fontSize:13,padding:"8px 16px",alignSelf:"flex-start"}}
+                                  >
+                                    {resettingProgress?"Resetting…":"Reset Progress Check-in"}
+                                  </button>
+                                </>
+                              ):(
+                                <>
+                                  <div>
+                                    <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
+                                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                                      {["Daily","Weekly"].map(f=>(
+                                        <button key={f} onClick={()=>setProgressFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${progressFreqDraft===f?LF.pink:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:progressFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
+                                    <select value={progressTimeDraft} onChange={e=>setProgressTimeDraft(e.target.value)} className="inp" style={{maxWidth:160,padding:"8px 12px",fontSize:14}}>
+                                      {Array.from({length:24},(_,i)=>{const h=i%12===0?12:i%12;const ampm=i<12?"AM":"PM";const val=`${String(i).padStart(2,"0")}:00`;return(<option key={i} value={val}>{h}:00 {ampm}</option>);})}
+                                    </select>
+                                  </div>
+                                  <button
+                                    className="btn"
+                                    onClick={handleProgressSave}
+                                    disabled={savingProgress}
+                                    style={{fontSize:14,padding:"10px 20px",alignSelf:"flex-start"}}
+                                  >
+                                    {savingProgress?"Saving…":"Save Progress Check-in ✨"}
+                                  </button>
+                                </>
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Chat frequency sub-option */}
                     {key==="newChatMessage"&&notifPrefs.newChatMessage&&(
                       <div style={{background:"#ffffff08",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px"}}>
@@ -818,61 +923,6 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
                     )}
                   </div>
                 ))}
-
-                {/* ── Progress Check-in Notification ── */}
-                <div>
-                  <div className="notif-row">
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <span style={{fontSize:18}}>📊</span>
-                      <span style={{fontSize:14,color:LF.white,fontWeight:700}}>Progress Check-in</span>
-                    </div>
-                    <label className="toggle">
-                      <input type="checkbox" checked={!!notifPrefs.progressNotif} onChange={e=>handlePrefChange("progressNotif",e.target.checked)}/>
-                      <span className="toggle-slider"/>
-                    </label>
-                  </div>
-                  {notifPrefs.progressNotif&&notifPerms==="default"&&(
-                    <div style={{fontSize:12,color:LF.hotpink,fontWeight:700,padding:"4px 0 6px 28px"}}>
-                      ↑ Tap "Enable Push Notifications" above to activate this.
-                    </div>
-                  )}
-                  {notifPrefs.progressNotif&&(
-                    <div style={{background:"#ffffff08",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px",display:"flex",flexDirection:"column",gap:8}}>
-                      <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700,lineHeight:1.5}}>
-                        A personalised update on where you stand — on track, behind, or crushing it 🎉
-                      </div>
-                      <div className="notif-row" style={{padding:0}}>
-                        <span style={{fontSize:13,color:LF.white,fontWeight:700}}>Combine with writing reminder</span>
-                        <label className="toggle">
-                          <input type="checkbox" checked={notifPrefs.progressNotifCombined!==false} onChange={e=>handlePrefChange("progressNotifCombined",e.target.checked)}/>
-                          <span className="toggle-slider"/>
-                        </label>
-                      </div>
-                      {notifPrefs.progressNotifCombined!==false?(
-                        <div style={{fontSize:12,color:"#ffffffaa",fontWeight:700}}>
-                          ✅ Will arrive with your writing reminder ({notifPrefs.reminderFrequency||"Daily"} at {(()=>{const t=notifPrefs.reminderTime||"09:00";const[h,m]=t.split(":");const hr=parseInt(h);return`${hr===0?12:hr>12?hr-12:hr}:${m} ${hr<12?"AM":"PM"}`;})()})
-                        </div>
-                      ):(
-                        <>
-                          <div>
-                            <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
-                            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                              {["Daily","Weekly"].map(f=>(
-                                <button key={f} onClick={()=>handlePrefChange("progressNotifFrequency",f)} style={{padding:"5px 12px",border:`2px solid ${(notifPrefs.progressNotifFrequency||"Daily")===f?LF.pink:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:(notifPrefs.progressNotifFrequency||"Daily")===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
-                            <select value={notifPrefs.progressNotifTime||"09:00"} onChange={e=>handlePrefChange("progressNotifTime",e.target.value)} className="inp" style={{maxWidth:160,padding:"8px 12px",fontSize:14}}>
-                              {Array.from({length:24},(_,i)=>{const h=i%12===0?12:i%12;const ampm=i<12?"AM":"PM";const val=`${String(i).padStart(2,"0")}:00`;return(<option key={i} value={val}>{h}:00 {ampm}</option>);})}
-                            </select>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
 
               </div>
             </div>

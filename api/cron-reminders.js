@@ -6,16 +6,16 @@
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${process.env.VITE_FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
 const MOTIVATIONAL_MESSAGES = [
-  "Every word counts — open the app and keep the streak alive! ✍️",
-  "Your story isn't going to write itself. Let's go! 🚀",
-  "Small sessions add up. Even 10 minutes moves the needle. ⏱️",
-  "Your writing crew is showing up — time to join them! 🌟",
-  "The blank page is waiting. You've got this. 💪",
-  "One sentence at a time. Open the app and start. ✨",
-  "Progress over perfection — just write something today. 🖊️",
-  "Your future self will thank you. Time to write! 🌈",
-  "Writers write. That's you. Go get it. 🔥",
-  "Check in with your words today — your group is counting on you! 💜",
+  "Yoda says: Become writer only by writing.",
+  "Frankly my dear, sit down and write!",
+  "You coulda been a published author, you coulda been a Booker Prize winner, instead of a bum who avoids the blank page.",
+  "Dirty Harry says: Go ahead, write your story.",
+  "Jerry Maguire says: Show me the finished draft.",
+  "You can't handle the blank page!",
+  "Houston, we have a future author.",
+  "Cher wants you to snap out of your writer's block.",
+  "A finished first draft, for lack of a better project, is better than an unfinished polished draft.",
+  "Cookie Monster says: Me want story!!!!",
 ];
 
 async function firestoreGet(path) {
@@ -112,7 +112,7 @@ async function getAdminData(groupId) {
 
 function buildProgressMessage(user, admin, nowUtc) {
   if (!admin) return null;
-  const { progressThisWeek = 0, goal = 0, goalType = "words" } = user;
+  const { progressThisWeek = 0, goalValue: goal = 0, goalType = "words" } = user;
   const unit = goalType === "words" ? "words" : "minutes";
 
   // Find days left in current check-in period
