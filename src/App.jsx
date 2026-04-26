@@ -1017,6 +1017,12 @@ export default function App(){
   const [goalInput,setGoalInput]=useState("");
   const [goalTypeEdit,setGoalTypeEdit]=useState("words");
   const [spark,setSpark]=useState(0);
+  const sparkPositions=useRef([]);
+  function triggerSpark(){
+    sparkPositions.current=Array.from({length:6},()=>({left:15+Math.random()*70,top:10+Math.random()*80}));
+    setSpark(s=>s+1);
+    setTimeout(()=>setSpark(0),600);
+  }
   const [saving,setSaving]=useState(false);
   const [showPrivacy,setShowPrivacy]=useState(false);
   const [shareCopied,setShareCopied]=useState(false);
@@ -1157,7 +1163,7 @@ export default function App(){
     const newTotal=(me.totalProgress||0)+n;
     const newWeekProgress=me.progressThisWeek+n;
     const upd={...me,progressThisWeek:newWeekProgress,totalProgress:newTotal,dailyChecks:checks};
-    setMe(upd); setSpark(s=>s+1);
+    setMe(upd); triggerSpark();
     fsSet(userDocRef(uid),JSON.stringify(upd)); pub(upd);
     loadMembers(me.groupId,me.name); updateLedgerProgress(n);
     maybeNotifyGoalHit(newWeekProgress);
@@ -1230,15 +1236,16 @@ export default function App(){
     const dayOfWeek=(pastDaySelected.getDay()+6)%7;
     const checks=[...me.dailyChecks];
     checks[dayOfWeek]=true;
-    const newTotal=(me.totalProgress||0)+n;
-    const newWeekProgress=me.progressThisWeek+n;
+    // Don't count words logged before the challenge start date toward any progress totals
+    const beforeStart=admin.startDate&&pastDaySelected<new Date(admin.startDate);
+    const newTotal=beforeStart?(me.totalProgress||0):(me.totalProgress||0)+n;
+    const newWeekProgress=beforeStart?me.progressThisWeek:me.progressThisWeek+n;
     const upd={...me,progressThisWeek:newWeekProgress,totalProgress:newTotal,dailyChecks:checks};
-    setMe(upd); setSpark(s=>s+1);
+    setMe(upd); triggerSpark();
     await fsSet(userDocRef(uid),JSON.stringify(upd));
     await pub(upd);
     loadMembers(me.groupId,me.name);
-    updateLedgerProgress(n);
-    maybeNotifyGoalHit(newWeekProgress);
+    if(!beforeStart){updateLedgerProgress(n);maybeNotifyGoalHit(newWeekProgress);}
     setLogInput("");
     setPastDaySaving(false);
     setPastDaySelected(null);
@@ -1252,15 +1259,16 @@ export default function App(){
     const dayOfWeek=(pastDaySelected.getDay()+6)%7; // Mon=0
     const checks=[...me.dailyChecks];
     checks[dayOfWeek]=true;
-    const newTotal=(me.totalProgress||0)+n;
-    const newWeekProgress=me.progressThisWeek+n;
+    // Don't count words logged before the challenge start date toward any progress totals
+    const beforeStart=admin.startDate&&pastDaySelected<new Date(admin.startDate);
+    const newTotal=beforeStart?(me.totalProgress||0):(me.totalProgress||0)+n;
+    const newWeekProgress=beforeStart?me.progressThisWeek:me.progressThisWeek+n;
     const upd={...me,progressThisWeek:newWeekProgress,totalProgress:newTotal,dailyChecks:checks};
-    setMe(upd); setSpark(s=>s+1);
+    setMe(upd); triggerSpark();
     await fsSet(userDocRef(uid),JSON.stringify(upd));
     await pub(upd);
     loadMembers(me.groupId,me.name);
-    updateLedgerProgress(n);
-    maybeNotifyGoalHit(newWeekProgress);
+    if(!beforeStart){updateLedgerProgress(n);maybeNotifyGoalHit(newWeekProgress);}
     setPastDayInput("");
     setPastDaySaving(false);
     setShowPastDayModal(false);
@@ -1917,7 +1925,7 @@ export default function App(){
             );
           })()}
           <div className="card" style={{border:`2px solid ${pct>=100?LF.lime:LF.pink}66`,position:"relative"}}>
-            {spark>0&&Array.from({length:6},(_,i)=><span key={`${spark}-${i}`} style={{position:"absolute",left:`${15+Math.random()*70}%`,top:`${10+Math.random()*80}%`,fontSize:16,animation:"pop 0.5s ease forwards",pointerEvents:"none"}}>{"✨⭐💫🌟"[i%4]}</span>)}
+            {spark>0&&["✨","⭐","💫","🌟","✨","⭐"].map((em,i)=><span key={`${spark}-${i}`} style={{position:"absolute",left:`${sparkPositions.current[i]?.left||20}%`,top:`${sparkPositions.current[i]?.top||20}%`,fontSize:16,animation:"pop 0.5s ease forwards",pointerEvents:"none"}}>{em}</span>)}
             <div style={{display:"flex",alignItems:"center",gap:18}}>
               <div style={{position:"relative",flexShrink:0}}>
                 <Ring pct={pct}/>
@@ -2362,7 +2370,7 @@ export default function App(){
               {[...(ledger.entries||[])].reverse().slice(0,20).map(e=>(
                 <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${LF.purple}22`}}>
                   <div>
-                    <div style={{fontSize:13,fontWeight:800,color:e.type==="charity"?LF.lime:LF.yellow}}>{e.type==="charity"?`💝 ${e.name} → ${e.charity}`:`🏆 Payout to ${e.name}`}</div>
+                    <div style={{fontSize:13,fontWeight:800,color:e.type==="charity"?LF.lime:LF.yellow,wordBreak:"break-word"}}>{e.type==="charity"?`💝 ${e.name} → ${e.charityName||e.charity}`:`🏆 Payout to ${e.name}`}</div>
                     <div style={{fontSize:11,color:"#ffffffcc"}}>{fmtDate(e.ts)} · by {e.recordedBy}</div>
                   </div>
                   <div style={{fontSize:13,color:e.type==="charity"?LF.lime:LF.yellow,fontWeight:800}}>{fmtMoney(e.amount)}</div>
