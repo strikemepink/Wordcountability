@@ -498,7 +498,7 @@ async function sendNotifToSelf(uid, db, type, title, body){
 }
 
 // ── SettingsPanel ─────────────────────────────────────────────────
-function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenAdmin, onOpenPrivacy, onUpdateMe}){
+function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenAdmin, onOpenPrivacy, onUpdateMe, onStartTour}){
   const [section,setSection]=useState("profile"); // profile | notifications | accolades | about
   const [notifPerms,setNotifPerms]=useState("default"); // default | granted | denied
   const [notifPrefs,setNotifPrefs]=useState(me.notifPrefs||DEFAULT_NOTIF_PREFS);
@@ -945,8 +945,43 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
           {section==="about"&&(
             <div className="settings-section" style={{paddingTop:20,display:"flex",flexDirection:"column",gap:12}}>
               <div className="card" style={{border:`2px solid ${LF.purple}44`}}>
-                <div style={{fontSize:15,fontWeight:900,color:LF.hotpink,marginBottom:8}}>About Wordcountability</div>
-                <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,lineHeight:1.7,fontStyle:"italic"}}>Content coming soon ✍️</div>
+                <div style={{fontSize:15,fontWeight:900,color:LF.hotpink,marginBottom:14}}>About Wordcountability</div>
+                <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,lineHeight:1.8}}>
+                  <p style={{margin:"0 0 12px"}}>Wordcountability is a space to help writers do the hardest part — put words on the page.</p>
+                  <p style={{margin:"0 0 16px"}}>This app motivates writing groups to write, whether in short sprints or building consistent habits.</p>
+
+                  <div style={{fontSize:13,color:LF.hotpink,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:8}}>How it works</div>
+                  <p style={{margin:"0 0 12px"}}>Users get a signup link from an admin or enter a group code. The admin in consultation with the group can set the challenge parameters, like how long it will last, how many there'll be, and how many you can miss before you don't meet your goal.</p>
+                  <p style={{margin:"0 0 16px"}}>But it's not just fun and games, Wordcountability wants you to put your money where your words are.</p>
+
+                  <p style={{margin:"0 0 8px"}}>Groups can have one of three options:</p>
+                  <ul style={{margin:"0 0 12px",paddingLeft:18,display:"flex",flexDirection:"column",gap:6}}>
+                    <li>Those who meet their goals get to split the money of those who didn't.</li>
+                    <li>The admin can consult with those who made their goals to choose which charity to donate the money of those who didn't.</li>
+                    <li>And if you don't want to put money on the line, you can play "To the Pain" where those who make their goals get to chide those who didn't.</li>
+                  </ul>
+                  <p style={{margin:"0 0 12px"}}>On top of that, groups can also set parameters for recognizing top performers.</p>
+                  <p style={{margin:"0 0 16px"}}>The app has built-in notifications, a chat feature, and a dashboard to keep up to date with where you stand.</p>
+
+                  <div style={{fontSize:13,color:LF.hotpink,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:8}}>Understanding Goals</div>
+                  <p style={{margin:"0 0 12px"}}>Users have two options — they can set their goal as a weekly word count, or as a weekly amount of time spent on their works in progress.</p>
+                  <p style={{margin:"0 0 20px"}}>Let's say you have a challenge that lasts a month with weekly check-ins, and you pledge to write 5,000 words a week. That means you can log your progress each day, but if it doesn't add up to 5,000 by the end of the week — you did not meet your goal.</p>
+
+                  <p style={{margin:"0 0 20px"}}>Your goal is always set as a weekly target — but your progress is tracked against your current check-in period. So if your group has a two-week check-in, your target for that period is double your weekly goal. If there's no active challenge, progress resets each week as usual.</p>
+
+                  <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                    <button onClick={()=>{onStartTour();onClose();}} style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,border:"none",borderRadius:50,padding:"10px 20px",color:"#fff",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:800,cursor:"pointer",textAlign:"center"}}>
+                      🌈 Take a tour of the app
+                    </button>
+                    <div style={{textAlign:"center"}}>
+                      <span style={{fontSize:13,color:"#ffffffaa",fontWeight:700}}>Check out our FAQs</span>
+                      <span style={{fontSize:13,color:LF.purple,fontWeight:700}}> — Coming soon</span>
+                    </div>
+                    <div style={{textAlign:"center"}}>
+                      <a href="mailto:erica.kritt.author@gmail.com" style={{fontSize:13,color:LF.hotpink,fontWeight:800,textDecoration:"underline"}}>Reach out to Erica the developer</a>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="card" style={{border:`2px solid ${LF.purple}44`}}>
                 <div style={{fontSize:15,fontWeight:900,color:LF.hotpink,marginBottom:8}}>About the Developer</div>
@@ -1029,6 +1064,8 @@ export default function App(){
   const [showPwaPrompt,setShowPwaPrompt]=useState(false);
   const [showSettings,setShowSettings]=useState(false);
   const [showNotifFeed,setShowNotifFeed]=useState(false);
+  const [showTour,setShowTour]=useState(false);
+  const [tourStep,setTourStep]=useState(0);
   const [inAppNotifs,setInAppNotifs]=useState([]);
   // timer
   const [timerRunning,setTimerRunning]=useState(false);
@@ -1097,15 +1134,48 @@ export default function App(){
       if(!meVal){setReady(true);return;}
       let d=JSON.parse(meVal);
       const wk=getWeekKey();
+      // Always load admin data first so we can check challenge state
+      let adminData=null;
+      if(d.groupId){
+        try{const av=await fsGet(adminDocRef(d.groupId));if(av)adminData=JSON.parse(av);}catch{}
+      }
+      // Determine if we're inside an active check-in period
+      function isInActivePeriod(ad){
+        if(!ad?.firstCheckIn||!ad?.startDate)return false;
+        const now2=new Date();
+        const start=new Date(ad.startDate);
+        const end=ad.endDate?new Date(ad.endDate):null;
+        if(now2<start||(end&&now2>end))return false;
+        // Find the next check-in deadline
+        const cadDays=ad.frequency==="Daily"?1:ad.frequency==="Weekly"?7:ad.frequency==="Bi-Weekly"?14:30;
+        let cursor=new Date(ad.firstCheckIn);
+        if(cursor>now2){return true;} // firstCheckIn still in future — period not yet due
+        while(cursor<=now2)cursor.setDate(cursor.getDate()+cadDays);
+        // cursor is next deadline — period start is one cadence back
+        const periodStart=new Date(cursor);
+        periodStart.setDate(periodStart.getDate()-cadDays);
+        // We're in an active period if now is between periodStart and cursor
+        return now2>=periodStart&&now2<cursor;
+      }
       if(d.lastResetWeek!==wk){
         const histVal=await fsGet(historyDocRef(uid));
         const hist=histVal?JSON.parse(histVal):[];
-        const met=d.progressThisWeek>=d.goalValue;
+        // Always write a weekly history entry
+        const met=d.progressThisWeek>=(d.goalValue*(adminData?.frequency==="Bi-Weekly"?2:1));
         const upd=[{week:d.lastResetWeek,progress:d.progressThisWeek,goal:d.goalValue,goalType:d.goalType,met},...hist].slice(0,40);
         await fsSet(historyDocRef(uid),JSON.stringify(upd));
-        d={...d,progressThisWeek:0,dailyChecks:[false,false,false,false,false,false,false],lastResetWeek:wk};
-        await fsSet(userDocRef(uid),JSON.stringify(d));
-        await pub(d,uid); setHistory(upd);
+        setHistory(upd);
+        // Only zero out progress if NOT inside an active check-in period
+        if(!isInActivePeriod(adminData)){
+          d={...d,progressThisWeek:0,dailyChecks:[false,false,false,false,false,false,false],lastResetWeek:wk};
+          await fsSet(userDocRef(uid),JSON.stringify(d));
+          await pub(d,uid);
+        } else {
+          // Just update the reset week marker so we don't re-run next load, but keep progress
+          d={...d,lastResetWeek:wk};
+          await fsSet(userDocRef(uid),JSON.stringify(d));
+          await pub(d,uid);
+        }
       } else {
         const histVal=await fsGet(historyDocRef(uid));
         setHistory(histVal?JSON.parse(histVal):[]);
@@ -1117,7 +1187,7 @@ export default function App(){
       // Load in-app notifications
       const notifVal=await fsGet(notifDocRef(uid));
       if(notifVal)setInAppNotifs(JSON.parse(notifVal));
-      if(d.groupId){loadMembers(d.groupId,d.name);loadChat(d.groupId);loadPolls(d.groupId);loadAdminData(d.groupId);loadLedger(d.groupId);fsSet(memberUidDocRef(d.groupId,uid),JSON.stringify({uid,joinedAt:Date.now()})).catch(()=>{});}
+      if(d.groupId){loadMembers(d.groupId,d.name);loadChat(d.groupId);loadPolls(d.groupId);if(!adminData){loadAdminData(d.groupId);}else{setAdmin(adminData);setAdminDraft(adminData);}loadLedger(d.groupId);fsSet(memberUidDocRef(d.groupId,uid),JSON.stringify({uid,joinedAt:Date.now()})).catch(()=>{});}
     }catch(e){console.error("loadAll",e);setReady(true);}
   }
 
@@ -1155,6 +1225,7 @@ export default function App(){
     fsSet(memberUidDocRef(groupId,uid),JSON.stringify({uid,joinedAt:Date.now()})).catch(()=>{});
     loadMembers(groupId,name); loadChat(groupId); loadPolls(groupId); loadAdminData(groupId); loadLedger(groupId);
     if(!localStorage.getItem("pwaPromptShown")){setShowPwaPrompt(true);localStorage.setItem("pwaPromptShown","1");}
+    if(!localStorage.getItem("appTourShown")){setShowTour(true);setTourStep(0);localStorage.setItem("appTourShown","1");}
   }
 
   async function saveProgress(n){
@@ -1503,11 +1574,13 @@ export default function App(){
   // ── Notification event triggers ──
   // Called when the current user hits 100% — notifies themselves (group push handled server-side later)
   async function maybeNotifyGoalHit(newProgress){
-    const wasUnder=me.progressThisWeek<me.goalValue;
-    const nowOver=newProgress>=me.goalValue;
+    const curPeriodWeeks=getPeriodWeeks();
+    const curPeriodGoal=me.goalValue*curPeriodWeeks;
+    const wasUnder=me.progressThisWeek<curPeriodGoal;
+    const nowOver=newProgress>=curPeriodGoal;
     if(wasUnder&&nowOver){
-      await addInAppNotif("memberHitGoal","🌟 Goal crushed!",`You hit your ${fmtGoal(me)} goal this week. Amazing work!`);
-      // Push fan-out: notify group members who want "memberHitGoal" notifications
+      const periodLabel=curPeriodWeeks>1?`${curPeriodWeeks}-week period goal`:"weekly goal";
+      await addInAppNotif("memberHitGoal","🌟 Goal crushed!",`You hit your ${fmtGoal(me)} ${periodLabel}. Amazing work!`);
       if(me?.groupId){
         fetch("/api/notify",{
           method:"POST",
@@ -1517,7 +1590,7 @@ export default function App(){
             notifType:"memberHitGoal",
             excludeUid:uid,
             title:`🌟 ${me.name} crushed their goal!`,
-            body:`${me.avatar} ${me.name} just hit their ${fmtGoal(me)} goal. Get inspired!`,
+            body:`${me.avatar} ${me.name} just hit their ${fmtGoal(me)} ${periodLabel}. Get inspired!`,
           }),
         }).catch(()=>{});
       }
@@ -1565,7 +1638,10 @@ export default function App(){
     const deadline=new Date(admin.firstCheckIn);
     const msLeft=deadline-new Date();
     if(msLeft>0&&msLeft<=86400000){
-      await addInAppNotif("checkInWarning","⏰ Check-in tomorrow",`Your check-in deadline is in less than 24 hours. Goal: ${fmtGoal(me)}.`);
+      const curPeriodWeeks=getPeriodWeeks();
+      const curPeriodGoal=me.goalValue*curPeriodWeeks;
+      const goalLabel=me.goalType==="words"?`${curPeriodGoal.toLocaleString()} words`:(()=>{const h=Math.floor(curPeriodGoal/60),m=curPeriodGoal%60;return h>0?`${h}h`+(m>0?` ${m}m`:""):m+"m";})();
+      await addInAppNotif("checkInWarning","⏰ Check-in tomorrow",`Your check-in deadline is in less than 24 hours. Period goal: ${goalLabel}.`);
     }
   }
 
@@ -1588,8 +1664,22 @@ export default function App(){
   );
   if(!me)return <Setup user={authUser} onSave={handleSetup}/>;
 
-  const pct=Math.min(Math.round((me.progressThisWeek/me.goalValue)*100),100);
-  const left=Math.max(me.goalValue-me.progressThisWeek,0);
+  // ── Period goal: goalValue × weeks in current check-in period ──
+  // Falls back to goalValue if no active challenge is running.
+  function getPeriodWeeks(){
+    if(!admin.firstCheckIn||!admin.startDate)return 1;
+    const now2=new Date();
+    const startDate2=new Date(admin.startDate);
+    const endDate2=admin.endDate?new Date(admin.endDate):null;
+    if(now2<startDate2||(endDate2&&now2>endDate2))return 1;
+    const cadDays=cadenceDaysLocal(admin.frequency||"Weekly");
+    return Math.max(1,Math.round(cadDays/7));
+  }
+  const periodWeeks=getPeriodWeeks();
+  const periodGoal=me.goalValue*periodWeeks;
+  const periodActive=periodWeeks>1;
+  const pct=Math.min(Math.round((me.progressThisWeek/periodGoal)*100),100);
+  const left=Math.max(periodGoal-me.progressThisWeek,0);
   const missed=history.filter(h=>!h.met).length;
   const atRisk=missed>=admin.threshold-1;
   const triggered=missed>=admin.threshold;
@@ -1618,7 +1708,45 @@ export default function App(){
       <style>{G}</style>
       {showPrivacy&&<PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
       {showPwaPrompt&&<PwaPrompt onClose={()=>setShowPwaPrompt(false)}/>}
-      {showSettings&&<SettingsPanel me={me} uid={uid} db={db} onClose={()=>setShowSettings(false)} onAvatarChange={handleAvatarChange} onSignOut={()=>signOut(auth)} onOpenAdmin={()=>{setAdminDraft({...admin});setShowAdmin(true);}} onOpenPrivacy={()=>{setShowSettings(false);setShowPrivacy(true);}} onUpdateMe={handleUpdateMe}/>}
+      {showTour&&(()=>{
+        const TOUR_STEPS=[
+          {emoji:"📊",title:"Start with the Dashboard",body:"Check if your group has a challenge kicking off and when your next check-in is. This is also where you'll log your words or set your timer."},
+          {emoji:"👀",title:"Check Out the Group Tab",body:"See your competitors and what their goals are. You can also share your group link here to invite new members."},
+          {emoji:"⚙️",title:"Set Up Your Notifications",body:"Tap the gear icon in the top right corner to open Settings. From there you can set up a daily reminder to write, or a warning that your check-in is coming up."},
+          {emoji:"💬",title:"Say Hi in Chat",body:"Close Settings and head to the Chat tab to connect with your group. You can even send a poll to get everyone's opinions."},
+          {emoji:"📈",title:"Track Group Progress in Stats",body:"The Stats tab is where you'll see the whole group's progress at a glance."},
+          {emoji:"🎯",title:"Manage Your Goal in Stakes",body:"The Stakes tab is where you can change your goal — but only when the admin allows it."},
+          {emoji:"📅",title:"Review Your History",body:"The History tab keeps a record of how you do week to week, so you can see your progress over time."},
+        ];
+        const step=TOUR_STEPS[tourStep];
+        const isLast=tourStep===TOUR_STEPS.length-1;
+        return(
+          <div className="modal-bg" style={{zIndex:300}}>
+            <div className="card modal" style={{padding:28,textAlign:"center",maxWidth:380}}>
+              <div style={{fontSize:52,marginBottom:12}}>{step.emoji}</div>
+              <div style={{fontSize:11,color:"#ffffffaa",fontWeight:900,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Step {tourStep+1} of {TOUR_STEPS.length}</div>
+              <div style={{fontSize:20,fontWeight:900,color:LF.yellow,marginBottom:12,lineHeight:1.3}}>{step.title}</div>
+              <div style={{fontSize:15,color:"#ffffffcc",fontWeight:700,lineHeight:1.7,marginBottom:24}}>{step.body}</div>
+              <div style={{display:"flex",gap:8}}>
+                {isLast?(
+                  <button className="btn" style={{flex:1,fontSize:15}} onClick={()=>setShowTour(false)}>Now it's time to write! 🌈</button>
+                ):(
+                  <>
+                    <button className="btn" style={{flex:1,fontSize:15}} onClick={()=>setTourStep(s=>s+1)}>Next →</button>
+                    <button onClick={()=>setShowTour(false)} style={{flex:1,background:"#ffffff18",border:"2px solid #ffffff22",borderRadius:50,padding:11,fontFamily:"'Outfit',sans-serif",fontSize:14,color:"#ffffffaa",cursor:"pointer",fontWeight:700}}>Skip</button>
+                  </>
+                )}
+              </div>
+              <div style={{display:"flex",justifyContent:"center",gap:6,marginTop:18}}>
+                {TOUR_STEPS.map((_,i)=>(
+                  <div key={i} onClick={()=>setTourStep(i)} style={{width:i===tourStep?20:8,height:8,borderRadius:4,background:i===tourStep?LF.pink:"#ffffff33",cursor:"pointer",transition:"all 0.2s"}}/>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+      {showSettings&&<SettingsPanel me={me} uid={uid} db={db} onClose={()=>setShowSettings(false)} onAvatarChange={handleAvatarChange} onSignOut={()=>signOut(auth)} onOpenAdmin={()=>{setAdminDraft({...admin});setShowAdmin(true);}} onOpenPrivacy={()=>{setShowSettings(false);setShowPrivacy(true);}} onUpdateMe={handleUpdateMe} onStartTour={()=>{setTourStep(0);setShowTour(true);}}/>}
       {showNotifFeed&&<NotifFeed notifications={inAppNotifs} onClose={()=>setShowNotifFeed(false)} onMarkAllRead={markAllNotifsRead}/>}
 
       {/* ── Charity Picker Modal ── */}
@@ -1776,9 +1904,20 @@ export default function App(){
               <span style={{position:"absolute",top:2,right:2,width:10,height:10,background:LF.pink,borderRadius:"50%",border:"2px solid #1A0044"}}/>
             )}
           </button>
-          {/* Avatar / settings icon */}
-          <button onClick={()=>setShowSettings(true)} style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,border:"none",borderRadius:50,width:38,height:38,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:900,flexShrink:0,boxShadow:`0 2px 12px ${LF.pink}44`}}>
-            {me.avatar}
+          {/* Gear / settings icon */}
+          <button onClick={()=>setShowSettings(true)} style={{background:"none",border:"none",borderRadius:50,width:38,height:38,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,padding:0}}>
+            <svg width="28" height="28" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="gearRainbow" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%"   stopColor="#FF2D9B"/>
+                  <stop offset="30%"  stopColor="#FF7A00"/>
+                  <stop offset="55%"  stopColor="#FFC200"/>
+                  <stop offset="78%"  stopColor="#E040FB"/>
+                  <stop offset="100%" stopColor="#C77DFF"/>
+                </linearGradient>
+              </defs>
+              <path fill="url(#gearRainbow)" d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.73-.07-1.08l2.32-1.81c.21-.16.27-.46.13-.7l-2.2-3.81c-.14-.24-.42-.32-.66-.24l-2.74 1.1c-.57-.44-1.18-.81-1.86-1.08l-.42-2.92A.54.54 0 0 0 14 2h-4a.54.54 0 0 0-.54.46L9.04 5.38C8.36 5.65 7.75 6 7.18 6.46L4.44 5.36c-.24-.09-.52 0-.66.24L1.58 9.41c-.14.24-.08.54.13.7l2.32 1.81C4.03 12.27 4 12.63 4 13s.03.73.07 1.08L1.75 15.9c-.21.16-.27.46-.13.7l2.2 3.81c.14.24.42.32.66.24l2.74-1.1c.57.44 1.18.81 1.86 1.08l.42 2.92c.05.26.27.45.54.45h4c.27 0 .49-.19.53-.46l.42-2.92c.68-.27 1.29-.64 1.86-1.08l2.74 1.1c.24.09.52 0 .66-.24l2.2-3.81c.14-.24.08-.54-.13-.7l-2.32-1.81z"/>
+            </svg>
           </button>
         </div>
       </div>
@@ -1935,7 +2074,7 @@ export default function App(){
               </div>
               <div style={{flex:1}}>
                 <div style={{fontSize:20,color:LF.white,fontWeight:800,marginBottom:2}}>{fmtProg(me)}</div>
-                <div style={{fontSize:14,color:LF.hotpink,fontWeight:800,marginBottom:2}}>of {fmtGoal(me)}</div>
+                <div style={{fontSize:14,color:LF.hotpink,fontWeight:800,marginBottom:2}}>of {me.goalType==="words"?`${periodGoal.toLocaleString()} words`:(()=>{const h=Math.floor(periodGoal/60),m=periodGoal%60;return h>0?`${h}h`+(m>0?` ${m}m`:""):m+"m";})()}{periodActive?` (${periodWeeks}-wk period)`:""}</div>
                 <div style={{fontSize:14,color:pct>=100?LF.lime:LF.yellow,fontWeight:800}}>{pct>=100?"🌟 GOAL CRUSHED! 🌟":fmtLeft()}</div>
                 {history.filter(h=>h.met).length>0&&<div style={{fontSize:14,marginTop:4,color:LF.yellow,fontWeight:800}}>{"🔥".repeat(Math.min(history.filter(h=>h.met).length,3))} {history.filter(h=>h.met).length}wk streak!</div>}
               </div>
