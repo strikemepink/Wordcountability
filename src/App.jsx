@@ -1184,6 +1184,15 @@ export default function App(){
       setReady(true);
       initOneSignal();
       writeUserIndex(uid,d);
+      // ── Fallback: ensure member doc exists in group ──
+      // If user has a groupId but pub() never ran (e.g. they completed Setup but
+      // never reopened the app), their member doc won't exist. Check and write it.
+      if(d.groupId&&d.name){
+        try{
+          const memberVal=await fsGet(memberDocRef(d.groupId,d.name));
+          if(!memberVal){await pub(d,uid);}
+        }catch{await pub(d,uid).catch(()=>{});}
+      }
       // Load in-app notifications
       const notifVal=await fsGet(notifDocRef(uid));
       if(notifVal)setInAppNotifs(JSON.parse(notifVal));
