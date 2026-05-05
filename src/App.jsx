@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
+  getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged,
 } from "firebase/auth";
 import {
   getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs,
@@ -320,15 +320,35 @@ function SignIn({onPrivacy}){
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
 
+  const isStandalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+
+  useEffect(()=>{
+    if(!isStandalone)return;
+    setLoading(true);
+    getRedirectResult(auth).then(result=>{
+      if(!result)setLoading(false);
+      // if result exists, onAuthStateChanged will fire and handle the rest
+    }).catch(e=>{
+      setError("Sign-in failed. Please try again.");
+      console.error(e);
+      setLoading(false);
+    });
+  },[]);
+
   async function handleGoogle(){
     setLoading(true); setError("");
     try{
       const provider=new GoogleAuthProvider();
-      await signInWithPopup(auth,provider);
+      if(isStandalone){
+        await signInWithRedirect(auth,provider);
+      }else{
+        await signInWithPopup(auth,provider);
+      }
     }catch(e){
       setError("Sign-in failed. Please try again.");
       console.error(e);
-    }finally{setLoading(false);}
+      setLoading(false);
+    }
   }
 
   return(
