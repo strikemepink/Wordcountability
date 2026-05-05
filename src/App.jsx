@@ -1230,8 +1230,8 @@ export default function App(){
     setMe(d); setGoalInput(String(goalValue)); setGoalTypeEdit(goalType); setReady(true);
     await fsSet(userDocRef(uid),JSON.stringify(d));
     writeUserIndex(uid,d).catch(()=>{});
+    await fsSet(memberUidDocRef(groupId,uid),JSON.stringify({uid,joinedAt:Date.now()}));
     pub(d).catch(()=>{});
-    fsSet(memberUidDocRef(groupId,uid),JSON.stringify({uid,joinedAt:Date.now()})).catch(()=>{});
     loadMembers(groupId,name); loadChat(groupId); loadPolls(groupId); loadAdminData(groupId); loadLedger(groupId);
     if(!localStorage.getItem("pwaPromptShown")){setShowPwaPrompt(true);localStorage.setItem("pwaPromptShown","1");}
     if(!localStorage.getItem("appTourShown")){setShowTour(true);setTourStep(0);localStorage.setItem("appTourShown","1");}
