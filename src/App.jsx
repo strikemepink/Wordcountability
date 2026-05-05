@@ -320,10 +320,14 @@ function SignIn({onPrivacy}){
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
 
+  const isStandalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+
   useEffect(()=>{
+    if(!isStandalone)return;
     setLoading(true);
     getRedirectResult(auth).then(result=>{
       if(!result)setLoading(false);
+      // if result exists, onAuthStateChanged will fire and handle the rest
     }).catch(e=>{
       setError("Sign-in failed. Please try again.");
       console.error(e);
@@ -335,7 +339,11 @@ function SignIn({onPrivacy}){
     setLoading(true); setError("");
     try{
       const provider=new GoogleAuthProvider();
-      await signInWithRedirect(auth,provider);
+      if(isStandalone){
+        await signInWithRedirect(auth,provider);
+      }else{
+        await signInWithPopup(auth,provider);
+      }
     }catch(e){
       setError("Sign-in failed. Please try again.");
       console.error(e);
