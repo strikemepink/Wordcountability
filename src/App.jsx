@@ -30,6 +30,7 @@ const ledgerDocRef  = (gid)       => doc(db, "groups", gid, "data", "ledger");
 const membersColRef = (gid)       => collection(db, "groups", gid, "members");
 const memberUidDocRef    = (gid, uid) => doc(db, "groups", gid, "memberUids", uid);
 const notifDocRef        = (uid)       => doc(db, "users",  uid, "data", "notifications");
+const checkInAcksDocRef  = (uid)       => doc(db, "users",  uid, "data", "checkInAcks");
 const userIndexDocRef    = (uid)       => doc(db, "_index", "users", "members", uid);
 
 async function fsGet(ref) {
@@ -1103,6 +1104,8 @@ export default function App(){
   const [showAdmin,setShowAdmin]=useState(false);
   const [adminDraft,setAdminDraft]=useState(DEFAULT_ADMIN);
   const [ledger,setLedger]=useState({charityTotals:{},payoutTotals:{},prizeTotals:{},totalWords:0,totalMinutes:0,entries:[]});
+  // check-in results pop-up — set after a deadline passes, cleared on acknowledge
+  const [checkInPopup,setCheckInPopup]=useState(null);
 
   useEffect(()=>{
     if(authUser===null){setReady(false);setMe(null);setHistory([]);setMembers([]);setMessages([]);setPolls([]);}
@@ -1178,6 +1181,47 @@ export default function App(){
         const histVal=await fsGet(historyDocRef(uid));
         setHistory(histVal?JSON.parse(histVal):[]);
       }
+      // ── Check-in pop-up: show personalised result if a deadline passed since last ack ──
+      // We snapshot progress BEFORE any reset so we always have the right number.
+      // Acknowledgements are stored in Firebase so they survive reinstalls and sync across devices.
+      try{
+        if(adminData?.firstCheckIn&&adminData?.startDate){
+          const cadDays2=adminData.frequency==="Daily"?1:adminData.frequency==="Weekly"?7:adminData.frequency==="Bi-Weekly"?14:30;
+          const cadMs2=cadDays2*86400000;
+          const firstCI2=new Date(adminData.firstCheckIn).getTime();
+          const endMs2=adminData.endDate?new Date(adminData.endDate).getTime():Infinity;
+          const nowMs2=Date.now();
+          // Build list of all deadlines that have already passed
+          const pastDeadlines=[];
+          let cur2=firstCI2;
+          while(cur2<=endMs2&&cur2<=nowMs2){pastDeadlines.push(cur2);cur2+=cadMs2;}
+          if(pastDeadlines.length>0){
+            const latestDeadline=pastDeadlines[pastDeadlines.length-1];
+            // Load acknowledgements from Firebase
+            const acksVal=await fsGet(checkInAcksDocRef(uid));
+            const acks=acksVal?JSON.parse(acksVal):{acknowledgedDeadlines:[]};
+            const alreadyAcked=(acks.acknowledgedDeadlines||[]).includes(latestDeadline);
+            if(!alreadyAcked){
+              // Calculate period number and remaining check-ins
+              const periodNum2=pastDeadlines.length;
+              const totalPeriods2=adminData.endDate?Math.round((new Date(adminData.endDate).getTime()-new Date(adminData.startDate).getTime())/cadMs2):null;
+              const remainingCI=totalPeriods2?Math.max(0,totalPeriods2-periodNum2):null;
+              // Snapshot progress before any reset
+              const periodWeeks2=Math.max(1,Math.round(cadDays2/7));
+              const periodGoal2=d.goalValue*periodWeeks2;
+              setCheckInPopup({
+                deadlineMs:latestDeadline,
+                periodNum:periodNum2,
+                totalPeriods:totalPeriods2,
+                remainingCheckIns:remainingCI,
+                progress:d.progressThisWeek,
+                goal:periodGoal2,
+                goalType:d.goalType,
+              });
+            }
+          }
+        }
+      }catch(e){console.warn("checkInPopup",e);}
       setMe(d); setGoalInput(String(d.goalValue)); setGoalTypeEdit(d.goalType);
       setReady(true);
       initOneSignal();
@@ -1602,6 +1646,20 @@ export default function App(){
     await fsSet(notifDocRef(uid),JSON.stringify(updated));
   }
 
+  // Dismisses the check-in pop-up and saves the deadline timestamp to Firebase
+  // so it never shows again for this check-in, even after reinstall.
+  async function acknowledgeCheckIn(deadlineMs){
+    setCheckInPopup(null);
+    try{
+      const acksVal=await fsGet(checkInAcksDocRef(uid));
+      const acks=acksVal?JSON.parse(acksVal):{acknowledgedDeadlines:[]};
+      if(!(acks.acknowledgedDeadlines||[]).includes(deadlineMs)){
+        acks.acknowledgedDeadlines=[...(acks.acknowledgedDeadlines||[]),deadlineMs];
+        await fsSet(checkInAcksDocRef(uid),JSON.stringify(acks));
+      }
+    }catch(e){console.warn("acknowledgeCheckIn",e);}
+  }
+
   // ── Notification event triggers ──
   // Called when the current user hits 100% — notifies themselves (group push handled server-side later)
   async function maybeNotifyGoalHit(newProgress){
@@ -1739,6 +1797,56 @@ export default function App(){
       <style>{G}</style>
       {showPrivacy&&<PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
       {showPwaPrompt&&<PwaPrompt onClose={()=>setShowPwaPrompt(false)}/>}
+
+      {/* ── Check-in Results Pop-up ── */}
+      {checkInPopup&&(()=>{
+        const {deadlineMs,periodNum,totalPeriods,remainingCheckIns,progress,goal,goalType}=checkInPopup;
+        const ordinals=["1st","2nd","3rd","4th","5th","6th","7th","8th","9th","10th"];
+        const ord=ordinals[periodNum-1]||`${periodNum}th`;
+        const metGoal=progress>=goal;
+        const pct=goal>0?Math.round((progress/goal)*100):0;
+        const fmtProgress=goalType==="words"?`${progress.toLocaleString()} words`:(()=>{const h=Math.floor(progress/60),m=progress%60;return h>0?`${h}h${m>0?` ${m}m`:""}`:m+"m";})();
+        const fmtGoal=goalType==="words"?`${goal.toLocaleString()} words`:(()=>{const h=Math.floor(goal/60),m=goal%60;return h>0?`${h}h${m>0?` ${m}m`:""}`:m+"m";})();
+
+        let emoji,heading,message;
+        if(metGoal){
+          emoji="🏆";
+          heading=`We reached the ${ord} check-in and you hit your goal! 🎉🥳✨`;
+          message="You are a champion my friend. Go to the Group tab to see how your team did and your admin will message about the payout.";
+        } else if(pct===0){
+          emoji="✏️";
+          heading=`We reached the ${ord} check-in.`;
+          message=`You didn't get any writing in this period, or you didn't log — either way, it's not too late${remainingCheckIns!==null&&remainingCheckIns>0?`, there are still ${remainingCheckIns} more check-in${remainingCheckIns===1?"":"s"}`:""}.  Let's write!`;
+        } else if(pct>75){
+          emoji="💪";
+          heading=`We reached the ${ord} check-in and you missed your goal.`;
+          message="You were so close, I know you'll hit your goal for the next check-in. You can do it. Go to the Group tab to see how your team did and your admin will message about the next check-in.";
+        } else {
+          emoji="🌱";
+          heading=`We reached the ${ord} check-in and you missed your goal.`;
+          message="You still made progress and that's worth a round of applause. Take a beat, think about what you can do to meet your goal for the next check-in. You can do this! Go to the Group tab to see how your team did and your admin will message about the next check-in.";
+        }
+
+        return(
+          <div className="modal-bg" style={{zIndex:300}}>
+            <div className="card modal" style={{padding:28,textAlign:"center",maxWidth:380}}>
+              <div style={{fontSize:52,marginBottom:12}}>{emoji}</div>
+              {totalPeriods&&<div style={{fontSize:11,color:"#ffffffaa",fontWeight:900,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Check-in {periodNum} of {totalPeriods}</div>}
+              <div style={{fontSize:18,fontWeight:900,color:metGoal?LF.lime:LF.yellow,marginBottom:12,lineHeight:1.4}}>{heading}</div>
+              <div style={{fontSize:15,color:"#ffffffcc",fontWeight:700,lineHeight:1.7,marginBottom:8}}>{message}</div>
+              {!metGoal&&progress>0&&(
+                <div style={{fontSize:13,color:"#ffffffaa",fontWeight:700,marginBottom:16}}>
+                  You logged {fmtProgress} of your {fmtGoal} goal ({pct}%).
+                </div>
+              )}
+              <button className="btn" style={{width:"100%",fontSize:15,marginTop:8}} onClick={()=>acknowledgeCheckIn(deadlineMs)}>
+                {metGoal?"Let's celebrate! 🎉":"Got it! 💪"}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {showTour&&(()=>{
         const TOUR_STEPS=[
           {emoji:"📊",title:"Start with the Dashboard",body:"Check if your group has a challenge kicking off and when your next check-in is. This is also where you'll log your words or set your timer."},
