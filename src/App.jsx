@@ -1140,85 +1140,116 @@ export default function App(){
       if(d.groupId){
         try{const av=await fsGet(adminDocRef(d.groupId));if(av)adminData=JSON.parse(av);}catch{}
       }
-      // Determine if we're inside an active check-in period
-      function isInActivePeriod(ad){
-        if(!ad?.firstCheckIn||!ad?.startDate)return false;
-        const now2=new Date();
-        const start=new Date(ad.startDate);
-        const end=ad.endDate?new Date(ad.endDate):null;
-        if(now2<start||(end&&now2>end))return false;
-        // Find the next check-in deadline
-        const cadDays=ad.frequency==="Daily"?1:ad.frequency==="Weekly"?7:ad.frequency==="Bi-Weekly"?14:30;
-        let cursor=new Date(ad.firstCheckIn);
-        if(cursor>now2){return true;} // firstCheckIn still in future — period not yet due
-        while(cursor<=now2)cursor.setDate(cursor.getDate()+cadDays);
-        // cursor is next deadline — period start is one cadence back
-        const periodStart=new Date(cursor);
-        periodStart.setDate(periodStart.getDate()-cadDays);
-        // We're in an active period if now is between periodStart and cursor
-        return now2>=periodStart&&now2<cursor;
+      // ── Reset logic ──
+      // When a challenge is active: reset on check-in deadlines only, never on Monday.
+      // When no challenge: fall back to Monday-based weekly reset.
+      //
+      // lastResetWeek stores either:
+      //   - a deadline timestamp (number) when a challenge has been active, or
+      //   - a Monday date string "YYYY-MM-DD" for the legacy weekly reset
+      // We detect which by checking typeof.
+
+      // Snapshot progress BEFORE any reset — used by the check-in pop-up below
+      const progressSnapshot=d.progressThisWeek||0;
+
+      const cadDaysR=adminData?.frequency==="Daily"?1:adminData?.frequency==="Weekly"?7:adminData?.frequency==="Bi-Weekly"?14:30;
+      const cadMsR=cadDaysR*86400000;
+      const nowMsR=Date.now();
+
+      // Build list of all past deadlines if challenge is configured
+      function getPastDeadlines(ad){
+        if(!ad?.firstCheckIn||!ad?.startDate)return[];
+        const start=new Date(ad.startDate).getTime();
+        const end=ad.endDate?new Date(ad.endDate).getTime():Infinity;
+        if(nowMsR<start)return[]; // challenge hasn't started yet
+        const cad=ad.frequency==="Daily"?1:ad.frequency==="Weekly"?7:ad.frequency==="Bi-Weekly"?14:30;
+        const cadMs=cad*86400000;
+        const firstCI=new Date(ad.firstCheckIn).getTime();
+        const deadlines=[];
+        let cur=firstCI;
+        while(cur<=end&&cur<=nowMsR){deadlines.push(cur);cur+=cadMs;}
+        return deadlines;
       }
-      if(d.lastResetWeek!==wk){
-        const histVal=await fsGet(historyDocRef(uid));
-        const hist=histVal?JSON.parse(histVal):[];
-        // Always write a weekly history entry
-        const met=d.progressThisWeek>=(d.goalValue*(adminData?.frequency==="Bi-Weekly"?2:1));
-        const upd=[{week:d.lastResetWeek,progress:d.progressThisWeek,goal:d.goalValue,goalType:d.goalType,met},...hist].slice(0,40);
-        await fsSet(historyDocRef(uid),JSON.stringify(upd));
-        setHistory(upd);
-        // Only zero out progress if NOT inside an active check-in period
-        if(!isInActivePeriod(adminData)){
+
+      const pastDeadlines=getPastDeadlines(adminData);
+      const challengeActive=pastDeadlines.length>0||
+        (adminData?.startDate&&nowMsR>=new Date(adminData.startDate).getTime()&&
+         adminData?.firstCheckIn&&nowMsR<new Date(adminData.firstCheckIn).getTime());
+
+      if(challengeActive&&pastDeadlines.length>0){
+        // ── Challenge mode: deadline-based reset ──────────────────
+        const latestDeadline=pastDeadlines[pastDeadlines.length-1];
+        const lastReset=typeof d.lastResetWeek==="number"?d.lastResetWeek:0;
+        if(latestDeadline>lastReset){
+          // A new deadline has passed since last reset — write history and reset progress
+          const histVal=await fsGet(historyDocRef(uid));
+          const hist=histVal?JSON.parse(histVal):[];
+          const periodWeeksR=Math.max(1,Math.round(cadDaysR/7));
+          const periodGoalR=d.goalValue*periodWeeksR;
+          const met=d.progressThisWeek>=periodGoalR;
+          const deadlineDate=new Date(latestDeadline);
+          const periodNum=pastDeadlines.length;
+          const label=`Check-in ${periodNum} — ${deadlineDate.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}`;
+          const upd=[{week:label,progress:d.progressThisWeek,goal:periodGoalR,goalType:d.goalType,met,isCheckIn:true,deadlineMs:latestDeadline},...hist].slice(0,40);
+          await fsSet(historyDocRef(uid),JSON.stringify(upd));
+          setHistory(upd);
+          d={...d,progressThisWeek:0,dailyChecks:[false,false,false,false,false,false,false],lastResetWeek:latestDeadline};
+          await fsSet(userDocRef(uid),JSON.stringify(d));
+          await pub(d,uid);
+        } else {
+          // Already reset for this deadline — just load history
+          const histVal=await fsGet(historyDocRef(uid));
+          setHistory(histVal?JSON.parse(histVal):[]);
+        }
+      } else if(!challengeActive){
+        // ── No active challenge: Monday-based weekly reset ────────
+        // lastResetWeek may be a timestamp (number) or a date string — normalise to string for comparison
+        const lastResetStr=typeof d.lastResetWeek==="number"
+          ?new Date(d.lastResetWeek).toISOString().slice(0,10)
+          :(d.lastResetWeek||"");
+        if(lastResetStr!==wk){
+          const histVal=await fsGet(historyDocRef(uid));
+          const hist=histVal?JSON.parse(histVal):[];
+          const met=d.progressThisWeek>=d.goalValue;
+          const upd=[{week:d.lastResetWeek||wk,progress:d.progressThisWeek,goal:d.goalValue,goalType:d.goalType,met},...hist].slice(0,40);
+          await fsSet(historyDocRef(uid),JSON.stringify(upd));
+          setHistory(upd);
           d={...d,progressThisWeek:0,dailyChecks:[false,false,false,false,false,false,false],lastResetWeek:wk};
           await fsSet(userDocRef(uid),JSON.stringify(d));
           await pub(d,uid);
         } else {
-          // Just update the reset week marker so we don't re-run next load, but keep progress
-          d={...d,lastResetWeek:wk};
-          await fsSet(userDocRef(uid),JSON.stringify(d));
-          await pub(d,uid);
+          const histVal=await fsGet(historyDocRef(uid));
+          setHistory(histVal?JSON.parse(histVal):[]);
         }
       } else {
+        // Challenge configured but no deadlines passed yet — just load history, no reset
         const histVal=await fsGet(historyDocRef(uid));
         setHistory(histVal?JSON.parse(histVal):[]);
       }
       // ── Check-in pop-up: show personalised result if a deadline passed since last ack ──
-      // We snapshot progress BEFORE any reset so we always have the right number.
-      // Acknowledgements are stored in Firebase so they survive reinstalls and sync across devices.
+      // Uses pastDeadlines already computed above, and progressSnapshot taken before any reset.
+      // Acknowledgements stored in Firebase survive reinstalls and sync across devices.
       try{
-        if(adminData?.firstCheckIn&&adminData?.startDate){
-          const cadDays2=adminData.frequency==="Daily"?1:adminData.frequency==="Weekly"?7:adminData.frequency==="Bi-Weekly"?14:30;
-          const cadMs2=cadDays2*86400000;
-          const firstCI2=new Date(adminData.firstCheckIn).getTime();
-          const endMs2=adminData.endDate?new Date(adminData.endDate).getTime():Infinity;
-          const nowMs2=Date.now();
-          // Build list of all deadlines that have already passed
-          const pastDeadlines=[];
-          let cur2=firstCI2;
-          while(cur2<=endMs2&&cur2<=nowMs2){pastDeadlines.push(cur2);cur2+=cadMs2;}
-          if(pastDeadlines.length>0){
-            const latestDeadline=pastDeadlines[pastDeadlines.length-1];
-            // Load acknowledgements from Firebase
-            const acksVal=await fsGet(checkInAcksDocRef(uid));
-            const acks=acksVal?JSON.parse(acksVal):{acknowledgedDeadlines:[]};
-            const alreadyAcked=(acks.acknowledgedDeadlines||[]).includes(latestDeadline);
-            if(!alreadyAcked){
-              // Calculate period number and remaining check-ins
-              const periodNum2=pastDeadlines.length;
-              const totalPeriods2=adminData.endDate?Math.round((new Date(adminData.endDate).getTime()-new Date(adminData.startDate).getTime())/cadMs2):null;
-              const remainingCI=totalPeriods2?Math.max(0,totalPeriods2-periodNum2):null;
-              // Snapshot progress before any reset
-              const periodWeeks2=Math.max(1,Math.round(cadDays2/7));
-              const periodGoal2=d.goalValue*periodWeeks2;
-              setCheckInPopup({
-                deadlineMs:latestDeadline,
-                periodNum:periodNum2,
-                totalPeriods:totalPeriods2,
-                remainingCheckIns:remainingCI,
-                progress:d.progressThisWeek,
-                goal:periodGoal2,
-                goalType:d.goalType,
-              });
-            }
+        if(pastDeadlines.length>0){
+          const latestDeadline=pastDeadlines[pastDeadlines.length-1];
+          const acksVal=await fsGet(checkInAcksDocRef(uid));
+          const acks=acksVal?JSON.parse(acksVal):{acknowledgedDeadlines:[]};
+          const alreadyAcked=(acks.acknowledgedDeadlines||[]).includes(latestDeadline);
+          if(!alreadyAcked){
+            const periodNum2=pastDeadlines.length;
+            const totalPeriods2=adminData.endDate?Math.round((new Date(adminData.endDate).getTime()-new Date(adminData.startDate).getTime())/(cadDaysR*86400000)):null;
+            const remainingCI=totalPeriods2?Math.max(0,totalPeriods2-periodNum2):null;
+            const periodWeeks2=Math.max(1,Math.round(cadDaysR/7));
+            const periodGoal2=d.goalValue*periodWeeks2;
+            setCheckInPopup({
+              deadlineMs:latestDeadline,
+              periodNum:periodNum2,
+              totalPeriods:totalPeriods2,
+              remainingCheckIns:remainingCI,
+              progress:progressSnapshot, // snapshotted before reset
+              goal:periodGoal2,
+              goalType:d.goalType,
+            });
           }
         }
       }catch(e){console.warn("checkInPopup",e);}
