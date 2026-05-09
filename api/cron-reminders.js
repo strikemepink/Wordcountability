@@ -2,6 +2,9 @@
 // Runs hourly via external cron (cron-job.org). Reads _index/users/members,
 // finds users whose writing reminder or progress check-in is due in THEIR local timezone,
 // and sends a push via /api/notify.
+// Also handles:
+//   - Missed check-in: fires in the hour after a check-in deadline if the user missed their goal
+//   - Challenge starting soon: fires when the challenge start is 23-25h away
 
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${process.env.VITE_FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
@@ -166,6 +169,58 @@ function buildProgressMessage(user, admin, nowUtc) {
   };
 }
 
+// ── Missed check-in helpers ───────────────────────────────────────
+// Returns the deadline timestamp (ms) if one passed within the last hour, or null.
+function deadlinePassedThisHour(admin, nowMs) {
+  if (!admin?.firstCheckIn) return null;
+  const cad = cadenceDays(admin.frequency || "Weekly");
+  const cadMs = cad * 86400000;
+  const firstCI = new Date(admin.firstCheckIn).getTime();
+  const endMs = admin.endDate ? new Date(admin.endDate).getTime() : Infinity;
+  const hourAgo = nowMs - 3600000;
+  let cursor = firstCI;
+  while (cursor <= endMs && cursor <= nowMs + cadMs) {
+    if (cursor > hourAgo && cursor <= nowMs) return cursor;
+    cursor += cadMs;
+  }
+  return null;
+}
+
+function ordinal(n) {
+  if (n === 1) return "1st";
+  if (n === 2) return "2nd";
+  if (n === 3) return "3rd";
+  return `${n}th`;
+}
+
+function checkInNumber(admin, deadlineMs) {
+  if (!admin?.firstCheckIn) return 1;
+  const cad = cadenceDays(admin.frequency || "Weekly");
+  const cadMs = cad * 86400000;
+  const firstCI = new Date(admin.firstCheckIn).getTime();
+  return Math.round((deadlineMs - firstCI) / cadMs) + 1;
+}
+
+function remainingCheckIns(admin, deadlineMs) {
+  if (!admin?.firstCheckIn || !admin?.endDate) return null;
+  const cad = cadenceDays(admin.frequency || "Weekly");
+  const cadMs = cad * 86400000;
+  const endMs = new Date(admin.endDate).getTime();
+  let count = 0;
+  let cursor = deadlineMs + cadMs;
+  while (cursor <= endMs) { count++; cursor += cadMs; }
+  return count;
+}
+
+// ── Challenge starting soon helper ───────────────────────────────
+// Returns true if challenge starts in 23-25h (handles ±1h cron jitter).
+function challengeStartsIn24h(admin, nowMs) {
+  if (!admin?.startDate) return false;
+  const startMs = new Date(admin.startDate).getTime();
+  const msUntil = startMs - nowMs;
+  return msUntil > 23 * 3600000 && msUntil <= 25 * 3600000;
+}
+
 module.exports = async function handler(req, res) {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && req.headers["x-cron-secret"] !== cronSecret) {
@@ -173,14 +228,22 @@ module.exports = async function handler(req, res) {
   }
 
   const nowUtc = new Date();
+  const nowMs = nowUtc.getTime();
   let sent = 0;
   let checked = 0;
 
   // Cache admin data per group to avoid redundant Firestore reads
   const adminCache = {};
+  async function getAdminCached(groupId) {
+    if (!groupId) return null;
+    if (adminCache[groupId] !== undefined) return adminCache[groupId];
+    adminCache[groupId] = await getAdminData(groupId);
+    return adminCache[groupId];
+  }
 
   try {
     const docs = await firestoreList("_index/users/members");
+    const host = `https://${req.headers.host}`;
 
     for (const doc of docs) {
       try {
@@ -189,13 +252,12 @@ module.exports = async function handler(req, res) {
         const user = JSON.parse(valueField);
         checked++;
 
-        const host = `https://${req.headers.host}`;
+        const prefs = user.notifPrefs || {};
         const sendingReminder = shouldSendReminder(user, nowUtc);
         const sendingProgress = shouldSendProgressNotif(user, nowUtc);
+        const admin = user.groupId ? await getAdminCached(user.groupId) : null;
 
-        if (!sendingReminder && !sendingProgress) continue;
-
-        // Writing Reminder
+        // ── 1. Writing reminder ──────────────────────────────────
         if (sendingReminder) {
           const msg = MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
           await fetch(`${host}/api/notify`, {
@@ -211,12 +273,8 @@ module.exports = async function handler(req, res) {
           sent++;
         }
 
-        // Progress Check-in
+        // ── 2. Progress check-in ─────────────────────────────────
         if (sendingProgress && user.groupId) {
-          if (!adminCache[user.groupId]) {
-            adminCache[user.groupId] = await getAdminData(user.groupId);
-          }
-          const admin = adminCache[user.groupId];
           const progressMsg = buildProgressMessage(user, admin, nowUtc);
           if (progressMsg) {
             await fetch(`${host}/api/notify`, {
@@ -232,6 +290,76 @@ module.exports = async function handler(req, res) {
             sent++;
           }
         }
+
+        // ── 3. Missed check-in ───────────────────────────────────
+        // Fires in the hour immediately after a check-in deadline passes,
+        // but only if the user actually missed their goal.
+        if (prefs.missedCheckIn && user.oneSignalPlayerId && admin) {
+          const deadline = deadlinePassedThisHour(admin, nowMs);
+          if (deadline) {
+            const cad = cadenceDays(admin.frequency || "Weekly");
+            const periodWeeks = Math.max(1, Math.round(cad / 7));
+            const periodGoal = (user.goalValue || 0) * periodWeeks;
+            const progress = user.progressThisWeek || 0;
+            const metGoal = progress >= periodGoal;
+
+            if (!metGoal) {
+              const num = checkInNumber(admin, deadline);
+              const remaining = remainingCheckIns(admin, deadline);
+              const pct = periodGoal > 0 ? Math.round((progress / periodGoal) * 100) : 0;
+
+              let body;
+              if (pct === 0) {
+                body = remaining !== null && remaining > 0
+                  ? `You didn't log any writing this period — it's not too late, there are still ${remaining} more check-ins. Let's write!`
+                  : `You didn't log any writing this period. Open the app and keep going!`;
+              } else if (pct > 75) {
+                body = `You were so close on check-in ${ordinal(num)}! I know you'll hit your goal next time. You can do it.`;
+              } else {
+                body = `You still made progress this period and that's worth a round of applause. Think about what you can do to hit your goal next check-in. You can do this!`;
+              }
+
+              await fetch(`${host}/api/notify`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  playerId: user.oneSignalPlayerId,
+                  title: "💔 Check-in missed",
+                  body,
+                  type: "missedCheckIn",
+                }),
+              });
+              sent++;
+            }
+          }
+        }
+
+        // ── 4. Challenge starting soon ───────────────────────────
+        // Fires once when the challenge start is 23-25h away.
+        if (prefs.challengeStarting && user.oneSignalPlayerId && admin) {
+          if (challengeStartsIn24h(admin, nowMs)) {
+            const goalLabel = user.goalType === "words"
+              ? `${(user.goalValue || 0).toLocaleString()} words`
+              : (() => {
+                  const h = Math.floor((user.goalValue || 0) / 60);
+                  const m = (user.goalValue || 0) % 60;
+                  return h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ""}` : `${m}m`;
+                })();
+
+            await fetch(`${host}/api/notify`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                playerId: user.oneSignalPlayerId,
+                title: "🚀 Challenge starts tomorrow!",
+                body: `Your writing challenge kicks off in 24 hours. Your goal: ${goalLabel} per check-in. Get ready!`,
+                type: "challengeStarting",
+              }),
+            });
+            sent++;
+          }
+        }
+
       } catch (e) {
         console.warn("cron: error processing user", e);
       }

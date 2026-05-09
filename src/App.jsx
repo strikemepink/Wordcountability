@@ -1438,7 +1438,6 @@ export default function App(){
     const challengeStart=calcChallengeStart(adminDraft.firstCheckIn,adminDraft.frequency);
     const end=new Date(challengeStart); end.setDate(end.getDate()+(dur?dur.days:30));
     const upd={...adminDraft,startDate:challengeStart.toISOString(),endDate:end.toISOString()};
-    const wasCharity=admin.payoutMode==="charity";
     const nowCharity=upd.payoutMode==="charity";
     setAdmin(upd); setAdminDraft(upd); setShowAdmin(false);
     fsSet(adminDocRef(me.groupId),JSON.stringify(upd));
@@ -1446,6 +1445,14 @@ export default function App(){
     if(nowCharity&&(!me.charityName)&&!isLocked){
       setShowCharityModal(true);
     }
+    // Schedule push notifications for all group members based on the new challenge settings.
+    // This cancels any previously scheduled notifications and schedules fresh ones.
+    // Silent fail — notifications are a nice-to-have and should never block the admin save.
+    fetch("/api/schedule-notifications",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({groupId:me.groupId,admin:upd}),
+    }).catch(()=>{});
   }
 
   function toggleGoalLock(){
@@ -1499,6 +1506,23 @@ export default function App(){
     setPolls(upd); setPollQ(""); setPollOpts(["",""]); setPollDeadline(""); setShowPollForm(false);
     fsSet(pollsDocRef(me.groupId),JSON.stringify(upd));
     notifyNewPoll(poll.question);
+    // If a deadline was set, schedule a "poll closing soon" push 24h before it fires.
+    // Silent fail — should never block the poll submission.
+    if(poll.deadline&&me.groupId){
+      const deadlineMs=new Date(poll.deadline).getTime();
+      if(!isNaN(deadlineMs)&&deadlineMs>Date.now()){
+        fetch("/api/notify",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            groupId:me.groupId,
+            notifType:"pollClosingSoon",
+            pollQuestion:poll.question,
+            pollDeadlineMs:deadlineMs,
+          }),
+        }).catch(()=>{});
+      }
+    }
   }
   function deletePoll(pollId){
     if(!window.confirm("Delete this poll?"))return;
