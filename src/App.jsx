@@ -1104,6 +1104,8 @@ export default function App(){
   const [showAdmin,setShowAdmin]=useState(false);
   const [adminDraft,setAdminDraft]=useState(DEFAULT_ADMIN);
   const [ledger,setLedger]=useState({charityTotals:{},payoutTotals:{},prizeTotals:{},totalWords:0,totalMinutes:0,entries:[]});
+  // group check-in history for Stats tab — loaded on demand when Stats tab is opened
+  const [groupCheckIns,setGroupCheckIns]=useState(null); // null = not yet loaded
   // check-in results pop-up — set after a deadline passes, cleared on acknowledge
   const [checkInPopup,setCheckInPopup]=useState(null);
 
@@ -1128,6 +1130,14 @@ export default function App(){
       setShowCharityModal(true);
     }
   },[tab]);
+
+  // Load group check-in history the first time the user opens the Stats tab.
+  // groupCheckIns===null means not yet loaded; only fetch once per session.
+  useEffect(()=>{
+    if(tab==="Stats"&&groupCheckIns===null&&members.length>0&&uid){
+      loadGroupCheckIns(members,uid,history);
+    }
+  },[tab,members,uid]);
 
   async function loadAll(uid){
     try{
@@ -1279,7 +1289,8 @@ export default function App(){
       await fsSet(memberDocRef(d.groupId,d.name),JSON.stringify({
         name:d.name,avatar:d.avatar,goalValue:d.goalValue,goalType:d.goalType,
         progressThisWeek:d.progressThisWeek,isAdmin:d.isAdmin,charity:d.charity,
-        charityName:d.charityName||null,totalProgress:d.totalProgress||0,updatedAt:Date.now()
+        charityName:d.charityName||null,totalProgress:d.totalProgress||0,
+        uid:uidArg||uid,updatedAt:Date.now()
       }));
     }catch(e){console.warn("pub",e);}
   }
@@ -1296,6 +1307,63 @@ export default function App(){
   async function loadPolls(gid){try{const v=await fsGet(pollsDocRef(gid));setPolls(v?JSON.parse(v):[]);}catch{}}
   async function loadAdminData(gid){try{const v=await fsGet(adminDocRef(gid));if(v){const a=JSON.parse(v);setAdmin(a);setAdminDraft(a);}}catch{}}
   async function loadLedger(gid){try{const v=await fsGet(ledgerDocRef(gid));if(v)setLedger(JSON.parse(v));}catch{}}
+
+  // Loads each member's personal history from Firebase and assembles group check-in cards.
+  // Called once when the user first opens the Stats tab.
+  // Groups entries by deadlineMs so all members' results for the same check-in appear together.
+  async function loadGroupCheckIns(allMembers,myUid,myHistory){
+    try{
+      // Build a uid→member map from loaded members (those whose uid was written by pub())
+      // Include the current user using their known uid and already-loaded history
+      const byDeadline={}; // deadlineMs → { label, periodNum, entries:[] }
+
+      // Helper: fold one member's history into byDeadline
+      function foldHistory(memberMeta,hist){
+        (hist||[]).filter(h=>h.isCheckIn&&h.deadlineMs).forEach(h=>{
+          if(!byDeadline[h.deadlineMs]){
+            byDeadline[h.deadlineMs]={
+              deadlineMs:h.deadlineMs,
+              label:h.week||`Check-in`,
+              entries:[]
+            };
+          }
+          byDeadline[h.deadlineMs].entries.push({
+            name:memberMeta.name,
+            avatar:memberMeta.avatar,
+            goalType:h.goalType,
+            progress:h.progress,
+            goal:h.goal,
+            met:h.met,
+            isYou:memberMeta.uid===myUid
+          });
+        });
+      }
+
+      // Add current user's history (already in memory — no fetch needed)
+      const myMeta={name:null,avatar:null,uid:myUid}; // will be filled from members list
+      const meInList=allMembers.find(m=>m.isYou);
+      if(meInList){foldHistory({...meInList,uid:myUid},myHistory);}
+
+      // Fetch and fold each other member's history (only if they have a uid stored)
+      const others=allMembers.filter(m=>!m.isYou&&m.uid);
+      await Promise.all(others.map(async m=>{
+        try{
+          const v=await fsGet(historyDocRef(m.uid));
+          const hist=v?JSON.parse(v):[];
+          foldHistory(m,hist);
+        }catch{}
+      }));
+
+      // Sort check-ins most recent first; sort members within each by name for consistency
+      const sorted=Object.values(byDeadline)
+        .sort((a,b)=>b.deadlineMs-a.deadlineMs)
+        .map(ci=>({...ci,entries:[...ci.entries].sort((a,b)=>a.name.localeCompare(b.name))}));
+
+      setGroupCheckIns(sorted);
+    }catch{
+      setGroupCheckIns([]); // fail gracefully — show empty rather than spinner forever
+    }
+  }
 
   async function handleSetup({name,avatar,goalType,goalValue,groupId,isAdmin,charity,charityName}){
     const d={name,avatar,goalType,goalValue,groupId,isAdmin:false,charity:"",charityName:null,
@@ -2673,13 +2741,54 @@ export default function App(){
             ))}
           </div>
 
+          {/* ── Check-in History ── */}
+          {groupCheckIns===null&&tab==="Stats"&&(
+            <div className="card" style={{textAlign:"center",padding:20,color:"#ffffffcc",fontSize:13}}>Loading check-in history… 🦄</div>
+          )}
+          {groupCheckIns!==null&&groupCheckIns.length===0&&(
+            <div className="card" style={{textAlign:"center",padding:24}}>
+              <div style={{fontSize:28,marginBottom:8}}>🌈</div>
+              <div style={{fontSize:14,color:LF.pink,fontWeight:800}}>Check-in history appears after the first deadline.</div>
+            </div>
+          )}
+          {(groupCheckIns||[]).map((ci,ciIdx)=>(
+            <div key={ci.deadlineMs} className="card">
+              {/* Check-in header — label from the first entry (all share the same label) */}
+              <span className="lbl">🏁 {ci.label}</span>
+              {ci.entries.map((e,ei)=>{
+                // Format progress the same way as the rest of the app
+                const prog=e.goalType==="words"
+                  ?`${(e.progress||0).toLocaleString()}w`
+                  :`${Math.round((e.progress||0)/60)}h`;
+                const goal=e.goalType==="words"
+                  ?`${(e.goal||0).toLocaleString()}w`
+                  :`${Math.round((e.goal||0)/60)}h`;
+                return(
+                  <div key={e.name} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:ei<ci.entries.length-1?`1px solid ${LF.purple}22`:"none"}}>
+                    <div style={{fontSize:18}}>{e.avatar}</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:14,fontWeight:700,color:e.isYou?LF.yellow:LF.white}}>{e.name}{e.isYou?" (you)":""}</div>
+                      <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700}}>{prog} of {goal}</div>
+                    </div>
+                    <div style={{fontSize:18}}>{e.met?"✅":"❌"}</div>
+                  </div>
+                );
+              })}
+              {/* If no other members have their uid stored yet, show a note */}
+              {ci.entries.length===1&&(
+                <div style={{fontSize:12,color:"#ffffff66",marginTop:8,textAlign:"center"}}>Other members will appear after they next open the app.</div>
+              )}
+            </div>
+          ))}
+
           {(ledger.entries||[]).length>0&&(
             <div className="card">
               <span className="lbl">📋 Payment History</span>
               {[...(ledger.entries||[])].reverse().slice(0,20).map(e=>(
                 <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${LF.purple}22`}}>
                   <div>
-                    <div style={{fontSize:13,fontWeight:800,color:e.type==="charity"?LF.lime:LF.yellow,wordBreak:"break-word"}}>{e.type==="charity"?`💝 ${e.name} → ${e.charityName||e.charity}`:`🏆 Payout to ${e.name}`}</div>
+                    {/* Use charityName first — fall back to charity URL only if name is missing */}
+                    <div style={{fontSize:13,fontWeight:800,color:e.type==="charity"?LF.lime:LF.yellow}}>{e.type==="charity"?`💝 ${e.name} → ${e.charityName||"charity"}`:`🏆 Payout to ${e.name}`}</div>
                     <div style={{fontSize:11,color:"#ffffffcc"}}>{fmtDate(e.ts)} · by {e.recordedBy}</div>
                   </div>
                   <div style={{fontSize:13,color:e.type==="charity"?LF.lime:LF.yellow,fontWeight:800}}>{fmtMoney(e.amount)}</div>
