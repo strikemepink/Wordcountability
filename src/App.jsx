@@ -1118,6 +1118,20 @@ export default function App(){
     if(authUser?.uid){loadAll(authUser.uid);}
   },[authUser?.uid]);
   useEffect(()=>()=>clearInterval(timerRef.current),[]);
+
+  // When the screen wakes up (visibilitychange → visible), immediately recalculate the timer
+  // from the wall clock. This corrects for the browser throttling the interval while the
+  // screen was off — without this, the timer can appear frozen or only advance a few seconds.
+  useEffect(()=>{
+    function handleVisibility(){
+      if(document.visibilityState==="visible"&&timerStartedAt.current!==null){
+        const elapsed=timerBaseSecs.current+Math.floor((Date.now()-timerStartedAt.current)/1000);
+        setTimerSecs(elapsed);
+      }
+    }
+    document.addEventListener("visibilitychange",handleVisibility);
+    return()=>document.removeEventListener("visibilitychange",handleVisibility);
+  },[]);
   useEffect(()=>{const id=setInterval(()=>setTick(t=>t+1),60000);return()=>clearInterval(id);},[]);
   useEffect(()=>{if(chatEndRef.current)chatEndRef.current.scrollIntoView({behavior:"smooth"});},[messages]);
   useEffect(()=>{
