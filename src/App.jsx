@@ -1071,6 +1071,10 @@ export default function App(){
   const [timerSecs,setTimerSecs]=useState(0);
   const [timerSessions,setTimerSessions]=useState([]);
   const timerRef=useRef(null);
+  // Wall-clock refs for sleep-safe timer — stores when Start/Resume was pressed and how many
+  // seconds were already on the clock before the current run (for Resume support).
+  const timerStartedAt=useRef(null);
+  const timerBaseSecs=useRef(0);
   // past-day logging
   const [showPastDayModal,setShowPastDayModal]=useState(false);
   const [pastDaySelected,setPastDaySelected]=useState(null);
@@ -1418,8 +1422,23 @@ export default function App(){
     setSaving(true); await saveProgress(n); setLogInput(""); setSaving(false);
   }
 
-  function startTimer(){if(timerRunning)return;setTimerRunning(true);timerRef.current=setInterval(()=>setTimerSecs(s=>s+1),1000);}
-  function pauseTimer(){clearInterval(timerRef.current);setTimerRunning(false);}
+  function startTimer(){
+    if(timerRunning)return;
+    // Record wall-clock start time and how many secs were already on the clock (for Resume)
+    timerStartedAt.current=Date.now();
+    timerBaseSecs.current=timerSecs;
+    setTimerRunning(true);
+    timerRef.current=setInterval(()=>{
+      // Calculate true elapsed time from wall clock — survives phone sleep
+      const elapsed=timerBaseSecs.current+Math.floor((Date.now()-timerStartedAt.current)/1000);
+      setTimerSecs(elapsed);
+    },1000);
+  }
+  function pauseTimer(){
+    clearInterval(timerRef.current);
+    setTimerRunning(false);
+    // timerSecs is already correct from the interval — no extra calculation needed
+  }
   async function stopAndSave(){
     clearInterval(timerRef.current); setTimerRunning(false);
     if(timerSecs<60){setTimerSecs(0);return;}
