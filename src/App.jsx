@@ -1112,6 +1112,12 @@ export default function App(){
   const [groupCheckIns,setGroupCheckIns]=useState(null); // null = not yet loaded
   // check-in results pop-up — set after a deadline passes, cleared on acknowledge
   const [checkInPopup,setCheckInPopup]=useState(null);
+  // check-in payment recording (admin only, within 48h of a deadline)
+  // charityRows: [{name, amount}] — one row per charity
+  // payoutRows:  [{memberName, avatar, amount}] — one row per member, negative = paid out
+  const [paymentRows,setPaymentRows]=useState([]); // charity or payout rows depending on mode
+  const [paymentSaving,setPaymentSaving]=useState(false);
+  const [paymentSaved,setPaymentSaved]=useState(false); // true briefly after a successful save
 
   useEffect(()=>{
     if(authUser===null){setReady(false);setMe(null);setHistory([]);setMembers([]);setMessages([]);setPolls([]);}
@@ -1667,6 +1673,48 @@ export default function App(){
       else if(type==="prize")l.prizeTotals[name]=amount;
       await fsSet(ledgerDocRef(me.groupId),JSON.stringify(l)); setLedger(l);
     }catch{}
+  }
+
+  // Records check-in payments (charity or payout) within 48h of the most recent deadline.
+  // Each row gets a checkInMs field so Stats can attach it to the right check-in card.
+  async function recordCheckInPayments(checkInMs){
+    if(!me?.groupId||paymentSaving)return;
+    // Filter out blank/zero rows before saving
+    const validRows=paymentRows.filter(r=>{
+      const amt=parseFloat(r.amount);
+      return !isNaN(amt)&&amt!==0&&(r.name||r.memberName||"").trim();
+    });
+    if(validRows.length===0)return;
+    setPaymentSaving(true);
+    try{
+      const v=await fsGet(ledgerDocRef(me.groupId));
+      const l=v?JSON.parse(v):{charityTotals:{},payoutTotals:{},prizeTotals:{},totalWords:0,totalMinutes:0,entries:[]};
+      if(!l.prizeTotals)l.prizeTotals={};
+      const now=Date.now();
+      for(const row of validRows){
+        const amt=parseFloat(row.amount);
+        if(admin.payoutMode==="charity"){
+          // Charity mode: row = { name: charityName, amount }
+          const charityKey=row.name.trim();
+          const entry={id:now+Math.random(),type:"charity",name:charityKey,charityName:charityKey,amount:amt,charity:"",recordedBy:me.name,ts:now,checkInMs};
+          l.entries=[...(l.entries||[]),entry];
+          l.charityTotals[charityKey]=(l.charityTotals[charityKey]||0)+amt;
+        } else {
+          // Payout mode: row = { memberName, avatar, amount } — positive=received, negative=paid
+          const memberKey=row.memberName.trim();
+          const entry={id:now+Math.random(),type:"payout",name:memberKey,amount:amt,charity:"",recordedBy:me.name,ts:now,checkInMs};
+          l.entries=[...(l.entries||[]),entry];
+          l.payoutTotals[memberKey]=(l.payoutTotals[memberKey]||0)+amt;
+        }
+      }
+      await fsSet(ledgerDocRef(me.groupId),JSON.stringify(l));
+      setLedger(l);
+      setPaymentSaved(true);
+      // Reload Stats check-in history so the new payments appear immediately
+      setGroupCheckIns(null);
+      setTimeout(()=>setPaymentSaved(false),3000);
+    }catch(e){console.warn("recordCheckInPayments",e);}
+    finally{setPaymentSaving(false);}
   }
 
   function sendMessage(){
@@ -2281,6 +2329,109 @@ export default function App(){
               </div>
             </div>
 
+            {/* ── Check-in Payment Recording ── */}
+            {(()=>{
+              // Work out the most recent past deadline from admin settings
+              if(!admin.firstCheckIn||!admin.startDate)return null;
+              const now=Date.now();
+              const cad=(admin.frequency==="Daily"?1:admin.frequency==="Weekly"?7:admin.frequency==="Bi-Weekly"?14:30)*86400000;
+              const firstCI=new Date(admin.firstCheckIn).getTime();
+              const start=new Date(admin.startDate).getTime();
+              const end=admin.endDate?new Date(admin.endDate).getTime():Infinity;
+              if(now<start)return null;
+              let latestDeadline=null;
+              let cur=firstCI;
+              while(cur<=end&&cur<=now){latestDeadline=cur;cur+=cad;}
+              if(!latestDeadline)return null;
+              // Only show within 48 hours of that deadline
+              const hoursAgo=(now-latestDeadline)/3600000;
+              if(hoursAgo>48)return null;
+              // Check if payments for this deadline are already recorded in the ledger
+              const alreadyRecorded=(ledger.entries||[]).some(e=>e.checkInMs===latestDeadline);
+              // Build the deadline label for display
+              const dlLabel=new Date(latestDeadline).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
+              // Initialise rows the first time the section appears (or reset when re-opened)
+              // We use paymentRows.length===0 as a signal to seed defaults
+              const isCharity=admin.payoutMode==="charity";
+              const isPayout=admin.payoutMode==="winners";
+              if(!isCharity&&!isPayout)return null; // "pain" mode has no money to record
+              // Seed default rows if empty
+              function seedRows(){
+                if(isCharity){
+                  // Pull unique charities from current members as starting rows
+                  const seen=new Set();
+                  const rows=members.filter(m=>m.charityName).reduce((acc,m)=>{
+                    if(!seen.has(m.charityName)){seen.add(m.charityName);acc.push({name:m.charityName,amount:""});}
+                    return acc;
+                  },[]);
+                  // Always have at least one blank row
+                  setPaymentRows(rows.length>0?rows:[{name:"",amount:""}]);
+                } else {
+                  // Payout: one row per member
+                  setPaymentRows(members.map(m=>({memberName:m.name,avatar:m.avatar,amount:""})));
+                }
+              }
+              return(
+                <div style={{background:"#FFC20011",border:`2px solid ${LF.yellow}44`,borderRadius:14,padding:14,marginBottom:14}}>
+                  <span className="lbl" style={{color:LF.yellow}}>💸 Record Check-in Payments</span>
+                  <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginBottom:10}}>
+                    Check-in: {dlLabel} · {Math.round(48-hoursAgo)}h remaining to attach payments
+                  </div>
+                  {alreadyRecorded?(
+                    <div style={{fontSize:13,color:LF.lime,fontWeight:800,textAlign:"center",padding:"8px 0"}}>✅ Payments already recorded for this check-in.</div>
+                  ):(
+                    <>
+                      {paymentRows.length===0&&(
+                        <button className="btn btn-yellow" onClick={seedRows} style={{width:"100%",fontSize:13,marginBottom:8}}>
+                          {isCharity?"💝 Add Charity Rows":"🏆 Add Member Rows"}
+                        </button>
+                      )}
+                      {paymentRows.length>0&&(<>
+                        {isCharity&&(
+                          <>
+                            <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginBottom:6}}>One row per charity. Enter the amount donated.</div>
+                            {paymentRows.map((row,i)=>(
+                              <div key={i} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center"}}>
+                                <input className="inp" placeholder="Charity name" value={row.name} onChange={e=>{const r=[...paymentRows];r[i]={...r[i],name:e.target.value};setPaymentRows(r);}} style={{flex:2,padding:"8px 12px",fontSize:13}}/>
+                                <div style={{position:"relative",flex:1}}>
+                                  <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#ffffffcc",fontWeight:800,fontSize:13,pointerEvents:"none"}}>$</span>
+                                  <input className="inp" type="number" min="0" placeholder="0.00" value={row.amount} onChange={e=>{const r=[...paymentRows];r[i]={...r[i],amount:e.target.value};setPaymentRows(r);}} style={{width:"100%",padding:"8px 12px 8px 22px",fontSize:13}}/>
+                                </div>
+                                <button onClick={()=>setPaymentRows(paymentRows.filter((_,j)=>j!==i))} style={{background:"#FF444422",border:"2px solid #FF444444",borderRadius:10,width:32,height:32,cursor:"pointer",color:"#FF8888",fontSize:14,flexShrink:0}}>✕</button>
+                              </div>
+                            ))}
+                            <button onClick={()=>setPaymentRows([...paymentRows,{name:"",amount:""}])} style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:10,padding:"6px 14px",color:"#fff",fontFamily:"'Outfit',sans-serif",fontSize:13,cursor:"pointer",marginBottom:10}}>+ Add Charity</button>
+                          </>
+                        )}
+                        {isPayout&&(
+                          <>
+                            <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginBottom:6}}>Enter amount per member. Positive = received money. Negative = paid out.</div>
+                            {paymentRows.map((row,i)=>(
+                              <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
+                                <div style={{fontSize:18,flexShrink:0}}>{row.avatar||"🦄"}</div>
+                                <div style={{flex:1,fontSize:13,fontWeight:700,color:LF.white}}>{row.memberName}</div>
+                                <div style={{position:"relative",width:110}}>
+                                  <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#ffffffcc",fontWeight:800,fontSize:13,pointerEvents:"none"}}>$</span>
+                                  <input className="inp" type="number" placeholder="0.00" value={row.amount} onChange={e=>{const r=[...paymentRows];r[i]={...r[i],amount:e.target.value};setPaymentRows(r);}} style={{width:"100%",padding:"8px 12px 8px 22px",fontSize:13}}/>
+                                </div>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                        {paymentSaved?(
+                          <div style={{fontSize:13,color:LF.lime,fontWeight:800,textAlign:"center",padding:"8px 0"}}>✅ Saved!</div>
+                        ):(
+                          <button className="btn btn-yellow" onClick={()=>recordCheckInPayments(latestDeadline)} disabled={paymentSaving} style={{width:"100%",fontSize:13,marginTop:4}}>
+                            {paymentSaving?"Saving…":"Save Payments 💸"}
+                          </button>
+                        )}
+                      </>)}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
             <div style={{display:"flex",gap:8,position:"sticky",bottom:0,background:"#2D006Eee",paddingTop:12,marginLeft:-20,marginRight:-20,paddingLeft:20,paddingRight:20,paddingBottom:4}}>
               <button className="btn" onClick={saveAdminSettings} style={{flex:1,fontSize:13}}>Save &amp; Activate 🌈</button>
               <button onClick={()=>setShowAdmin(false)} style={{flex:1,background:"#ffffff18",border:"2px solid #ffffff22",borderRadius:50,padding:11,fontFamily:"'Outfit',sans-serif",fontSize:14,color:"#fff",cursor:"pointer"}}>Cancel</button>
@@ -2796,7 +2947,10 @@ export default function App(){
               <div style={{fontSize:14,color:LF.pink,fontWeight:800}}>Check-in history appears after the first deadline.</div>
             </div>
           )}
-          {(groupCheckIns||[]).map((ci,ciIdx)=>(
+          {(groupCheckIns||[]).map((ci,ciIdx)=>{
+            // Find any ledger entries attached to this check-in via checkInMs
+            const ciPayments=(ledger.entries||[]).filter(e=>e.checkInMs===ci.deadlineMs);
+            return(
             <div key={ci.deadlineMs} className="card">
               {/* Check-in header — label from the first entry (all share the same label) */}
               <span className="lbl">🏁 {ci.label}</span>
@@ -2823,8 +2977,25 @@ export default function App(){
               {ci.entries.length===1&&(
                 <div style={{fontSize:12,color:"#ffffff66",marginTop:8,textAlign:"center"}}>Other members will appear after they next open the app.</div>
               )}
+              {/* Payment summary — only shown when the admin has recorded payments for this check-in */}
+              {ciPayments.length>0&&(
+                <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${LF.yellow}33`}}>
+                  <div style={{fontSize:11,color:LF.yellow,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:8}}>💸 Money Allocated</div>
+                  {ciPayments.map((p,pi)=>(
+                    <div key={p.id||pi} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:pi<ciPayments.length-1?`1px solid ${LF.purple}22`:"none"}}>
+                      <div style={{fontSize:13,fontWeight:700,color:p.type==="charity"?LF.lime:p.amount>=0?LF.yellow:"#FF8888"}}>
+                        {p.type==="charity"?`💝 ${p.name}`:`${p.amount>=0?"🏆":"💸"} ${p.name}`}
+                      </div>
+                      <div style={{fontSize:13,fontWeight:800,color:p.type==="charity"?LF.lime:p.amount>=0?LF.yellow:"#FF8888"}}>
+                        {p.amount>=0?"+":""}{fmtMoney(p.amount)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
+            );
+          })}
 
           {(ledger.entries||[]).length>0&&(
             <div className="card">
