@@ -1133,11 +1133,12 @@ export default function App(){
 
   // Load group check-in history the first time the user opens the Stats tab.
   // groupCheckIns===null means not yet loaded; only fetch once per session.
+  // Does not gate on members.length — fetches members itself if the list isn't ready yet.
   useEffect(()=>{
-    if(tab==="Stats"&&groupCheckIns===null&&members.length>0&&uid){
-      loadGroupCheckIns(members,uid,history);
+    if(tab==="Stats"&&groupCheckIns===null&&uid&&me?.groupId){
+      loadGroupCheckIns(members,uid,history,me.groupId);
     }
-  },[tab,members,uid]);
+  },[tab,uid,me?.groupId]);
 
   async function loadAll(uid){
     try{
@@ -1311,8 +1312,20 @@ export default function App(){
   // Loads each member's personal history from Firebase and assembles group check-in cards.
   // Called once when the user first opens the Stats tab.
   // Groups entries by deadlineMs so all members' results for the same check-in appear together.
-  async function loadGroupCheckIns(allMembers,myUid,myHistory){
+  async function loadGroupCheckIns(allMembers,myUid,myHistory,groupId){
     try{
+      // If members haven't loaded into state yet, fetch them directly from Firestore
+      let resolvedMembers=allMembers;
+      if((!resolvedMembers||resolvedMembers.length===0)&&groupId){
+        try{
+          const snap=await getDocs(membersColRef(groupId));
+          const ms=[];
+          snap.forEach(d=>{try{const m=JSON.parse(d.data().value);ms.push({...m,isYou:m.name===(allMembers.find(x=>x.isYou)?.name||"")});}catch{}});
+          // Mark current user — match by uid since name match may not work here
+          resolvedMembers=ms.map(m=>({...m,isYou:m.uid===myUid}));
+        }catch{}
+      }
+
       // Build a uid→member map from loaded members (those whose uid was written by pub())
       // Include the current user using their known uid and already-loaded history
       const byDeadline={}; // deadlineMs → { label, periodNum, entries:[] }
@@ -1340,12 +1353,11 @@ export default function App(){
       }
 
       // Add current user's history (already in memory — no fetch needed)
-      const myMeta={name:null,avatar:null,uid:myUid}; // will be filled from members list
-      const meInList=allMembers.find(m=>m.isYou);
+      const meInList=resolvedMembers.find(m=>m.isYou);
       if(meInList){foldHistory({...meInList,uid:myUid},myHistory);}
 
       // Fetch and fold each other member's history (only if they have a uid stored)
-      const others=allMembers.filter(m=>!m.isYou&&m.uid);
+      const others=resolvedMembers.filter(m=>!m.isYou&&m.uid);
       await Promise.all(others.map(async m=>{
         try{
           const v=await fsGet(historyDocRef(m.uid));
