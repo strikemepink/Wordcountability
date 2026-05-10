@@ -2345,7 +2345,7 @@ export default function App(){
               if(!latestDeadline)return null;
               // Only show within 48 hours of that deadline
               const hoursAgo=(now-latestDeadline)/3600000;
-              if(hoursAgo>48)return null;
+              if(hoursAgo>336)return null;
               // Check if payments for this deadline are already recorded in the ledger
               const alreadyRecorded=(ledger.entries||[]).some(e=>e.checkInMs===latestDeadline);
               // Build the deadline label for display
