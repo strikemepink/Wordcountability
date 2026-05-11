@@ -98,8 +98,7 @@ const DEFAULT_NOTIF_PREFS = {
 };
 
 const LF = {
-  // NOTE: 'teal' is misnamed — it's actually a purple/violet (#E040FB). Rename in a future refactor.
-  pink:"#FF2D9B", hotpink:"#FF6EC7", teal:"#E040FB", yellow:"#FFC200",
+  pink:"#FF2D9B", hotpink:"#FF6EC7", violet:"#E040FB", yellow:"#FFC200",
   purple:"#C97FFF", blue:"#C77DFF", orange:"#FF7A00", lime:"#CCFF66",
   white:"#FFFFFF", offwhite:"#FFF0FA",
 };
@@ -189,7 +188,7 @@ async function shareGroup(groupId, setCopied) {
 function Ring({pct,size=100,stroke=8}){
   const r=(size-stroke*2)/2,c=2*Math.PI*r,off=c-(Math.min(pct,100)/100)*c;
   return(<svg width={size} height={size} style={{transform:"rotate(-90deg)",filter:`drop-shadow(0 0 8px ${pct>=100?LF.lime:LF.pink}88)`}}>
-    <defs><linearGradient id="rg"><stop offset="0%" stopColor={pct>=100?LF.lime:LF.pink}/><stop offset="100%" stopColor={pct>=100?LF.teal:LF.purple}/></linearGradient></defs>
+    <defs><linearGradient id="rg"><stop offset="0%" stopColor={pct>=100?LF.lime:LF.pink}/><stop offset="100%" stopColor={pct>=100?LF.violet:LF.purple}/></linearGradient></defs>
     <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#ffffff18" strokeWidth={stroke}/>
     <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="url(#rg)" strokeWidth={stroke} strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" style={{transition:"stroke-dashoffset 0.6s ease"}}/>
   </svg>);
@@ -915,7 +914,7 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
                         <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
                         <div style={{display:"flex",gap:6}}>
                           {["Every message","Digest"].map(f=>(
-                            <button key={f} onClick={()=>handlePrefChange("chatFrequency",f)} style={{padding:"5px 12px",border:`2px solid ${notifPrefs.chatFrequency===f?LF.teal:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:notifPrefs.chatFrequency===f?`linear-gradient(135deg,${LF.teal},${LF.blue})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
+                            <button key={f} onClick={()=>handlePrefChange("chatFrequency",f)} style={{padding:"5px 12px",border:`2px solid ${notifPrefs.chatFrequency===f?LF.violet:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:notifPrefs.chatFrequency===f?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
                           ))}
                         </div>
                       </div>
@@ -1211,14 +1210,21 @@ export default function App(){
         (adminData?.startDate&&nowMsR>=new Date(adminData.startDate).getTime()&&
          adminData?.firstCheckIn&&nowMsR<new Date(adminData.firstCheckIn).getTime());
 
+      // ── Fetch history and check-in acks in parallel — neither depends on the other ──
+      // For the reset logic we need history, and for the pop-up we need acks.
+      // Firing both at once saves one full round-trip to Firebase.
+      const [histValParallel, acksValParallel] = await Promise.all([
+        fsGet(historyDocRef(uid)),
+        pastDeadlines.length>0 ? fsGet(checkInAcksDocRef(uid)) : Promise.resolve(null),
+      ]);
+
       if(challengeActive&&pastDeadlines.length>0){
         // ── Challenge mode: deadline-based reset ──────────────────
         const latestDeadline=pastDeadlines[pastDeadlines.length-1];
         const lastReset=typeof d.lastResetWeek==="number"?d.lastResetWeek:0;
         if(latestDeadline>lastReset){
           // A new deadline has passed since last reset — write history and reset progress
-          const histVal=await fsGet(historyDocRef(uid));
-          const hist=histVal?JSON.parse(histVal):[];
+          const hist=histValParallel?JSON.parse(histValParallel):[];
           const periodWeeksR=Math.max(1,Math.round(cadDaysR/7));
           const periodGoalR=d.goalValue*periodWeeksR;
           const met=d.progressThisWeek>=periodGoalR;
@@ -1232,9 +1238,8 @@ export default function App(){
           await fsSet(userDocRef(uid),JSON.stringify(d));
           await pub(d,uid);
         } else {
-          // Already reset for this deadline — just load history
-          const histVal=await fsGet(historyDocRef(uid));
-          setHistory(histVal?JSON.parse(histVal):[]);
+          // Already reset for this deadline — use pre-fetched history
+          setHistory(histValParallel?JSON.parse(histValParallel):[]);
         }
       } else if(!challengeActive){
         // ── No active challenge: Monday-based weekly reset ────────
@@ -1243,8 +1248,7 @@ export default function App(){
           ?new Date(d.lastResetWeek).toISOString().slice(0,10)
           :(d.lastResetWeek||"");
         if(lastResetStr!==wk){
-          const histVal=await fsGet(historyDocRef(uid));
-          const hist=histVal?JSON.parse(histVal):[];
+          const hist=histValParallel?JSON.parse(histValParallel):[];
           const met=d.progressThisWeek>=d.goalValue;
           const upd=[{week:d.lastResetWeek||wk,progress:d.progressThisWeek,goal:d.goalValue,goalType:d.goalType,met},...hist].slice(0,40);
           await fsSet(historyDocRef(uid),JSON.stringify(upd));
@@ -1253,13 +1257,12 @@ export default function App(){
           await fsSet(userDocRef(uid),JSON.stringify(d));
           await pub(d,uid);
         } else {
-          const histVal=await fsGet(historyDocRef(uid));
-          setHistory(histVal?JSON.parse(histVal):[]);
+          // Use pre-fetched history
+          setHistory(histValParallel?JSON.parse(histValParallel):[]);
         }
       } else {
-        // Challenge configured but no deadlines passed yet — just load history, no reset
-        const histVal=await fsGet(historyDocRef(uid));
-        setHistory(histVal?JSON.parse(histVal):[]);
+        // Challenge configured but no deadlines passed yet — use pre-fetched history
+        setHistory(histValParallel?JSON.parse(histValParallel):[]);
       }
       // ── Check-in pop-up: show personalised result if a deadline passed since last ack ──
       // Uses pastDeadlines already computed above, and progressSnapshot taken before any reset.
@@ -1267,8 +1270,7 @@ export default function App(){
       try{
         if(pastDeadlines.length>0){
           const latestDeadline=pastDeadlines[pastDeadlines.length-1];
-          const acksVal=await fsGet(checkInAcksDocRef(uid));
-          const acks=acksVal?JSON.parse(acksVal):{acknowledgedDeadlines:[]};
+          const acks=acksValParallel?JSON.parse(acksValParallel):{acknowledgedDeadlines:[]};
           const alreadyAcked=(acks.acknowledgedDeadlines||[]).includes(latestDeadline);
           if(!alreadyAcked){
             const periodNum2=pastDeadlines.length;
@@ -1288,23 +1290,39 @@ export default function App(){
           }
         }
       }catch(e){console.warn("checkInPopup",e);}
+
+      // ── Render the app immediately — remaining work runs in the background ──
+      // setReady(true) is called here so the Dashboard appears as soon as the user's
+      // own data is ready. Member docs, notifications, and group data load silently after.
       setMe(d); setGoalInput(String(d.goalValue)); setGoalTypeEdit(d.goalType);
+      if(adminData){setAdmin(adminData);setAdminDraft(adminData);}
       setReady(true);
+
+      // ── Background loads — run in parallel after the app is already visible ──
       initOneSignal();
       writeUserIndex(uid,d);
-      // ── Fallback: ensure member doc exists in group ──
-      // If user has a groupId but pub() never ran (e.g. they completed Setup but
-      // never reopened the app), their member doc won't exist. Check and write it.
-      if(d.groupId&&d.name){
-        try{
-          const memberVal=await fsGet(memberDocRef(d.groupId,d.name));
-          if(!memberVal){await pub(d,uid);}
-        }catch{await pub(d,uid).catch(()=>{});}
-      }
-      // Load in-app notifications
-      const notifVal=await fsGet(notifDocRef(uid));
+
+      // Fetch notifications and check member doc existence simultaneously
+      const [notifVal] = await Promise.all([
+        fsGet(notifDocRef(uid)),
+        // Fallback: ensure member doc exists in group — if pub() never ran on setup
+        d.groupId&&d.name
+          ? fsGet(memberDocRef(d.groupId,d.name))
+              .then(memberVal=>{ if(!memberVal) return pub(d,uid); })
+              .catch(()=>pub(d,uid).catch(()=>{}))
+          : Promise.resolve(),
+      ]);
       if(notifVal)setInAppNotifs(JSON.parse(notifVal));
-      if(d.groupId){loadMembers(d.groupId,d.name);loadChat(d.groupId);loadPolls(d.groupId);if(!adminData){loadAdminData(d.groupId);}else{setAdmin(adminData);setAdminDraft(adminData);}loadLedger(d.groupId);fsSet(memberUidDocRef(d.groupId,uid),JSON.stringify({uid,joinedAt:Date.now()})).catch(()=>{});}
+
+      // Kick off all group data loads in parallel — none depend on each other
+      if(d.groupId){
+        loadMembers(d.groupId,d.name);
+        loadChat(d.groupId);
+        loadPolls(d.groupId);
+        if(!adminData){loadAdminData(d.groupId);}
+        loadLedger(d.groupId);
+        fsSet(memberUidDocRef(d.groupId,uid),JSON.stringify({uid,joinedAt:Date.now()})).catch(()=>{});
+      }
     }catch(e){console.error("loadAll",e);setReady(true);}
   }
 
@@ -2104,7 +2122,7 @@ export default function App(){
               })}
 
               {/* Custom option */}
-              <div style={{border:`2px solid ${charityCustomStep==="confirm"?LF.teal:"#ffffff22"}`,borderRadius:14,padding:"12px 14px",background:"#ffffff0a"}}>
+              <div style={{border:`2px solid ${charityCustomStep==="confirm"?LF.violet:"#ffffff22"}`,borderRadius:14,padding:"12px 14px",background:"#ffffff0a"}}>
                 <div style={{fontSize:15,fontWeight:800,color:LF.white,marginBottom:charityCustomStep==="url"?10:0}}>🔗 Custom charity</div>
 
                 {charityCustomStep==="url"&&(<>
@@ -2256,7 +2274,7 @@ export default function App(){
       {/* ── Admin Modal ── */}
       {showAdmin&&me.isAdmin&&(
         <div className="modal-bg">
-          <div className="card modal">
+          <div className="card modal" style={{overflowX:"hidden"}}>
             <div style={{fontSize:18,color:LF.yellow,marginBottom:16,fontWeight:900}}>⚙️ Admin Settings</div>
 
             <span className="lbl">Challenge Duration</span>
@@ -2266,11 +2284,11 @@ export default function App(){
 
             <span className="lbl">Check-in Frequency</span>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
-              {FREQUENCIES.map(f=><button key={f} onClick={()=>setAdminDraft(s=>({...s,frequency:f}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.frequency===f?LF.teal:"#ffffff22"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:14,background:adminDraft.frequency===f?`linear-gradient(135deg,${LF.teal},${LF.blue})`:"#ffffff18",color:"#fff"}}>{f}</button>)}
+              {FREQUENCIES.map(f=><button key={f} onClick={()=>setAdminDraft(s=>({...s,frequency:f}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.frequency===f?LF.violet:"#ffffff22"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:14,background:adminDraft.frequency===f?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"#ffffff18",color:"#fff"}}>{f}</button>)}
             </div>
 
             <span className="lbl">First Check-in Date &amp; Time</span>
-            <input className="inp" type="datetime-local" value={adminDraft.firstCheckIn||""} onChange={e=>setAdminDraft(s=>({...s,firstCheckIn:e.target.value}))} style={{marginBottom:6}}/>
+            <input className="inp" type="datetime-local" value={adminDraft.firstCheckIn||""} onChange={e=>setAdminDraft(s=>({...s,firstCheckIn:e.target.value}))} style={{marginBottom:6,width:"100%",maxWidth:"100%",boxSizing:"border-box"}}/>
             {adminDraft.firstCheckIn&&(()=>{
               const start=new Date(adminDraft.firstCheckIn);
               start.setDate(start.getDate()-(adminDraft.frequency==="Daily"?1:adminDraft.frequency==="Weekly"?7:adminDraft.frequency==="Bi-Weekly"?14:30));
@@ -2345,7 +2363,7 @@ export default function App(){
               if(!latestDeadline)return null;
               // Only show within 48 hours of that deadline
               const hoursAgo=(now-latestDeadline)/3600000;
-              if(hoursAgo>336)return null;
+              if(hoursAgo>48)return null;
               // Check if payments for this deadline are already recorded in the ledger
               const alreadyRecorded=(ledger.entries||[]).some(e=>e.checkInMs===latestDeadline);
               // Build the deadline label for display
@@ -2450,7 +2468,7 @@ export default function App(){
         {/* ── DASHBOARD ── */}
         {tab==="Dashboard"&&(<>
           {challengeNotStarted&&(
-            <div className="card" style={{border:`2px solid ${LF.teal}88`,background:"#E040FB11",textAlign:"center"}}>
+            <div className="card" style={{border:`2px solid ${LF.violet}88`,background:"#E040FB11",textAlign:"center"}}>
               <div style={{fontSize:13,color:LF.lime,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>⏳ Challenge Countdown</div>
               <div style={{fontSize:32,fontWeight:900,color:LF.yellow,letterSpacing:2,marginBottom:4}}>
                 {countdownDays>0&&<span>{countdownDays}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>d</span></span>}
@@ -2467,9 +2485,9 @@ export default function App(){
             const info=getCheckInPeriodInfo();
             if(!info)return null;
             return(
-              <div className="card" style={{border:`2px solid ${info.isActive?LF.teal:LF.yellow}55`,background:info.isActive?"#00E5FF08":"#FFD60008"}}>
+              <div className="card" style={{border:`2px solid ${info.isActive?LF.violet:LF.yellow}55`,background:info.isActive?"#00E5FF08":"#FFD60008"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:info.isActive?10:0}}>
-                  <div style={{fontSize:11,fontWeight:900,color:info.isActive?LF.teal:LF.yellow,textTransform:"uppercase",letterSpacing:2}}>
+                  <div style={{fontSize:11,fontWeight:900,color:info.isActive?LF.violet:LF.yellow,textTransform:"uppercase",letterSpacing:2}}>
                     {info.isActive?"🟢 Round Active":"⏳ Round Starting Soon"}
                   </div>
                   {info.totalPeriods&&info.periodNumber>0&&(
@@ -2568,7 +2586,7 @@ export default function App(){
               })()}
             </div>
           ):(
-            <div className="card" style={{border:`2px solid ${timerRunning?LF.teal:LF.pink}55`}}>
+            <div className="card" style={{border:`2px solid ${timerRunning?LF.violet:LF.pink}55`}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
                 <span className="lbl" style={{marginBottom:0}}>⏱️ Writing Timer</span>
                 {(()=>{
@@ -2665,7 +2683,7 @@ export default function App(){
             <button className="btn btn-teal" onClick={()=>loadMembers(me.groupId,me.name)} style={{fontSize:13,padding:"6px 12px"}}>↻ Refresh</button>
           </div>
           {challengeNotStarted&&(
-            <div className="card" style={{border:`2px solid ${LF.teal}88`,background:"#E040FB11",textAlign:"center"}}>
+            <div className="card" style={{border:`2px solid ${LF.violet}88`,background:"#E040FB11",textAlign:"center"}}>
               <div style={{fontSize:13,color:LF.lime,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>⏳ Challenge Countdown</div>
               <div style={{fontSize:32,fontWeight:900,color:LF.yellow,letterSpacing:2,marginBottom:4}}>
                 {countdownDays>0&&<span>{countdownDays}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>d</span></span>}
@@ -2691,7 +2709,7 @@ export default function App(){
             <button
               className="btn"
               onClick={()=>shareGroup(me.groupId,setShareCopied)}
-              style={{width:"100%",fontSize:15,background:`linear-gradient(135deg,${LF.teal},${LF.purple})`}}
+              style={{width:"100%",fontSize:15,background:`linear-gradient(135deg,${LF.violet},${LF.purple})`}}
             >
               {shareCopied?"✓ Copied to clipboard!":"📤 Share Invite"}
             </button>
@@ -2741,7 +2759,7 @@ export default function App(){
           {sorted.map((w,i)=>{
             const p=Math.min(Math.round((w.progressThisWeek/w.goalValue)*100),100);
             const medals=["🥇","🥈","🥉"];
-            const bar=p>=100?`linear-gradient(90deg,${LF.lime},${LF.teal})`:i===0?`linear-gradient(90deg,${LF.yellow},${LF.orange})`:`linear-gradient(90deg,${LF.pink},${LF.purple})`;
+            const bar=p>=100?`linear-gradient(90deg,${LF.lime},${LF.violet})`:i===0?`linear-gradient(90deg,${LF.yellow},${LF.orange})`:`linear-gradient(90deg,${LF.pink},${LF.purple})`;
             return(
               <div key={w.name} className="card" style={{border:`2px solid ${w.isYou?LF.pink:LF.purple}44`,background:w.isYou?"#FF2D9B11":""}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
@@ -3021,7 +3039,7 @@ export default function App(){
             {isLocked&&<div style={{fontSize:13,color:LF.orange,fontWeight:800,marginBottom:10}}>🔒 Goals locked — you can raise but not lower{admin.changeWindowOpen?` (~${changeHoursLeft}h window open)`:"."}.</div>}
             <div className="pill" style={{marginBottom:12}}>
               <button onClick={()=>setGoalTypeEdit("words")} style={{background:goalTypeEdit==="words"?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"transparent",color:"#fff"}}>✍️ Words</button>
-              <button onClick={()=>setGoalTypeEdit("time")}  style={{background:goalTypeEdit==="time"?`linear-gradient(135deg,${LF.teal},${LF.blue})`:"transparent",color:"#fff"}}>⏱️ Time</button>
+              <button onClick={()=>setGoalTypeEdit("time")}  style={{background:goalTypeEdit==="time"?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"transparent",color:"#fff"}}>⏱️ Time</button>
             </div>
             <div style={{display:"flex",gap:10}}>
               <input className="inp" type="number" value={goalInput} onChange={e=>setGoalInput(e.target.value)} style={{flex:1}}/>
@@ -3090,7 +3108,7 @@ export default function App(){
                     <span style={{fontSize:12,color:"#ffffffcc",fontWeight:700}}> / {h.goalType==="words"?`${(h.goal||0).toLocaleString()}w`:`${h.goal||0}m`}</span>
                   </div>
                 </div>
-                <div style={{fontSize:12,color:LF.white,background:h.met?`linear-gradient(135deg,${LF.lime},${LF.teal})`:`linear-gradient(135deg,${LF.pink},${LF.purple})`,padding:"4px 10px",borderRadius:20,fontWeight:800}}>{h.met?"NAILED IT":"missed"}</div>
+                <div style={{fontSize:12,color:LF.white,background:h.met?`linear-gradient(135deg,${LF.lime},${LF.violet})`:`linear-gradient(135deg,${LF.pink},${LF.purple})`,padding:"4px 10px",borderRadius:20,fontWeight:800}}>{h.met?"NAILED IT":"missed"}</div>
               </div>
             </div>
           ))}
