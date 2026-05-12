@@ -1042,6 +1042,7 @@ export default function App(){
   const uid=authUser?.uid;
 
   const [ready,setReady]=useState(false);
+  const [noAccount,setNoAccount]=useState(false); // true only after confirming no user doc exists
   const [me,setMe]=useState(null);
   const [history,setHistory]=useState([]);
   const [members,setMembers]=useState([]);
@@ -1119,7 +1120,7 @@ export default function App(){
   const [paymentSaved,setPaymentSaved]=useState(false); // true briefly after a successful save
 
   useEffect(()=>{
-    if(authUser===null){setReady(false);setMe(null);setHistory([]);setMembers([]);setMessages([]);setPolls([]);}
+    if(authUser===null){setReady(false);setNoAccount(false);setMe(null);setHistory([]);setMembers([]);setMessages([]);setPolls([]);}
     if(authUser?.uid){loadAll(authUser.uid);}
   },[authUser?.uid]);
   useEffect(()=>()=>clearInterval(timerRef.current),[]);
@@ -1166,7 +1167,7 @@ export default function App(){
   async function loadAll(uid){
     try{
       const meVal=await fsGet(userDocRef(uid));
-      if(!meVal){setReady(true);return;}
+      if(!meVal){setNoAccount(true);setReady(true);return;}
       let d=JSON.parse(meVal);
       const wk=getWeekKey();
       // Always load admin data first so we can check challenge state
@@ -1422,7 +1423,7 @@ export default function App(){
   async function handleSetup({name,avatar,goalType,goalValue,groupId,isAdmin,charity,charityName}){
     const d={name,avatar,goalType,goalValue,groupId,isAdmin:false,charity:"",charityName:null,
       progressThisWeek:0,totalProgress:0,dailyChecks:[false,false,false,false,false,false,false],lastResetWeek:getWeekKey()};
-    setMe(d); setGoalInput(String(goalValue)); setGoalTypeEdit(goalType); setReady(true);
+    setMe(d); setGoalInput(String(goalValue)); setGoalTypeEdit(goalType); setNoAccount(false); setReady(true);
     await fsSet(userDocRef(uid),JSON.stringify(d));
     writeUserIndex(uid,d).catch(()=>{});
     await fsSet(memberUidDocRef(groupId,uid),JSON.stringify({uid,joinedAt:Date.now()}));
@@ -1956,7 +1957,7 @@ export default function App(){
       {showPrivacy&&<PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
     </>
   );
-  if(!ready)return(
+  if(!ready||(!me&&!noAccount))return(
     <div className="leopard" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <style>{G}</style><div style={{fontSize:32}}>✨</div>
     </div>
