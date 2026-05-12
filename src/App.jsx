@@ -137,8 +137,8 @@ const G = `
   @keyframes msgIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
   .msg-in{animation:msgIn 0.25s ease forwards;}
   .lbl{font-size:13px;color:#fff;text-transform:uppercase;letter-spacing:2px;font-weight:900;display:block;margin-bottom:10px;}
-  .modal-bg{position:fixed;inset:0;background:#00000088;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;}
-  .modal{max-width:440px;width:100%;max-height:92vh;overflow-y:auto!important;border:1.5px solid #ffffff33!important;background:#2D006Eee!important;backdrop-filter:blur(12px);}
+  .modal-bg{position:fixed;inset:0;background:#00000088;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;}
+  .modal{max-width:min(440px,calc(100vw - 32px));width:100%;max-height:92vh;overflow-y:auto!important;overflow-x:hidden!important;border:1.5px solid #ffffff33!important;background:#2D006Eee!important;backdrop-filter:blur(12px);}
   .modal.card::before{display:none;}
   .locked-badge{background:linear-gradient(135deg,#FF4444,#BF5FFF);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;}
   .open-badge{background:linear-gradient(135deg,#AAFF00,#E040FB);color:#1A0030;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;}
