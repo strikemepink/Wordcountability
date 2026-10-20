@@ -99,7 +99,6 @@ function buildSchedule(admin, user) {
   const cad = cadenceDays(admin.frequency || "Weekly");
   const cadMs = cad * 86400000;
   const firstCheckInMs = new Date(admin.firstCheckIn).getTime();
-  const startMs = new Date(admin.startDate).getTime();
   const endMs = admin.endDate ? new Date(admin.endDate).getTime() : Infinity;
   const prefs = user.notifPrefs || {};
 
@@ -137,19 +136,7 @@ function buildSchedule(admin, user) {
     }
   });
 
-  // 🚀 Challenge starting soon — 24h before challenge start
-  // The cron also checks this, but scheduling via OneSignal is more reliable for exact timing.
-  if (prefs.challengeStarting) {
-    const sendAt = startMs - 86400000;
-    if (sendAt > now) {
-      schedule.push({
-        type: "challengeStarting",
-        sendAtMs: sendAt,
-        title: "🚀 Challenge starts tomorrow!",
-        body: `Your writing challenge kicks off in 24 hours. Your goal: ${goalLabel} per check-in. Get ready!`,
-      });
-    }
-  }
+  // "Challenge starting soon" is sent by api/cron-reminders.js only, so it isn't duplicated here.
 
   return schedule;
 }

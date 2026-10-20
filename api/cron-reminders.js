@@ -4,7 +4,7 @@
 // and sends a push via /api/notify.
 // Also handles:
 //   - Missed check-in: fires in the hour after a check-in deadline if the user missed their goal
-//   - Challenge starting soon: fires when the challenge start is 23-25h away
+//   - Challenge starting soon: fires when the challenge start is 23-24h away (the only sender of this push)
 
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${process.env.VITE_FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
@@ -71,36 +71,36 @@ function cadenceDays(freq) {
   return 30; // Monthly
 }
 
-function shouldSendReminder(user, nowUtc) {
-  const prefs = user.notifPrefs || {};
-  if (!prefs.writingReminder || !user.oneSignalPlayerId) return false;
+// True if a notification set for timeStr ("HH:MM") at this frequency is due this hour,
+// in the user's own timezone.
+function isScheduledNow(timeStr, freq, user, nowUtc) {
   const timezone = user.timezone || "UTC";
   const localHour = getLocalHour(nowUtc, timezone);
-  const [reminderHour] = (prefs.reminderTime || "09:00").split(":").map(Number);
-  if (localHour !== reminderHour) return false;
-  const freq = prefs.reminderFrequency || "Daily";
+  const [hour] = (timeStr || "09:00").split(":").map(Number);
+  if (localHour !== hour) return false;
+  freq = freq || "Daily";
   if (freq === "Daily") return true;
   if (freq === "Weekly") return getLocalWeekday(nowUtc, timezone) === "Mon";
   if (freq === "Monthly") return getLocalDay(nowUtc, timezone) === 1;
   return false;
 }
 
+function shouldSendReminder(user, nowUtc) {
+  const prefs = user.notifPrefs || {};
+  if (!prefs.writingReminder || !user.oneSignalPlayerId) return false;
+  return isScheduledNow(prefs.reminderTime, prefs.reminderFrequency, user, nowUtc);
+}
+
 function shouldSendProgressNotif(user, nowUtc) {
   const prefs = user.notifPrefs || {};
   if (!prefs.progressNotif || !user.oneSignalPlayerId) return false;
-  // If combined, piggyback on the writing reminder — only fire when reminder fires
+  // If combined, use the writing reminder's time and frequency. This still works when the
+  // writing reminder itself is switched off (previously the progress check-in silently stopped).
   if (prefs.progressNotifCombined !== false) {
-    return shouldSendReminder(user, nowUtc);
+    return isScheduledNow(prefs.reminderTime, prefs.reminderFrequency, user, nowUtc);
   }
   // Standalone schedule
-  const timezone = user.timezone || "UTC";
-  const localHour = getLocalHour(nowUtc, timezone);
-  const [progressHour] = (prefs.progressNotifTime || "09:00").split(":").map(Number);
-  if (localHour !== progressHour) return false;
-  const freq = prefs.progressNotifFrequency || "Daily";
-  if (freq === "Daily") return true;
-  if (freq === "Weekly") return getLocalWeekday(nowUtc, timezone) === "Mon";
-  return false;
+  return isScheduledNow(prefs.progressNotifTime, prefs.progressNotifFrequency, user, nowUtc);
 }
 
 async function getAdminData(groupId) {
@@ -213,12 +213,13 @@ function remainingCheckIns(admin, deadlineMs) {
 }
 
 // ── Challenge starting soon helper ───────────────────────────────
-// Returns true if challenge starts in 23-25h (handles ±1h cron jitter).
+// Returns true if challenge starts in 23-24h. The window is exactly one hour wide so the
+// hourly cron sends this once (a wider window made it fire twice).
 function challengeStartsIn24h(admin, nowMs) {
   if (!admin?.startDate) return false;
   const startMs = new Date(admin.startDate).getTime();
   const msUntil = startMs - nowMs;
-  return msUntil > 23 * 3600000 && msUntil <= 25 * 3600000;
+  return msUntil > 23 * 3600000 && msUntil <= 24 * 3600000;
 }
 
 module.exports = async function handler(req, res) {
@@ -335,7 +336,7 @@ module.exports = async function handler(req, res) {
         }
 
         // ── 4. Challenge starting soon ───────────────────────────
-        // Fires once when the challenge start is 23-25h away.
+        // Fires once when the challenge start is 23-24h away.
         if (prefs.challengeStarting && user.oneSignalPlayerId && admin) {
           if (challengeStartsIn24h(admin, nowMs)) {
             const goalLabel = user.goalType === "words"

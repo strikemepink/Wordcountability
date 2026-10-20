@@ -4,7 +4,7 @@ import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
 } from "firebase/auth";
 import {
-  getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs,
+  getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, runTransaction,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -40,6 +40,20 @@ async function fsSet(ref, value) {
   try { await setDoc(ref, { value }, { merge: false }); } catch (e) { console.warn("fsSet", e); }
 }
 async function fsDel(ref) { try { await deleteDoc(ref); } catch {} }
+// Safely updates a shared list (chat, polls) that several people write to.
+// Reads the latest saved copy, applies the change, and saves it in one step, so nobody
+// else's new messages or votes get overwritten. Returns the updated list, or null on failure.
+async function fsUpdateList(ref, change){
+  try{
+    return await runTransaction(db, async tx=>{
+      const snap=await tx.get(ref);
+      const raw=snap.exists()?snap.data().value:null;
+      const next=change(raw?JSON.parse(raw):[]);
+      tx.set(ref,{value:JSON.stringify(next)});
+      return next;
+    });
+  }catch(e){console.warn("fsUpdateList",e);return null;}
+}
 async function writeUserIndex(uid, d){
   // Full user snapshot used by cron-reminders to find users due for a reminder.
   // Must include notifPrefs (for reminderTime/writingReminder) and oneSignalPlayerId at top level.
@@ -160,7 +174,20 @@ const G = `
   @keyframes slideInRight{from{transform:translateX(100%);}to{transform:translateX(0);}}`;
 
 // ── Helpers ──────────────────────────────────────────────────────
-function getWeekKey(){const now=new Date();const day=now.getDay();const monday=new Date(now);monday.setDate(now.getDate()-(day===0?6:day-1));return monday.toISOString().slice(0,10);}
+// Formats a date as "YYYY-MM-DD" using the user's local calendar (not UTC)
+function localDateKey(dt){return`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;}
+// Week key = the local date of this week's Monday
+function getWeekKey(){const now=new Date();const day=now.getDay();const monday=new Date(now);monday.setDate(now.getDate()-(day===0?6:day-1));return localDateKey(monday);}
+// Older app versions saved week keys in UTC, which could land one day off (a Sunday or a Tuesday).
+// This maps any saved key back to its Monday so those users don't get a wrongful reset.
+function normalizeWeekKey(key){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(key||""))return key||"";
+  const [y,m,d]=key.split("-").map(Number);
+  const dt=new Date(y,m-1,d);
+  if(dt.getDay()===0)dt.setDate(dt.getDate()+1); // Sunday → following Monday
+  else dt.setDate(dt.getDate()-((dt.getDay()+6)%7)); // any other day → that week's Monday
+  return localDateKey(dt);
+}
 function todayIdx(){return(new Date().getDay()+6)%7;}
 function fmtGoal(m){if(m.goalType==="words")return`${m.goalValue.toLocaleString()} words`;const h=Math.floor(m.goalValue/60),mn=m.goalValue%60;return h>0?`${h}h`+(mn>0?` ${mn}m`:""):mn+"m";}
 function fmtProg(m){if(m.goalType==="words")return`${m.progressThisWeek.toLocaleString()} words`;const h=Math.floor(m.progressThisWeek/60),mn=m.progressThisWeek%60;return h>0?`${h}h`+(mn>0?` ${mn}m`:""):mn+"m";}
@@ -1248,7 +1275,7 @@ export default function App(){
         const lastResetStr=typeof d.lastResetWeek==="number"
           ?new Date(d.lastResetWeek).toISOString().slice(0,10)
           :(d.lastResetWeek||"");
-        if(lastResetStr!==wk){
+        if(normalizeWeekKey(lastResetStr)!==wk){
           const hist=histValParallel?JSON.parse(histValParallel):[];
           const met=d.progressThisWeek>=d.goalValue;
           const upd=[{week:d.lastResetWeek||wk,progress:d.progressThisWeek,goal:d.goalValue,goalType:d.goalType,met},...hist].slice(0,40);
@@ -1336,6 +1363,8 @@ export default function App(){
         charityName:d.charityName||null,totalProgress:d.totalProgress||0,
         uid:uidArg||uid,updatedAt:Date.now()
       }));
+      // Keep the reminder job's copy current so its progress messages use today's numbers
+      writeUserIndex(uidArg||uid,d);
     }catch(e){console.warn("pub",e);}
   }
 
@@ -1739,27 +1768,27 @@ export default function App(){
   function sendMessage(){
     if(!chatInput.trim()||!me)return;
     const msg={id:Date.now(),author:me.name,avatar:me.avatar,text:chatInput.trim(),ts:Date.now(),reactions:{}};
-    const upd=[...messages,msg].slice(-200);
-    setMessages(upd); setChatInput("");
-    fsSet(chatDocRef(me.groupId),JSON.stringify(upd));
+    setMessages(prev=>[...prev,msg].slice(-200)); setChatInput("");
+    fsUpdateList(chatDocRef(me.groupId),cur=>[...cur,msg].slice(-200))
+      .then(latest=>{if(latest)setMessages(latest);});
   }
 
   function addReaction(msgId,emoji){
-    const upd=messages.map(m=>{
+    const toggle=list=>list.map(m=>{
       if(m.id!==msgId)return m;
       const r={...m.reactions}; if(!r[emoji])r[emoji]=[];
       r[emoji]=r[emoji].includes(me.name)?r[emoji].filter(n=>n!==me.name):[...r[emoji],me.name];
       return {...m,reactions:r};
     });
-    setMessages(upd); fsSet(chatDocRef(me.groupId),JSON.stringify(upd));
+    setMessages(toggle(messages));
+    fsUpdateList(chatDocRef(me.groupId),toggle).then(latest=>{if(latest)setMessages(latest);});
   }
 
   function submitPoll(){
     if(!pollQ.trim()||pollOpts.filter(o=>o.trim()).length<2)return;
     const poll={id:Date.now(),question:pollQ.trim(),options:pollOpts.filter(o=>o.trim()).map(o=>({text:o.trim(),votes:[]})),author:me.name,ts:Date.now(),deadline:pollDeadline||null};
-    const upd=[...polls,poll];
-    setPolls(upd); setPollQ(""); setPollOpts(["",""]); setPollDeadline(""); setShowPollForm(false);
-    fsSet(pollsDocRef(me.groupId),JSON.stringify(upd));
+    setPolls(prev=>[...prev,poll]); setPollQ(""); setPollOpts(["",""]); setPollDeadline(""); setShowPollForm(false);
+    savePolls(cur=>[...cur,poll]);
     notifyNewPoll(poll.question);
     // If a deadline was set, schedule a "poll closing soon" push 24h before it fires.
     // Silent fail — should never block the poll submission.
@@ -1781,32 +1810,39 @@ export default function App(){
   }
   function deletePoll(pollId){
     if(!window.confirm("Delete this poll?"))return;
-    const upd=polls.filter(p=>p.id!==pollId);
-    setPolls(upd); fsSet(pollsDocRef(me.groupId),JSON.stringify(upd));
+    const remove=list=>list.filter(p=>p.id!==pollId);
+    setPolls(remove(polls)); savePolls(remove);
   }
   function votePoll(pollId,optIdx){
-    const upd=polls.map(p=>{
+    const vote=list=>list.map(p=>{
       if(p.id!==pollId)return p;
       const opts=p.options.map((o,i)=>{const v=o.votes.filter(n=>n!==me.name);return i===optIdx?{...o,votes:[...v,me.name]}:{...o,votes:v};});
       return {...p,options:opts};
     });
-    setPolls(upd); fsSet(pollsDocRef(me.groupId),JSON.stringify(upd));
+    setPolls(vote(polls)); savePolls(vote);
   }
   function overridePollResult(pollId,winnerText){
-    const upd=polls.map(p=>p.id===pollId?{...p,adminOverride:winnerText,overriddenBy:me.name,overriddenAt:Date.now()}:p);
-    setPolls(upd); fsSet(pollsDocRef(me.groupId),JSON.stringify(upd));
+    const override=list=>list.map(p=>p.id===pollId?{...p,adminOverride:winnerText,overriddenBy:me.name,overriddenAt:Date.now()}:p);
+    setPolls(override(polls)); savePolls(override);
+  }
+  // Applies a poll change to the latest saved polls, then shows the up-to-date list
+  function savePolls(change){
+    fsUpdateList(pollsDocRef(me.groupId),change).then(latest=>{if(latest)setPolls(latest);});
   }
 
   async function handleReset(){
     if(!window.confirm("Reset ALL your data? This can't be undone. 😱"))return;
+    // Deletes only this user's own data. Shared group data (chat, polls, admin settings,
+    // ledger, other members' cards) is left alone so one member can't wipe the whole group.
     await fsDel(userDocRef(uid)); await fsDel(historyDocRef(uid));
+    await fsDel(notifDocRef(uid)); await fsDel(checkInAcksDocRef(uid)); await fsDel(userIndexDocRef(uid));
     if(me?.groupId){
       const gid=me.groupId;
-      await fsDel(chatDocRef(gid)); await fsDel(pollsDocRef(gid));
-      await fsDel(adminDocRef(gid)); await fsDel(ledgerDocRef(gid));
-      try{const snap=await getDocs(membersColRef(gid));snap.forEach(d=>fsDel(d.ref));}catch{}
+      await fsDel(memberDocRef(gid,me.name));
+      await fsDel(memberUidDocRef(gid,uid));
     }
-    setMe(null); setReady(false); setHistory([]); setMembers([]);
+    // Send the user straight to the Setup screen instead of an endless loading screen
+    setMe(null); setNoAccount(true); setReady(true); setHistory([]); setMembers([]);
     setMessages([]); setPolls([]); setLedger({charityTotals:{},payoutTotals:{},prizeTotals:{},totalWords:0,totalMinutes:0,entries:[]});
   }
 
