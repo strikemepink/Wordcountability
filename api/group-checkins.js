@@ -21,7 +21,12 @@ module.exports = async function handler(req, res) {
       return res.status(403).json({ error: "Not a member of this group" });
     }
 
-    const memberCards = (await listValues(`groups/${groupId}/members`)).map(d => d.data).filter(m => m?.uid);
+    // A member can briefly have two cards (old name-based and new account-based), so keep one per person
+    const byUid = {};
+    (await listValues(`groups/${groupId}/members`)).map(d => d.data).filter(m => m?.uid).forEach(m => {
+      if (!byUid[m.uid] || (m.updatedAt || 0) > (byUid[m.uid].updatedAt || 0)) byUid[m.uid] = m;
+    });
+    const memberCards = Object.values(byUid);
 
     const members = await Promise.all(memberCards.map(async m => {
       const hist = (await getValue(`users/${m.uid}/data/history`)) || [];

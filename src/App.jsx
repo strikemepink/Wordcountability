@@ -22,7 +22,10 @@ const db          = getFirestore(firebaseApp);
 
 const userDocRef    = (uid)       => doc(db, "users",  uid);
 const historyDocRef = (uid)       => doc(db, "users",  uid, "data", "history");
-const memberDocRef  = (gid, name) => doc(db, "groups", gid, "members", name);
+// Member cards are saved under the member's account ID. Older cards were saved under their
+// first name; legacyMemberDocRef points at those so they can be cleaned up.
+const memberDocRef       = (gid, uid)  => doc(db, "groups", gid, "members", uid);
+const legacyMemberDocRef = (gid, name) => doc(db, "groups", gid, "members", name);
 const chatDocRef    = (gid)       => doc(db, "groups", gid, "data", "chat");
 const pollsDocRef   = (gid)       => doc(db, "groups", gid, "data", "polls");
 const adminDocRef   = (gid)       => doc(db, "groups", gid, "data", "admin");
@@ -211,6 +214,14 @@ function fmtTimer(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%
 function fmtMoney(n){return`$${n.toFixed(2)}`;}
 function normalizeUrl(s){s=s.trim();if(!s)return s;if(!/^https?:\/\//i.test(s))s="https://"+s;return s;}
 function isValidUrl(s){s=normalizeUrl(s);try{const u=new URL(s);return(u.protocol==="https:"||u.protocol==="http:")&&u.hostname.includes(".");}catch{return false;}}
+
+// While older name-based cards are being cleaned up, a person can briefly have two cards.
+// Keeps only the most recently updated card for each person.
+function dedupeMembers(list){
+  const byPerson={};
+  list.forEach(m=>{const k=m.uid||m.name;if(!byPerson[k]||(m.updatedAt||0)>(byPerson[k].updatedAt||0))byPerson[k]=m;});
+  return Object.values(byPerson);
+}
 
 // ── Share helper ─────────────────────────────────────────────────
 async function shareGroup(groupId, setCopied) {
@@ -406,11 +417,16 @@ function Setup({user,onSave}){
   const [avatar,setAvatar]=useState("🦄");
   const [gType,setGType]=useState("words"),[gVal,setGVal]=useState("");
   const [grp,setGrp]=useState("");
-  const ok=name.trim()&&grp.trim()&&gVal;
+  const [error,setError]=useState("");
+  const [saving,setSaving]=useState(false);
+  const ok=name.trim()&&grp.trim()&&gVal&&!saving;
 
-  function handleGo(){
+  async function handleGo(){
     if(!ok)return;
-    onSave({name:name.trim()||"Writer",avatar,goalType:gType,goalValue:parseInt(gVal)||1000,groupId:grp.trim(),isAdmin:false,charity:"",charityName:null});
+    setSaving(true); setError("");
+    const result=await onSave({name:name.trim()||"Writer",avatar,goalType:gType,goalValue:parseInt(gVal)||1000,groupId:grp.trim(),isAdmin:false,charity:"",charityName:null});
+    // onSave returns an error message if the name is already taken in this group
+    if(result?.error){setError(result.error);setSaving(false);}
   }
 
   return(
@@ -423,7 +439,8 @@ function Setup({user,onSave}){
         </div>
 
         <div className="card"><span className="lbl">Your Name</span>
-          <input className="inp" value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Alex"/>
+          <input className="inp" value={name} onChange={e=>{setName(e.target.value);setError("");}} placeholder="e.g. Alex"/>
+          {error&&<div style={{fontSize:14,color:LF.yellow,fontWeight:800,marginTop:8,lineHeight:1.5}}>{error}</div>}
         </div>
 
         <div className="card"><span className="lbl">Pick Your Player</span>
@@ -447,7 +464,7 @@ function Setup({user,onSave}){
         </div>
 
         <button className="btn" onClick={handleGo} style={{fontSize:17,padding:16,opacity:ok?1:0.4}}>
-          Let's GO! 🚀
+          {saving?"Joining…":"Let's GO! 🚀"}
         </button>
         <button onClick={()=>signOut(auth)} style={{background:"none",border:"none",cursor:"pointer",color:"#ffffffbb",fontSize:13,fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>
           Sign out
@@ -1342,18 +1359,21 @@ export default function App(){
       // Fetch notifications and check member doc existence simultaneously
       const [notifVal] = await Promise.all([
         fsGet(notifDocRef(uid)),
-        // Fallback: ensure member doc exists in group — if pub() never ran on setup
+        // Make sure this member's card exists under their account ID, and remove their
+        // older card saved under their first name (only if that card is theirs)
         d.groupId&&d.name
-          ? fsGet(memberDocRef(d.groupId,d.name))
+          ? fsGet(memberDocRef(d.groupId,uid))
               .then(memberVal=>{ if(!memberVal) return pub(d,uid); })
-              .catch(()=>pub(d,uid).catch(()=>{}))
+              .then(()=>fsGet(legacyMemberDocRef(d.groupId,d.name)))
+              .then(oldVal=>{ if(oldVal&&JSON.parse(oldVal).uid===uid) return fsDel(legacyMemberDocRef(d.groupId,d.name)); })
+              .catch(()=>{})
           : Promise.resolve(),
       ]);
       if(notifVal)setInAppNotifs(JSON.parse(notifVal));
 
       // Kick off all group data loads in parallel — none depend on each other
       if(d.groupId){
-        loadMembers(d.groupId,d.name);
+        loadMembers(d.groupId);
         loadChat(d.groupId);
         loadPolls(d.groupId);
         if(!adminData){loadAdminData(d.groupId);}
@@ -1365,7 +1385,7 @@ export default function App(){
   async function pub(d,uidArg){
     if(!d?.groupId)return;
     try{
-      await fsSet(memberDocRef(d.groupId,d.name),JSON.stringify({
+      await fsSet(memberDocRef(d.groupId,uidArg||uid),JSON.stringify({
         name:d.name,avatar:d.avatar,goalValue:d.goalValue,goalType:d.goalType,
         progressThisWeek:d.progressThisWeek,isAdmin:d.isAdmin,charity:d.charity,
         charityName:d.charityName||null,totalProgress:d.totalProgress||0,
@@ -1376,12 +1396,12 @@ export default function App(){
     }catch(e){console.warn("pub",e);}
   }
 
-  async function loadMembers(gid,myName){
+  async function loadMembers(gid){
     try{
       const snap=await getDocs(membersColRef(gid));
       const ms=[];
-      snap.forEach(d=>{try{const m=JSON.parse(d.data().value);ms.push({...m,isYou:m.name===myName});}catch{}});
-      setMembers(ms);
+      snap.forEach(d=>{try{const m=JSON.parse(d.data().value);ms.push({...m,isYou:m.uid===uid});}catch{}});
+      setMembers(dedupeMembers(ms));
     }catch{}
   }
   async function loadChat(gid){try{const v=await fsGet(chatDocRef(gid));setMessages(v?JSON.parse(v):[]);}catch{}}
@@ -1400,9 +1420,9 @@ export default function App(){
         try{
           const snap=await getDocs(membersColRef(groupId));
           const ms=[];
-          snap.forEach(d=>{try{const m=JSON.parse(d.data().value);ms.push({...m,isYou:m.name===(allMembers.find(x=>x.isYou)?.name||"")});}catch{}});
-          // Mark current user — match by uid since name match may not work here
-          resolvedMembers=ms.map(m=>({...m,isYou:m.uid===myUid}));
+          snap.forEach(d=>{try{ms.push(JSON.parse(d.data().value));}catch{}});
+          // Mark current user by account ID
+          resolvedMembers=dedupeMembers(ms).map(m=>({...m,isYou:m.uid===myUid}));
         }catch{}
       }
 
@@ -1458,14 +1478,27 @@ export default function App(){
   }
 
   async function handleSetup({name,avatar,goalType,goalValue,groupId,isAdmin,charity,charityName}){
+    // Join the group first (the database only lets members see the member list), then make
+    // sure nobody else in the group already uses this name. If they do, leave the group again
+    // and ask for a different name.
+    await fsSet(memberUidDocRef(groupId,uid),JSON.stringify({uid,joinedAt:Date.now()}));
+    try{
+      const snap=await getDocs(membersColRef(groupId));
+      const taken=[];
+      snap.forEach(docSnap=>{try{taken.push(JSON.parse(docSnap.data().value));}catch{}});
+      const clash=taken.some(m=>m.uid!==uid&&(m.name||"").trim().toLowerCase()===name.trim().toLowerCase());
+      if(clash){
+        await fsDel(memberUidDocRef(groupId,uid));
+        return{error:`Someone in this group already goes by "${name}". Please add a middle or last initial (like "${name} R.") or use a nickname.`};
+      }
+    }catch(e){console.warn("name check",e);}
     const d={name,avatar,goalType,goalValue,groupId,isAdmin:false,charity:"",charityName:null,
       progressThisWeek:0,totalProgress:0,dailyChecks:[false,false,false,false,false,false,false],lastResetWeek:getWeekKey()};
     setMe(d); setGoalInput(String(goalValue)); setGoalTypeEdit(goalType); setNoAccount(false); setReady(true);
     await fsSet(userDocRef(uid),JSON.stringify(d));
     writeUserIndex(uid,d).catch(()=>{});
-    await fsSet(memberUidDocRef(groupId,uid),JSON.stringify({uid,joinedAt:Date.now()}));
     pub(d).catch(()=>{});
-    loadMembers(groupId,name); loadChat(groupId); loadPolls(groupId); loadAdminData(groupId); loadLedger(groupId);
+    loadMembers(groupId); loadChat(groupId); loadPolls(groupId); loadAdminData(groupId); loadLedger(groupId);
     if(!localStorage.getItem("pwaPromptShown")){setShowPwaPrompt(true);localStorage.setItem("pwaPromptShown","1");}
     if(!localStorage.getItem("appTourShown")){setShowTour(true);setTourStep(0);localStorage.setItem("appTourShown","1");}
   }
@@ -1478,7 +1511,7 @@ export default function App(){
     const upd={...me,progressThisWeek:newWeekProgress,totalProgress:newTotal,dailyChecks:checks};
     setMe(upd); triggerSpark();
     fsSet(userDocRef(uid),JSON.stringify(upd)); pub(upd);
-    loadMembers(me.groupId,me.name); updateLedgerProgress(n);
+    loadMembers(me.groupId); updateLedgerProgress(n);
     maybeNotifyGoalHit(newWeekProgress);
   }
 
@@ -1572,7 +1605,7 @@ export default function App(){
     setMe(upd); triggerSpark();
     await fsSet(userDocRef(uid),JSON.stringify(upd));
     await pub(upd);
-    loadMembers(me.groupId,me.name);
+    loadMembers(me.groupId);
     if(!beforeStart){updateLedgerProgress(n);maybeNotifyGoalHit(newWeekProgress);}
     setLogInput("");
     setPastDaySaving(false);
@@ -1595,7 +1628,7 @@ export default function App(){
     setMe(upd); triggerSpark();
     await fsSet(userDocRef(uid),JSON.stringify(upd));
     await pub(upd);
-    loadMembers(me.groupId,me.name);
+    loadMembers(me.groupId);
     if(!beforeStart){updateLedgerProgress(n);maybeNotifyGoalHit(newWeekProgress);}
     setPastDayInput("");
     setPastDaySaving(false);
@@ -1839,7 +1872,8 @@ export default function App(){
     await fsDel(notifDocRef(uid)); await fsDel(checkInAcksDocRef(uid)); await fsDel(userIndexDocRef(uid));
     if(me?.groupId){
       const gid=me.groupId;
-      await fsDel(memberDocRef(gid,me.name));
+      await fsDel(memberDocRef(gid,uid));
+      await fsDel(legacyMemberDocRef(gid,me.name));
       await fsDel(memberUidDocRef(gid,uid));
     }
     // Send the user straight to the Setup screen instead of an endless loading screen
@@ -1852,7 +1886,7 @@ export default function App(){
     setMe(upd);
     await fsSet(userDocRef(uid),JSON.stringify(upd));
     await pub(upd,uid);
-    loadMembers(me.groupId,me.name);
+    loadMembers(me.groupId);
   }
 
   // Merges partial updates into the live me state and saves to Firestore + index
@@ -2702,7 +2736,7 @@ export default function App(){
         {tab==="Group"&&(<>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{fontSize:14,color:LF.lime,fontWeight:800}}>#{me.groupId} · This Period 🏆</div>
-            <button className="btn btn-teal" onClick={()=>loadMembers(me.groupId,me.name)} style={{fontSize:13,padding:"6px 12px"}}>↻ Refresh</button>
+            <button className="btn btn-teal" onClick={()=>loadMembers(me.groupId)} style={{fontSize:13,padding:"6px 12px"}}>↻ Refresh</button>
           </div>
           {challengeNotStarted&&(
             <div className="card" style={{border:`2px solid ${LF.violet}88`,background:"#E040FB11",textAlign:"center"}}>
@@ -2784,7 +2818,7 @@ export default function App(){
             const medals=["🥇","🥈","🥉"];
             const bar=p>=100?`linear-gradient(90deg,${LF.lime},${LF.violet})`:i===0?`linear-gradient(90deg,${LF.yellow},${LF.orange})`:`linear-gradient(90deg,${LF.pink},${LF.purple})`;
             return(
-              <div key={w.name} className="card" style={{border:`2px solid ${w.isYou?LF.pink:LF.purple}44`,background:w.isYou?"#FF2D9B11":""}}>
+              <div key={w.uid||w.name} className="card" style={{border:`2px solid ${w.isYou?LF.pink:LF.purple}44`,background:w.isYou?"#FF2D9B11":""}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                   <div style={{fontSize:18}}>{medals[i]||`${i+1}`}</div>
                   <div style={{fontSize:18}}>{w.avatar}</div>
