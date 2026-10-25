@@ -2,7 +2,7 @@
 
 Goal: people can test the app during November 2026 (the old National Novel Writing Month).
 
-Last updated: 10/24/2026
+Last updated: 10/25/2026
 
 ## Before November testing (suggested)
 
@@ -19,6 +19,7 @@ Last updated: 10/24/2026
 - [ ] If someone doesn't open the app across two check-in deadlines, only one check-in is recorded.
 - [ ] Tapping "Finish Notification Setup" on a computer can overwrite the phone's notification ID, sending pushes to the wrong device.
 - [ ] There's no in-app way to make someone an admin. It has to be set by hand in Firebase. (Fine if intentional.)
+- [ ] **Let preview versions connect to Firebase** so changes can be tested before they go live. In Vercel: Project Settings → Environment Variables, and turn on "Preview" for the Firebase and OneSignal settings. Catch: previews would then use the real database, so test with a throwaway account and group (or set up a separate test Firebase project later).
 
 ## Bigger projects (suggested for after November)
 
