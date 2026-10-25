@@ -1,0 +1,35 @@
+rules_version = '2';
+// Wordcountability database rules.
+// These are pasted into Firebase console → Firestore Database → Rules → Publish.
+// The server functions (api/) use a private service account key, which bypasses these rules,
+// so nothing here needs to be public.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // True if the signed-in user has joined this group
+    function isMember(groupId) {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/groups/$(groupId)/memberUids/$(request.auth.uid));
+    }
+
+    // Each user's own profile, history, notifications and check-in acknowledgements: owner only
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // The reminder job's copy of each user: owner only (the server reads it with its own key)
+    match /_index/users/members/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Joining a group: a signed-in user can add or remove only their own membership record
+    match /groups/{groupId}/memberUids/{uid} {
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Everything else in a group (chat, polls, admin settings, ledger, member cards): members only
+    match /groups/{groupId}/{document=**} {
+      allow read, write: if isMember(groupId);
+    }
+  }
+}

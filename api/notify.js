@@ -1,94 +1,39 @@
 /**
  * /api/notify.js — Vercel serverless function
  *
- * Sends a push notification via OneSignal.
+ * Sends a push notification via OneSignal. Only signed-in users can call it: the app sends
+ * the user's Firebase login token in the Authorization header.
  * Supports three modes:
- *   1. Direct:  { playerId, title, body, type }
- *   2. Fan-out: { groupId, notifType, title, body, excludeUid }
- *      Reads all group members from Firestore, filters by their notifPrefs,
- *      and sends to each member who has that notification type enabled.
+ *   1. To self:  { toSelf: true, title, body, type }
+ *      Sends to the caller's own saved device (the player ID stored in their profile).
+ *   2. Fan-out:  { groupId, notifType, title, body }
+ *      Caller must be a member of the group. Sends to every other member who has that
+ *      notification type enabled.
  *   3. Poll closing soon: { groupId, notifType: "pollClosingSoon", pollQuestion, pollDeadlineMs }
- *      Schedules a push 24h before the poll deadline for all group members
- *      with pollClosingSoon pref on. Uses OneSignal send_after field.
+ *      Caller must be a member. Schedules a push 24h before the poll deadline for all group
+ *      members with pollClosingSoon pref on. Uses OneSignal send_after field.
  *
  * POST /api/notify
  */
 
-const ONESIGNAL_APP_ID  = process.env.VITE_ONESIGNAL_APP_ID;
-const ONESIGNAL_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
-const FIREBASE_PROJECT  = process.env.VITE_FIREBASE_PROJECT_ID;
+const { getValue, setValue, listValues, getCallerUid, isGroupMember, sendPush } = require("./_lib/server");
 
-// ── Firestore REST helpers ────────────────────────────────────────
-async function firestoreGet(docPath) {
-  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/${docPath}`;
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  const data = await res.json();
-  const raw = data?.fields?.value?.stringValue;
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch { return null; }
-}
+const FAN_OUT_TYPES = ["memberHitGoal", "newPoll", "newChatMessage"];
 
-async function firestoreList(collectionPath) {
-  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/${collectionPath}`;
-  const res = await fetch(url);
-  if (!res.ok) return [];
-  const data = await res.json();
-  const docs = data?.documents || [];
-  return docs.map(doc => {
-    const raw = doc?.fields?.value?.stringValue;
-    const id  = doc.name?.split("/").pop();
-    try { return { id, data: JSON.parse(raw) }; } catch { return null; }
-  }).filter(Boolean);
-}
-
-async function firestoreSet(docPath, value) {
-  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/${docPath}?updateMask.fieldPaths=value`;
-  await fetch(url, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fields: { value: { stringValue: JSON.stringify(value) } } }),
-  });
-}
-
-// ── OneSignal send ────────────────────────────────────────────────
-// sendAfterIso is optional — pass an ISO 8601 UTC string to schedule for the future.
-async function sendPush(playerIds, title, body, sendAfterIso = null) {
-  if (!playerIds || playerIds.length === 0) return { sent: 0 };
-  const payload = {
-    app_id:             ONESIGNAL_APP_ID,
-    include_player_ids: playerIds,
-    headings:           { en: title },
-    contents:           { en: body  },
-    web_url:            "https://wordcountability.vercel.app",
-  };
-  if (sendAfterIso) payload.send_after = sendAfterIso;
-  const res = await fetch("https://onesignal.com/api/v1/notifications", {
-    method:  "POST",
-    headers: {
-      "Content-Type":  "application/json",
-      "Authorization": `Basic ${ONESIGNAL_API_KEY}`,
-    },
-    body: JSON.stringify(payload),
-  });
-  const json = await res.json();
-  return { sent: playerIds.length, notifId: json.id || null, onesignal: json };
-}
+// Keeps notification text to a sensible length so the endpoint can't be used to send essays
+function clip(s, max) { return String(s || "").slice(0, max); }
 
 // ── Fan-out: get player IDs for a group filtered by notifType ─────
 async function getGroupPlayerIds(groupId, notifType, excludeUid) {
-  const memberUids = await firestoreList(`groups/${groupId}/memberUids`);
-  if (!memberUids.length) return [];
-
+  const memberUids = await listValues(`groups/${groupId}/memberUids`);
   const playerIds = [];
   await Promise.all(
     memberUids.map(async ({ id: uid }) => {
       if (uid === excludeUid) return;
       try {
-        const idx = await firestoreGet(`_index/users/members/${uid}`);
-        if (!idx) return;
-        if (!idx.oneSignalPlayerId) return;
-        const user = await firestoreGet(`users/${uid}`);
+        const idx = await getValue(`_index/users/members/${uid}`);
+        if (!idx?.oneSignalPlayerId) return;
+        const user = await getValue(`users/${uid}`);
         if (!user) return;
         const prefs = user.notifPrefs || {};
         if (prefs[notifType] === false) return;
@@ -100,30 +45,38 @@ async function getGroupPlayerIds(groupId, notifType, excludeUid) {
 }
 
 // ── Handler ───────────────────────────────────────────────────────
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
+  if (!process.env.VITE_ONESIGNAL_APP_ID || !process.env.ONESIGNAL_REST_API_KEY) {
     return res.status(500).json({ error: "OneSignal env vars not configured" });
   }
 
-  const { playerId, title, body, type, groupId, notifType, excludeUid, pollQuestion, pollDeadlineMs } = req.body || {};
+  const { toSelf, playerId, type, groupId, notifType, pollQuestion, pollDeadlineMs } = req.body || {};
+  const title = clip(req.body?.title, 120);
+  const body  = clip(req.body?.body, 300);
 
   try {
-    // Mode 1: direct send to a single player
-    if (playerId) {
-      const result = await sendPush([playerId], title, body);
-      return res.status(200).json({ ok: true, ...result });
+    const callerUid = await getCallerUid(req);
+    if (!callerUid) return res.status(401).json({ error: "Sign-in required" });
+
+    // Mode 1: send to the caller's own saved device ("playerId" kept for older app versions)
+    if (toSelf || playerId) {
+      const idx = await getValue(`_index/users/members/${callerUid}`);
+      if (!idx?.oneSignalPlayerId) return res.status(200).json({ ok: true, sent: 0, note: "No device saved" });
+      const result = await sendPush([idx.oneSignalPlayerId], title, body);
+      return res.status(200).json({ ok: true, type, ...result });
     }
 
-    // Mode 2: fan-out to a group (excludes pollClosingSoon — handled in Mode 3)
-    if (groupId && notifType && notifType !== "pollClosingSoon") {
-      if (!FIREBASE_PROJECT) {
-        return res.status(500).json({ error: "VITE_FIREBASE_PROJECT_ID not configured" });
-      }
-      const playerIds = await getGroupPlayerIds(groupId, notifType, excludeUid);
+    if (!groupId || !(await isGroupMember(groupId, callerUid))) {
+      return res.status(403).json({ error: "Not a member of this group" });
+    }
+
+    // Mode 2: fan-out to the rest of the group
+    if (FAN_OUT_TYPES.includes(notifType)) {
+      const playerIds = await getGroupPlayerIds(groupId, notifType, callerUid);
       if (playerIds.length === 0) {
         return res.status(200).json({ ok: true, sent: 0, note: "No eligible recipients" });
       }
@@ -132,21 +85,19 @@ export default async function handler(req, res) {
     }
 
     // Mode 3: schedule "poll closing soon" push 24h before poll deadline
-    if (groupId && notifType === "pollClosingSoon" && pollQuestion && pollDeadlineMs) {
-      if (!FIREBASE_PROJECT) {
-        return res.status(500).json({ error: "VITE_FIREBASE_PROJECT_ID not configured" });
-      }
-      const warnMs = pollDeadlineMs - 86400000; // 24h before deadline
+    if (notifType === "pollClosingSoon" && pollQuestion && pollDeadlineMs) {
+      const question = clip(pollQuestion, 150);
+      const warnMs = Number(pollDeadlineMs) - 86400000; // 24h before deadline
       const now = Date.now();
-      const memberUids = await firestoreList(`groups/${groupId}/memberUids`);
+      const memberUids = await listValues(`groups/${groupId}/memberUids`);
       const scheduledIds = [];
 
       await Promise.all(
         memberUids.map(async ({ id: uid }) => {
           try {
-            const idx = await firestoreGet(`_index/users/members/${uid}`);
+            const idx = await getValue(`_index/users/members/${uid}`);
             if (!idx?.oneSignalPlayerId) return;
-            const user = await firestoreGet(`users/${uid}`);
+            const user = await getValue(`users/${uid}`);
             if (!user) return;
             const prefs = user.notifPrefs || {};
             if (prefs.pollClosingSoon === false) return;
@@ -156,7 +107,7 @@ export default async function handler(req, res) {
               const result = await sendPush(
                 [idx.oneSignalPlayerId],
                 "⏳ Poll closing soon",
-                `"${pollQuestion}" closes in less than 24 hours — vote if you haven't!`
+                `"${question}" closes in less than 24 hours — vote if you haven't!`
               );
               if (result.notifId) scheduledIds.push(result.notifId);
             } else {
@@ -164,7 +115,7 @@ export default async function handler(req, res) {
               const result = await sendPush(
                 [idx.oneSignalPlayerId],
                 "⏳ Poll closing soon",
-                `"${pollQuestion}" closes tomorrow — vote if you haven't!`,
+                `"${question}" closes tomorrow — vote if you haven't!`,
                 new Date(warnMs).toISOString()
               );
               if (result.notifId) scheduledIds.push(result.notifId);
@@ -175,17 +126,17 @@ export default async function handler(req, res) {
 
       // Save scheduled IDs to Firebase keyed by poll deadline so they can be cancelled later if needed
       const pollKey = `poll_${pollDeadlineMs}`;
-      const existing = await firestoreGet(`groups/${groupId}/data/pollNotifs`) || {};
+      const existing = await getValue(`groups/${groupId}/data/pollNotifs`) || {};
       existing[pollKey] = scheduledIds;
-      await firestoreSet(`groups/${groupId}/data/pollNotifs`, existing);
+      await setValue(`groups/${groupId}/data/pollNotifs`, existing);
 
       return res.status(200).json({ ok: true, mode: "pollClosingSoon", scheduled: scheduledIds.length });
     }
 
-    return res.status(400).json({ error: "Provide either playerId or groupId+notifType" });
+    return res.status(400).json({ error: "Provide toSelf, or groupId+notifType" });
 
   } catch (e) {
     console.error("notify error:", e);
     return res.status(500).json({ error: e.message });
   }
-}
+};

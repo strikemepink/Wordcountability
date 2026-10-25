@@ -1,41 +1,15 @@
 // api/schedule-notifications.js
-// Called by App.jsx when the admin saves challenge settings.
+// Called by App.jsx when the admin saves challenge settings. Only the group's admin can call it
+// (checked with their Firebase login token), and it uses the saved settings from Firestore.
 // Calculates all future notification times for every group member and schedules
 // them via the OneSignal REST API using the send_after field.
 // Cancels any previously scheduled notifications before scheduling new ones,
 // so rescheduling when the admin edits settings is safe.
 
+const { getValue, setValue, listValues, getCallerUid } = require("./_lib/server");
+
 const ONESIGNAL_APP_ID  = process.env.VITE_ONESIGNAL_APP_ID;
 const ONESIGNAL_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
-const FIREBASE_PROJECT  = process.env.VITE_FIREBASE_PROJECT_ID;
-const FIRESTORE_BASE    = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
-
-// ── Firestore REST helpers ────────────────────────────────────────
-
-async function firestoreGet(path) {
-  const res = await fetch(`${FIRESTORE_BASE}/${path}`);
-  if (!res.ok) return null;
-  const doc = await res.json();
-  if (!doc.fields?.value?.stringValue) return null;
-  try { return JSON.parse(doc.fields.value.stringValue); } catch { return null; }
-}
-
-async function firestoreSet(path, value) {
-  await fetch(`${FIRESTORE_BASE}/${path}?updateMask.fieldPaths=value`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fields: { value: { stringValue: JSON.stringify(value) } } }),
-  });
-}
-
-async function firestoreList(collectionPath) {
-  const res = await fetch(`${FIRESTORE_BASE}/${collectionPath}`);
-  if (!res.ok) return [];
-  const data = await res.json();
-  return (data.documents || []).map(doc => {
-    try { return JSON.parse(doc.fields?.value?.stringValue || "null"); } catch { return null; }
-  }).filter(Boolean);
-}
 
 // ── OneSignal helpers ─────────────────────────────────────────────
 
@@ -146,14 +120,25 @@ function buildSchedule(admin, user) {
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { groupId, admin } = req.body || {};
-  if (!groupId || !admin) return res.status(400).json({ error: "Missing groupId or admin" });
+  const { groupId } = req.body || {};
+  if (!groupId) return res.status(400).json({ error: "Missing groupId" });
 
   console.log(`[schedule-notifications] groupId=${groupId}`);
 
   try {
+    // Only this group's admin may reschedule its notifications
+    const callerUid = await getCallerUid(req);
+    if (!callerUid) return res.status(401).json({ error: "Sign-in required" });
+    const caller = await getValue(`users/${callerUid}`);
+    if (!caller?.isAdmin || caller.groupId !== groupId) {
+      return res.status(403).json({ error: "Only the group admin can do this" });
+    }
+
+    const admin = await getValue(`groups/${groupId}/data/admin`);
+    if (!admin) return res.status(400).json({ error: "No challenge settings saved" });
+
     // 1. Load all group members from the user index
-    const allUsers = await firestoreList("_index/users/members");
+    const allUsers = (await listValues("_index/users/members")).map(d => d.data);
     const groupMembers = allUsers.filter(u => u && u.groupId === groupId && u.oneSignalPlayerId);
 
     if (groupMembers.length === 0) {
@@ -161,7 +146,7 @@ module.exports = async function handler(req, res) {
     }
 
     // 2. Load and cancel any previously scheduled notification IDs
-    const existing = await firestoreGet(`groups/${groupId}/data/scheduledNotifs`) || {};
+    const existing = await getValue(`groups/${groupId}/data/scheduledNotifs`) || {};
     let cancelCount = 0;
     for (const notifIds of Object.values(existing)) {
       for (const notifId of (notifIds || [])) {
@@ -194,7 +179,7 @@ module.exports = async function handler(req, res) {
     }
 
     // 4. Save new scheduled notification IDs to Firebase for future cancellation
-    await firestoreSet(`groups/${groupId}/data/scheduledNotifs`, newSchedule);
+    await setValue(`groups/${groupId}/data/scheduledNotifs`, newSchedule);
 
     console.log(`[schedule-notifications] Scheduled ${scheduleCount} notifications for ${groupMembers.length} members`);
     return res.status(200).json({ ok: true, scheduled: scheduleCount, cancelled: cancelCount, members: groupMembers.length });

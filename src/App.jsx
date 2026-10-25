@@ -67,6 +67,16 @@ async function writeUserIndex(uid, d){
     }));
   }catch(e){console.warn("writeUserIndex",e);}
 }
+// Calls one of our own server functions as the signed-in user. The login token lets the
+// server confirm who is asking before it sends notifications or returns group data.
+async function apiPost(path, body){
+  const token=auth.currentUser?await auth.currentUser.getIdToken():null;
+  return fetch(path,{
+    method:"POST",
+    headers:{"Content-Type":"application/json",...(token?{Authorization:`Bearer ${token}`}:{})},
+    body:JSON.stringify(body),
+  });
+}
 
 // ── Constants ────────────────────────────────────────────────────
 const TABS        = ["Dashboard","Group","Chat","Stats","Stakes","History"];
@@ -512,14 +522,8 @@ async function sendNotifToSelf(uid, db, type, title, body){
   }catch(e){console.warn("notif store",e);}
   // Push via Vercel function (scaffold — will be active once /api/notify exists)
   try{
-    const playerId=await getOneSignalPlayerId();
-    if(!playerId)return;
-    await fetch("/api/notify",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({playerId,title,body,type}),
-    });
-  }catch{/* function doesn't exist yet — silent fail */}
+    await apiPost("/api/notify",{toSelf:true,title,body,type});
+  }catch{/* silent fail */}
 }
 
 // ── SettingsPanel ─────────────────────────────────────────────────
@@ -1197,6 +1201,8 @@ export default function App(){
       if(!meVal){setNoAccount(true);setReady(true);return;}
       let d=JSON.parse(meVal);
       const wk=getWeekKey();
+      // Register as a group member first: the database only lets members read group data
+      if(d.groupId){await fsSet(memberUidDocRef(d.groupId,uid),JSON.stringify({uid,joinedAt:Date.now()}));}
       // Always load admin data first so we can check challenge state
       let adminData=null;
       if(d.groupId){
@@ -1349,7 +1355,6 @@ export default function App(){
         loadPolls(d.groupId);
         if(!adminData){loadAdminData(d.groupId);}
         loadLedger(d.groupId);
-        fsSet(memberUidDocRef(d.groupId,uid),JSON.stringify({uid,joinedAt:Date.now()})).catch(()=>{});
       }
     }catch(e){console.error("loadAll",e);setReady(true);}
   }
@@ -1428,15 +1433,15 @@ export default function App(){
       const meInList=resolvedMembers.find(m=>m.isYou);
       if(meInList){foldHistory({...meInList,uid:myUid},myHistory);}
 
-      // Fetch and fold each other member's history (only if they have a uid stored)
-      const others=resolvedMembers.filter(m=>!m.isYou&&m.uid);
-      await Promise.all(others.map(async m=>{
-        try{
-          const v=await fsGet(historyDocRef(m.uid));
-          const hist=v?JSON.parse(v):[];
-          foldHistory(m,hist);
-        }catch{}
-      }));
+      // Other members' history is private, so the server checks we're in the group and
+      // returns just their check-in results
+      try{
+        const res=await apiPost("/api/group-checkins",{groupId});
+        if(res.ok){
+          const {members:groupMembers}=await res.json();
+          (groupMembers||[]).filter(m=>m.uid!==myUid).forEach(m=>foldHistory(m,m.checkIns));
+        }
+      }catch{}
 
       // Sort check-ins most recent first; sort members within each by name for consistency
       const sorted=Object.values(byDeadline)
@@ -1682,7 +1687,7 @@ export default function App(){
     const upd={...adminDraft,startDate:challengeStart.toISOString(),endDate:end.toISOString()};
     const nowCharity=upd.payoutMode==="charity";
     setAdmin(upd); setAdminDraft(upd); setShowAdmin(false);
-    fsSet(adminDocRef(me.groupId),JSON.stringify(upd));
+    const adminSaved=fsSet(adminDocRef(me.groupId),JSON.stringify(upd));
     // If switching to charity mode and admin hasn't picked yet, show picker
     if(nowCharity&&(!me.charityName)&&!isLocked){
       setShowCharityModal(true);
@@ -1690,11 +1695,8 @@ export default function App(){
     // Schedule push notifications for all group members based on the new challenge settings.
     // This cancels any previously scheduled notifications and schedules fresh ones.
     // Silent fail — notifications are a nice-to-have and should never block the admin save.
-    fetch("/api/schedule-notifications",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({groupId:me.groupId,admin:upd}),
-    }).catch(()=>{});
+    // Waits for the settings to save first, since the server reads them from the database.
+    adminSaved.then(()=>apiPost("/api/schedule-notifications",{groupId:me.groupId})).catch(()=>{});
   }
 
   function toggleGoalLock(){
@@ -1795,16 +1797,12 @@ export default function App(){
     if(poll.deadline&&me.groupId){
       const deadlineMs=new Date(poll.deadline).getTime();
       if(!isNaN(deadlineMs)&&deadlineMs>Date.now()){
-        fetch("/api/notify",{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({
+        apiPost("/api/notify",{
             groupId:me.groupId,
             notifType:"pollClosingSoon",
             pollQuestion:poll.question,
             pollDeadlineMs:deadlineMs,
-          }),
-        }).catch(()=>{});
+          }).catch(()=>{});
       }
     }
   }
@@ -1874,16 +1872,9 @@ export default function App(){
       fsSet(notifDocRef(uid),JSON.stringify(updated));
       return updated;
     });
-    // Also attempt push (silent fail until /api/notify exists)
+    // Also send a push to this user's saved device (silent fail)
     try{
-      const playerId=await getOneSignalPlayerId();
-      if(playerId){
-        await fetch("/api/notify",{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({playerId,title,body,type}),
-        });
-      }
+      await apiPost("/api/notify",{toSelf:true,title,body,type});
     }catch{}
   }
 
@@ -1918,17 +1909,13 @@ export default function App(){
       const periodLabel=curPeriodWeeks>1?`${curPeriodWeeks}-week period goal`:"weekly goal";
       await addInAppNotif("memberHitGoal","🌟 Goal crushed!",`You hit your ${fmtGoal(me)} ${periodLabel}. Amazing work!`);
       if(me?.groupId){
-        fetch("/api/notify",{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({
+        apiPost("/api/notify",{
             groupId:me.groupId,
             notifType:"memberHitGoal",
             excludeUid:uid,
             title:`🌟 ${me.name} crushed their goal!`,
             body:`${me.avatar} ${me.name} just hit their ${fmtGoal(me)} ${periodLabel}. Get inspired!`,
-          }),
-        }).catch(()=>{});
+          }).catch(()=>{});
       }
     }
   }
@@ -1939,17 +1926,13 @@ export default function App(){
     await addInAppNotif("newPoll","📊 New poll","\""+question+"\" — cast your vote in Chat!");
     // Push fan-out to all group members who want poll notifications (excludes self)
     if(me?.groupId){
-      fetch("/api/notify",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
+      apiPost("/api/notify",{
           groupId:me.groupId,
           notifType:"newPoll",
           excludeUid:uid,
           title:"📊 New poll in "+me.groupId,
           body:"\""+question+"\" — cast your vote!",
-        }),
-      }).catch(()=>{});
+        }).catch(()=>{});
     }
   }
 

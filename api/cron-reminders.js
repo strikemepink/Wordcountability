@@ -1,12 +1,13 @@
 // api/cron-reminders.js
 // Runs hourly via external cron (cron-job.org). Reads _index/users/members,
 // finds users whose writing reminder or progress check-in is due in THEIR local timezone,
-// and sends a push via /api/notify.
+// and sends a push via OneSignal.
+// Requires the CRON_SECRET password in the "x-cron-secret" header (set in Vercel and cron-job.org).
 // Also handles:
 //   - Missed check-in: fires in the hour after a check-in deadline if the user missed their goal
 //   - Challenge starting soon: fires when the challenge start is 23-24h away (the only sender of this push)
 
-const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${process.env.VITE_FIREBASE_PROJECT_ID}/databases/(default)/documents`;
+const { getValue, listValues, sendPush } = require("./_lib/server");
 
 const MOTIVATIONAL_MESSAGES = [
   "Yoda says: Become writer only by writing.",
@@ -20,19 +21,6 @@ const MOTIVATIONAL_MESSAGES = [
   "A finished first draft, for lack of a better project, is better than an unfinished polished draft.",
   "Cookie Monster says: Me want story!!!!",
 ];
-
-async function firestoreGet(path) {
-  const res = await fetch(`${FIRESTORE_BASE}/${path}`);
-  if (!res.ok) return null;
-  return res.json();
-}
-
-async function firestoreList(path) {
-  const res = await fetch(`${FIRESTORE_BASE}/${path}`);
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.documents || [];
-}
 
 function getLocalHour(utcDate, timezone) {
   try {
@@ -104,13 +92,7 @@ function shouldSendProgressNotif(user, nowUtc) {
 }
 
 async function getAdminData(groupId) {
-  try {
-    const doc = await firestoreGet(`groups/${groupId}/data/admin`);
-    if (!doc?.fields?.value?.stringValue) return null;
-    return JSON.parse(doc.fields.value.stringValue);
-  } catch {
-    return null;
-  }
+  try { return await getValue(`groups/${groupId}/data/admin`); } catch { return null; }
 }
 
 function buildProgressMessage(user, admin, nowUtc) {
@@ -223,8 +205,9 @@ function challengeStartsIn24h(admin, nowMs) {
 }
 
 module.exports = async function handler(req, res) {
+  // Password is required: if CRON_SECRET isn't set in Vercel, nobody can trigger the job
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && req.headers["x-cron-secret"] !== cronSecret) {
+  if (!cronSecret || req.headers["x-cron-secret"] !== cronSecret) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
@@ -243,14 +226,12 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const docs = await firestoreList("_index/users/members");
-    const host = `https://${req.headers.host}`;
+    const docs = await listValues("_index/users/members");
 
     for (const doc of docs) {
       try {
-        const valueField = doc?.fields?.value?.stringValue;
-        if (!valueField) continue;
-        const user = JSON.parse(valueField);
+        const user = doc.data;
+        if (!user) continue;
         checked++;
 
         const prefs = user.notifPrefs || {};
@@ -261,16 +242,7 @@ module.exports = async function handler(req, res) {
         // ── 1. Writing reminder ──────────────────────────────────
         if (sendingReminder) {
           const msg = MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
-          await fetch(`${host}/api/notify`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              playerId: user.oneSignalPlayerId,
-              title: "✍️ Time to write!",
-              body: msg,
-              type: "writingReminder",
-            }),
-          });
+          await sendPush([user.oneSignalPlayerId], "✍️ Time to write!", msg);
           sent++;
         }
 
@@ -278,16 +250,7 @@ module.exports = async function handler(req, res) {
         if (sendingProgress && user.groupId) {
           const progressMsg = buildProgressMessage(user, admin, nowUtc);
           if (progressMsg) {
-            await fetch(`${host}/api/notify`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                playerId: user.oneSignalPlayerId,
-                title: progressMsg.title,
-                body: progressMsg.body,
-                type: "progressCheckIn",
-              }),
-            });
+            await sendPush([user.oneSignalPlayerId], progressMsg.title, progressMsg.body);
             sent++;
           }
         }
@@ -320,16 +283,7 @@ module.exports = async function handler(req, res) {
                 body = `You still made progress this period and that's worth a round of applause. Think about what you can do to hit your goal next check-in. You can do this!`;
               }
 
-              await fetch(`${host}/api/notify`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  playerId: user.oneSignalPlayerId,
-                  title: "💔 Check-in missed",
-                  body,
-                  type: "missedCheckIn",
-                }),
-              });
+              await sendPush([user.oneSignalPlayerId], "💔 Check-in missed", body);
               sent++;
             }
           }
@@ -347,16 +301,7 @@ module.exports = async function handler(req, res) {
                   return h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ""}` : `${m}m`;
                 })();
 
-            await fetch(`${host}/api/notify`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                playerId: user.oneSignalPlayerId,
-                title: "🚀 Challenge starts tomorrow!",
-                body: `Your writing challenge kicks off in 24 hours. Your goal: ${goalLabel} per check-in. Get ready!`,
-                type: "challengeStarting",
-              }),
-            });
+            await sendPush([user.oneSignalPlayerId], "🚀 Challenge starts tomorrow!", `Your writing challenge kicks off in 24 hours. Your goal: ${goalLabel} per check-in. Get ready!`);
             sent++;
           }
         }
