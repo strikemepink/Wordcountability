@@ -7,7 +7,7 @@
 //   - Missed check-in: fires in the hour after a check-in deadline if the user missed their goal
 //   - Challenge starting soon: fires when the challenge start is 23-24h away (the only sender of this push)
 
-const { getValue, listValues, getPlayerIds, sendPush } = require("./_lib/server");
+const { getValue, listValues, getPlayerIds, setUpGroupAdmins, sendPush } = require("./_lib/server");
 
 const MOTIVATIONAL_MESSAGES = [
   "Yoda says: Become writer only by writing.",
@@ -240,6 +240,15 @@ module.exports = async function handler(req, res) {
 
   try {
     const docs = await listValues("_index/users/members");
+
+    // Give any group created before the admin list existed its admin list (one time per group)
+    const groupIds = [...new Set(docs.map(d => d.data?.groupId).filter(Boolean))];
+    for (const gid of groupIds) {
+      try {
+        const memberUids = (await listValues(`groups/${gid}/memberUids`)).map(d => d.id);
+        await setUpGroupAdmins(gid, memberUids);
+      } catch (e) { console.warn("cron: admin setup failed for", gid, e); }
+    }
 
     for (const doc of docs) {
       try {

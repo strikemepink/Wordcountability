@@ -6,7 +6,7 @@
 // Cancels any previously scheduled notifications before scheduling new ones,
 // so rescheduling when the admin edits settings is safe.
 
-const { getValue, setValue, listValues, getCallerUid, getPlayerIds } = require("./_lib/server");
+const { getValue, setValue, listValues, getCallerUid, isGroupAdmin, getPlayerIds } = require("./_lib/server");
 
 const ONESIGNAL_APP_ID  = process.env.VITE_ONESIGNAL_APP_ID;
 const ONESIGNAL_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
@@ -131,8 +131,7 @@ module.exports = async function handler(req, res) {
     // Only this group's admin may reschedule its notifications
     const callerUid = await getCallerUid(req);
     if (!callerUid) return res.status(401).json({ error: "Sign-in required" });
-    const caller = await getValue(`users/${callerUid}`);
-    if (!caller?.isAdmin || caller.groupId !== groupId) {
+    if (!(await isGroupAdmin(groupId, callerUid))) {
       return res.status(403).json({ error: "Only the group admin can do this" });
     }
 

@@ -60,6 +60,33 @@ async function isGroupMember(groupId, uid) {
   return docExists(`groups/${groupId}/memberUids/${uid}`);
 }
 
+// Group admins are listed in groups/{groupId}/adminUids/{uid}
+async function isGroupAdmin(groupId, uid) {
+  if (!groupId || !uid || groupId.includes("/")) return false;
+  return docExists(`groups/${groupId}/adminUids/${uid}`);
+}
+
+// One-time setup for groups created before the admin list existed: gives the group its
+// "group record" and copies its current admins (users marked isAdmin) into the admin list.
+// Once a group has a group record this does nothing, so it's safe to run every hour.
+// Creating the record also stops anyone from claiming an existing group as its creator.
+async function setUpGroupAdmins(groupId, memberUids) {
+  if (!groupId || groupId.includes("/")) return;
+  if (await docExists(`groups/${groupId}`)) return;
+  const admins = [];
+  for (const uid of memberUids) {
+    const user = await getValue(`users/${uid}`);
+    if (user?.isAdmin && user.groupId === groupId) admins.push(uid);
+  }
+  const batch = db().batch();
+  for (const uid of admins) {
+    batch.set(db().doc(`groups/${groupId}/adminUids/${uid}`), { value: JSON.stringify({ uid, addedBy: "setup", at: Date.now() }) });
+  }
+  batch.set(db().doc(`groups/${groupId}`), { createdBy: admins[0] || "existing-group", setUpAt: Date.now() });
+  await batch.commit();
+  console.log(`[admins] set up group ${groupId} with ${admins.length} admin(s)`);
+}
+
 // ── Devices ───────────────────────────────────────────────────────
 
 // Returns every push device ID saved for a user: their device list, plus the single ID older
@@ -96,4 +123,4 @@ async function sendPush(playerIds, title, body, sendAfterIso = null) {
   return { sent: playerIds.length, notifId: json.id || null, onesignal: json };
 }
 
-module.exports = { getValue, setValue, listValues, getCallerUid, isGroupMember, getPlayerIds, sendPush };
+module.exports = { getValue, setValue, listValues, getCallerUid, isGroupMember, isGroupAdmin, setUpGroupAdmins, getPlayerIds, sendPush };

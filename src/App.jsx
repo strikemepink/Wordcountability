@@ -36,6 +36,10 @@ const notifDocRef        = (uid)       => doc(db, "users",  uid, "data", "notifi
 const checkInAcksDocRef  = (uid)       => doc(db, "users",  uid, "data", "checkInAcks");
 const userIndexDocRef    = (uid)       => doc(db, "_index", "users", "members", uid);
 const devicesDocRef      = (uid)       => doc(db, "users",  uid, "data", "devices");
+// Group admins: groups/{gid}/adminUids/{uid}. The group record (groups/{gid}) notes who created it.
+const groupDocRef        = (gid)       => doc(db, "groups", gid);
+const adminUidDocRef     = (gid, uid)  => doc(db, "groups", gid, "adminUids", uid);
+const adminUidsColRef    = (gid)       => collection(db, "groups", gid, "adminUids");
 
 async function fsGet(ref) {
   try { const s = await getDoc(ref); return s.exists() ? s.data().value : null; } catch { return null; }
@@ -559,7 +563,7 @@ async function sendNotifToSelf(uid, db, type, title, body){
 }
 
 // ── SettingsPanel ─────────────────────────────────────────────────
-function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenAdmin, onOpenPrivacy, onUpdateMe, onStartTour}){
+function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut, onOpenAdmin, onOpenPrivacy, onUpdateMe, onStartTour}){
   const [section,setSection]=useState("profile"); // profile | notifications | accolades | about
   const [notifPerms,setNotifPerms]=useState("default"); // default | granted | denied
   const [notifPrefs,setNotifPrefs]=useState(me.notifPrefs||DEFAULT_NOTIF_PREFS);
@@ -753,7 +757,7 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
                 <button onClick={onOpenPrivacy} style={{background:"#ffffff11",border:"1px solid #ffffff22",borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Outfit',sans-serif",color:"#fff",fontSize:14,fontWeight:700}}>
                   🔒 Privacy Policy
                 </button>
-                {me.isAdmin&&(
+                {isAdmin&&(
                   <button onClick={()=>{onOpenAdmin();onClose();}} style={{background:`linear-gradient(135deg,${LF.yellow}33,${LF.orange}33)`,border:`1px solid ${LF.yellow}44`,borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Outfit',sans-serif",color:LF.yellow,fontSize:14,fontWeight:800}}>
                     ⚙️ Admin Settings
                   </button>
@@ -1109,6 +1113,7 @@ export default function App(){
   const [me,setMe]=useState(null);
   const [history,setHistory]=useState([]);
   const [members,setMembers]=useState([]);
+  const [adminUids,setAdminUids]=useState([]); // account IDs of this group's admins
   const [tab,setTab]=useState("Dashboard");
   const [logInput,setLogInput]=useState("");
   const [goalInput,setGoalInput]=useState("");
@@ -1399,6 +1404,7 @@ export default function App(){
       // Kick off all group data loads in parallel — none depend on each other
       if(d.groupId){
         loadMembers(d.groupId);
+        loadAdmins(d.groupId);
         loadChat(d.groupId);
         loadPolls(d.groupId);
         if(!adminData){loadAdminData(d.groupId);}
@@ -1428,6 +1434,9 @@ export default function App(){
       snap.forEach(d=>{try{const m=JSON.parse(d.data().value);ms.push({...m,isYou:m.uid===uid});}catch{}});
       setMembers(dedupeMembers(ms));
     }catch{}
+  }
+  async function loadAdmins(gid){
+    try{const snap=await getDocs(adminUidsColRef(gid));setAdminUids(snap.docs.map(d=>d.id));}catch{}
   }
   async function loadChat(gid){try{const v=await fsGet(chatDocRef(gid));setMessages(v?JSON.parse(v):[]);}catch{}}
   async function loadPolls(gid){try{const v=await fsGet(pollsDocRef(gid));setPolls(v?JSON.parse(v):[]);}catch{}}
@@ -1516,6 +1525,14 @@ export default function App(){
         await fsDel(memberUidDocRef(groupId,uid));
         return{error:`Someone in this group already goes by "${name}". Please add a middle or last initial (like "${name} R.") or use a nickname.`};
       }
+      // Brand-new group (nobody else in it): the creator becomes its admin. The database only
+      // allows this for whoever creates the group record, so nobody can claim an existing group.
+      if(!taken.some(m=>m.uid!==uid)){
+        try{
+          await setDoc(groupDocRef(groupId),{createdBy:uid,createdAt:Date.now()});
+          await setDoc(adminUidDocRef(groupId,uid),{value:JSON.stringify({uid,addedBy:uid,at:Date.now()})});
+        }catch(e){console.warn("group admin setup",e);}
+      }
     }catch(e){console.warn("name check",e);}
     const d={name,avatar,goalType,goalValue,groupId,isAdmin:false,charity:"",charityName:null,
       progressThisWeek:0,totalProgress:0,dailyChecks:[false,false,false,false,false,false,false],lastResetWeek:getWeekKey()};
@@ -1523,7 +1540,7 @@ export default function App(){
     await fsSet(userDocRef(uid),JSON.stringify(d));
     writeUserIndex(uid,d).catch(()=>{});
     pub(d).catch(()=>{});
-    loadMembers(groupId); loadChat(groupId); loadPolls(groupId); loadAdminData(groupId); loadLedger(groupId);
+    loadMembers(groupId); loadAdmins(groupId); loadChat(groupId); loadPolls(groupId); loadAdminData(groupId); loadLedger(groupId);
     if(!localStorage.getItem("pwaPromptShown")){setShowPwaPrompt(true);localStorage.setItem("pwaPromptShown","1");}
     if(!localStorage.getItem("appTourShown")){setShowTour(true);setTourStep(0);localStorage.setItem("appTourShown","1");}
   }
@@ -1760,6 +1777,15 @@ export default function App(){
     adminSaved.then(()=>apiPost("/api/schedule-notifications",{groupId:me.groupId})).catch(()=>{});
   }
 
+  // Admins can make another member an admin from the Group tab
+  async function makeAdmin(member){
+    if(!member?.uid||!window.confirm(`Make ${member.name} an admin? They'll be able to change challenge settings and record payments.`))return;
+    try{
+      await setDoc(adminUidDocRef(me.groupId,member.uid),{value:JSON.stringify({uid:member.uid,addedBy:uid,at:Date.now()})});
+      loadAdmins(me.groupId);
+    }catch(e){console.warn("makeAdmin",e);alert("Couldn't make them an admin. Please try again.");}
+  }
+
   function toggleGoalLock(){
     const upd={...admin,goalsLocked:!admin.goalsLocked,changeWindowOpen:false,changeWindowEnd:null};
     setAdmin(upd); setAdminDraft(upd); fsSet(adminDocRef(me.groupId),JSON.stringify(upd));
@@ -1900,10 +1926,11 @@ export default function App(){
       const gid=me.groupId;
       await fsDel(memberDocRef(gid,uid));
       await fsDel(legacyMemberDocRef(gid,me.name));
+      await fsDel(adminUidDocRef(gid,uid)); // no-op for non-admins
       await fsDel(memberUidDocRef(gid,uid));
     }
     // Send the user straight to the Setup screen instead of an endless loading screen
-    setMe(null); setNoAccount(true); setReady(true); setHistory([]); setMembers([]);
+    setMe(null); setNoAccount(true); setReady(true); setHistory([]); setMembers([]); setAdminUids([]);
     setMessages([]); setPolls([]); setLedger({charityTotals:{},payoutTotals:{},prizeTotals:{},totalWords:0,totalMinutes:0,entries:[]});
   }
 
@@ -2071,6 +2098,7 @@ export default function App(){
   const countdownHours=Math.floor((countdownMs%86400000)/3600000);
   const countdownMins=Math.floor((countdownMs%3600000)/60000);
   const isLocked=admin.goalsLocked&&!admin.changeWindowOpen;
+  const amAdmin=adminUids.includes(uid);
   const changeWindowEnds=admin.changeWindowEnd?new Date(admin.changeWindowEnd):null;
   const changeHoursLeft=changeWindowEnds?Math.max(0,Math.ceil((changeWindowEnds-now)/3600000)):null;
   const fmtLeft=()=>{if(me.goalType==="words")return`${left.toLocaleString()} words to go`;const h=Math.floor(left/60),m=left%60;return`${h>0?h+"h ":""}${m>0?m+"m":""} to go`;};
@@ -2173,7 +2201,7 @@ export default function App(){
           </div>
         );
       })()}
-      {showSettings&&<SettingsPanel me={me} uid={uid} db={db} onClose={()=>setShowSettings(false)} onAvatarChange={handleAvatarChange} onSignOut={()=>signOut(auth)} onOpenAdmin={()=>{setAdminDraft({...admin});setShowAdmin(true);}} onOpenPrivacy={()=>{setShowSettings(false);setShowPrivacy(true);}} onUpdateMe={handleUpdateMe} onStartTour={()=>{setTourStep(0);setShowTour(true);}}/>}
+      {showSettings&&<SettingsPanel me={me} uid={uid} db={db} isAdmin={amAdmin} onClose={()=>setShowSettings(false)} onAvatarChange={handleAvatarChange} onSignOut={()=>signOut(auth)} onOpenAdmin={()=>{setAdminDraft({...admin});setShowAdmin(true);}} onOpenPrivacy={()=>{setShowSettings(false);setShowPrivacy(true);}} onUpdateMe={handleUpdateMe} onStartTour={()=>{setTourStep(0);setShowTour(true);}}/>}
       {showNotifFeed&&<NotifFeed notifications={inAppNotifs} onClose={()=>setShowNotifFeed(false)} onMarkAllRead={markAllNotifsRead}/>}
 
       {/* ── Charity Picker Modal ── */}
@@ -2315,7 +2343,7 @@ export default function App(){
           <div style={{fontSize:26,fontWeight:900,lineHeight:1,marginBottom:4}}>Wordcountability</div>
           <div style={{fontSize:14,color:LF.hotpink,fontWeight:800,display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
             {me.avatar} {me.name} · <span style={{color:"#fff"}}>#{me.groupId}</span>
-            {me.isAdmin&&<span style={{background:`linear-gradient(135deg,${LF.yellow},${LF.orange})`,color:"#1A0030",fontSize:11,fontWeight:800,padding:"2px 8px",borderRadius:20}}>⭐ ADMIN</span>}
+            {amAdmin&&<span style={{background:`linear-gradient(135deg,${LF.yellow},${LF.orange})`,color:"#1A0030",fontSize:11,fontWeight:800,padding:"2px 8px",borderRadius:20}}>⭐ ADMIN</span>}
             {triggered&&<span style={{background:`linear-gradient(135deg,${LF.orange},${LF.pink})`,color:"#fff",fontSize:11,fontWeight:800,padding:"2px 8px",borderRadius:20}}>💸 PAY UP!</span>}
             {!triggered&&atRisk&&<span style={{background:`linear-gradient(135deg,${LF.yellow},${LF.orange})`,color:"#1A0030",fontSize:11,fontWeight:800,padding:"2px 8px",borderRadius:20}}>⚠️ AT RISK</span>}
             {isLocked&&<span className="locked-badge">🔒 Locked</span>}
@@ -2350,7 +2378,7 @@ export default function App(){
       </div>
 
       {/* ── Admin Modal ── */}
-      {showAdmin&&me.isAdmin&&(
+      {showAdmin&&amAdmin&&(
         <div className="modal-bg">
           <div className="card modal" style={{overflowX:"hidden"}}>
             <div style={{fontSize:18,color:LF.yellow,marginBottom:16,fontWeight:900}}>⚙️ Admin Settings</div>
@@ -2796,7 +2824,7 @@ export default function App(){
             </div>
           </div>
 
-          {me.isAdmin&&(
+          {amAdmin&&(
             <div className="card" style={{border:`2px solid ${LF.orange}55`,background:"#FF440011"}}>
               <span className="lbl" style={{color:LF.orange}}>🔒 Goal Lock Controls</span>
               <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700,marginBottom:10}}>
@@ -2820,13 +2848,13 @@ export default function App(){
             </div>
           )}
 
-          {!me.isAdmin&&admin.changeWindowOpen&&(
+          {!amAdmin&&admin.changeWindowOpen&&(
             <div className="card" style={{border:`2px solid ${LF.lime}55`,background:"#CCFF6611"}}>
               <div style={{fontSize:15,color:LF.lime,fontWeight:800,marginBottom:4}}>🔓 Goal Change Window is Open!</div>
               <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700}}>You can adjust your goal until this window closes (~{changeHoursLeft}h left).</div>
             </div>
           )}
-          {!me.isAdmin&&isLocked&&(
+          {!amAdmin&&isLocked&&(
             <div className="card" style={{border:`2px solid ${LF.orange}44`}}>
               <div style={{fontSize:15,color:LF.orange,fontWeight:800,marginBottom:4}}>🔒 Goals Are Locked</div>
               <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700}}>Raising your goal is always allowed!</div>
@@ -2845,11 +2873,14 @@ export default function App(){
                   <div style={{fontSize:18}}>{medals[i]||`${i+1}`}</div>
                   <div style={{fontSize:18}}>{w.avatar}</div>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:14,color:w.isYou?LF.yellow:LF.white,fontWeight:800}}>{w.name}{w.isYou&&<span style={{fontSize:12,color:LF.hotpink}}> ← you!</span>}{w.isAdmin&&<span style={{fontSize:12,color:LF.yellow}}> ⭐</span>}</div>
+                    <div style={{fontSize:14,color:w.isYou?LF.yellow:LF.white,fontWeight:800}}>{w.name}{w.isYou&&<span style={{fontSize:12,color:LF.hotpink}}> ← you!</span>}{adminUids.includes(w.uid)&&<span style={{fontSize:12,color:LF.yellow}}> ⭐</span>}</div>
                     <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700}}>{w.goalType==="words"?`${(w.progressThisWeek||0).toLocaleString()}/${wGoal.toLocaleString()}w`:`${w.progressThisWeek||0}/${wGoal}m`} · 💝 {(w.charityName||w.charity)||"—"}</div>
                   </div>
                   <div style={{fontSize:16,color:p>=100?LF.lime:LF.yellow,fontWeight:900}}>{p}%</div>
                 </div>
+                {amAdmin&&w.uid&&!adminUids.includes(w.uid)&&(
+                  <button onClick={()=>makeAdmin(w)} style={{background:"none",border:`1px solid ${LF.yellow}66`,borderRadius:20,padding:"3px 10px",color:LF.yellow,fontFamily:"'Outfit',sans-serif",fontSize:11,fontWeight:800,cursor:"pointer",marginBottom:8}}>⭐ Make admin</button>
+                )}
                 <div className="pbar-bg"><div className="pbar-fill" style={{width:`${p}%`,background:bar}}/></div>
               </div>
             );
@@ -2938,7 +2969,7 @@ export default function App(){
                         {deadlineDate&&<div style={{fontSize:11,color:expired?"#ff8888":hoursLeft&&hoursLeft<24?LF.yellow:"#ffffffcc",fontWeight:700,marginTop:2}}>{expired?"⏰ Voting closed":`⏰ ${hoursLeft}h left`}</div>}
                         {resolved&&<div style={{fontSize:12,color:LF.lime,fontWeight:800,marginTop:2}}>✅ Result: {resolved}</div>}
                       </div>
-                      {(me.isAdmin||poll.author===me.name)&&(
+                      {(amAdmin||poll.author===me.name)&&(
                         <button onClick={()=>deletePoll(poll.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:15,color:"#ffffffbb",padding:"0 4px"}}>🗑️</button>
                       )}
                     </div>
@@ -2962,7 +2993,7 @@ export default function App(){
                     </div>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
                       <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700}}>{myVoteIdx>=0?"✓ You voted":canVote?"Tap an option to vote":"Voting closed"}</div>
-                      {me.isAdmin&&!resolved&&(
+                      {amAdmin&&!resolved&&(
                         <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
                           <span style={{fontSize:11,color:"#ffffffaa",fontWeight:700}}>override:</span>
                           {poll.options.map((o,i)=>(

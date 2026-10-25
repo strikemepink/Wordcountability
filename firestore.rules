@@ -12,7 +12,13 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/groups/$(groupId)/memberUids/$(request.auth.uid));
     }
 
-    // Each user's own profile, history, notifications and check-in acknowledgements: owner only
+    // True if the signed-in user is one of this group's admins
+    function isGroupAdmin(groupId) {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/groups/$(groupId)/adminUids/$(request.auth.uid));
+    }
+
+    // Each user's own profile, history, notifications, devices and check-in acknowledgements: owner only
     match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
@@ -22,14 +28,38 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // The group record: notes who created the group. Can be created once, never changed.
+    match /groups/{groupId} {
+      allow read: if isMember(groupId);
+      allow create: if request.auth != null && request.resource.data.createdBy == request.auth.uid;
+    }
+
+    // Admin list: existing admins can add or remove admins. The person who created a brand-new
+    // group can add themselves as its first admin.
+    match /groups/{groupId}/adminUids/{uid} {
+      allow read: if isMember(groupId);
+      allow create: if isGroupAdmin(groupId) ||
+        (request.auth != null && uid == request.auth.uid &&
+         get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy == request.auth.uid);
+      allow delete: if isGroupAdmin(groupId);
+    }
+
     // Joining a group: a signed-in user can add or remove only their own membership record
     match /groups/{groupId}/memberUids/{uid} {
+      allow read: if isMember(groupId);
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Everything else in a group (chat, polls, admin settings, ledger, member cards): members only
-    match /groups/{groupId}/{document=**} {
+    // Leaderboard cards: members only
+    match /groups/{groupId}/members/{cardId} {
       allow read, write: if isMember(groupId);
+    }
+
+    // Shared group data (chat, polls, ledger, notification bookkeeping): members only.
+    // Challenge settings ("admin") can be read by members but changed only by admins.
+    match /groups/{groupId}/data/{docId} {
+      allow read: if isMember(groupId);
+      allow write: if (isMember(groupId) && docId != "admin") || isGroupAdmin(groupId);
     }
   }
 }
