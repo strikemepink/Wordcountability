@@ -6,7 +6,6 @@ Last updated: 10/25/2026
 
 ## Before November testing (suggested)
 
-- [ ] **Decide the daily-goal rule.** Daily check-ins currently require the full weekly goal every day, and monthly check-ins count as 4 weeks even though they're 30 days. Decide what each check-in's goal should be.
 - [ ] **Launch November testing as the web app** (installs to the iPhone home screen today).
 
 ## Open bugs and loose ends
@@ -20,6 +19,7 @@ Last updated: 10/25/2026
 
 ## Bigger projects (suggested for after November)
 
+- [ ] **Pace-based nudges (idea).** Instead of just "you're 30% there," tell writers if they're behind where they should be by today (e.g. "1,400 words behind pace for Thursday").
 - [ ] **Proof of writing (research first).** How can people show they actually wrote? Research options before deciding.
 - [ ] **Redesign.** The current look is too busy. Model it on the Perfect Pomodoro app's look.
 - [ ] **Real payments (research first).** Make the money stakes actually work. Research money-transmitter rules and payment providers before building. For now, the admin records payments manually and money moves outside the app.
@@ -27,6 +27,7 @@ Last updated: 10/25/2026
 
 ## Done
 
+- [x] **Daily-goal rule** (10/25/2026): each check-in's goal is the weekly goal scaled to the check-in's length. For 5,000 words/week: Daily = 714, Weekly = 5,000, Bi-Weekly = 10,000, Monthly (30 days) = 21,429.
 - [x] **Test the 7 bug fixes** (10/25/2026): group-wide reset, evening progress wipe, chat/poll overwrites, stale reminders, duplicate "challenge starts" alert, progress check-in timing, junk files.
 - [x] **Database privacy** (10/25/2026). Server functions now use a private Firebase key stored in Vercel. New database rules (`firestore.rules`): each user's data is owner-only, group data is members-only, nothing is public. Bonus: group push notifications now get delivered, and the Stats tab shows the whole group's check-ins.
 - [x] **Notification security** (10/25/2026). Only signed-in users can send notifications, group alerts only from group members, rescheduling only by the group admin, and the hourly reminder job requires its password.

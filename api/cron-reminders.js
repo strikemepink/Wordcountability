@@ -73,6 +73,12 @@ function isScheduledNow(timeStr, freq, user, nowUtc) {
   return false;
 }
 
+// A check-in's goal is the weekly goal scaled to the check-in's length in days
+// (Daily = 1/7, Weekly = 1x, Bi-Weekly = 2x, Monthly = 30/7). Matches the app.
+function periodGoalFor(weeklyGoal, cadDays) {
+  return Math.max(1, Math.round((weeklyGoal || 0) * cadDays / 7));
+}
+
 function shouldSendReminder(user, nowUtc) {
   const prefs = user.notifPrefs || {};
   if (!prefs.writingReminder || !user.oneSignalPlayerId) return false;
@@ -97,8 +103,15 @@ async function getAdminData(groupId) {
 
 function buildProgressMessage(user, admin, nowUtc) {
   if (!admin) return null;
-  const { progressThisWeek = 0, goalValue: goal = 0, goalType = "words" } = user;
+  const { progressThisWeek = 0, goalValue = 0, goalType = "words" } = user;
   const unit = goalType === "words" ? "words" : "minutes";
+  // Use the current check-in's goal while a challenge is running, otherwise the weekly goal
+  const nowMs = nowUtc.getTime();
+  const started = admin.startDate && nowMs >= new Date(admin.startDate).getTime();
+  const ended = admin.endDate && nowMs > new Date(admin.endDate).getTime();
+  const goal = started && !ended
+    ? periodGoalFor(goalValue, cadenceDays(admin.frequency || "Weekly"))
+    : goalValue;
 
   // Find days left in current check-in period
   let daysLeft = 0;
@@ -262,8 +275,7 @@ module.exports = async function handler(req, res) {
           const deadline = deadlinePassedThisHour(admin, nowMs);
           if (deadline) {
             const cad = cadenceDays(admin.frequency || "Weekly");
-            const periodWeeks = Math.max(1, Math.round(cad / 7));
-            const periodGoal = (user.goalValue || 0) * periodWeeks;
+            const periodGoal = periodGoalFor(user.goalValue, cad);
             const progress = user.progressThisWeek || 0;
             const metGoal = progress >= periodGoal;
 
@@ -293,11 +305,12 @@ module.exports = async function handler(req, res) {
         // Fires once when the challenge start is 23-24h away.
         if (prefs.challengeStarting && user.oneSignalPlayerId && admin) {
           if (challengeStartsIn24h(admin, nowMs)) {
+            const checkInGoal = periodGoalFor(user.goalValue, cadenceDays(admin.frequency || "Weekly"));
             const goalLabel = user.goalType === "words"
-              ? `${(user.goalValue || 0).toLocaleString()} words`
+              ? `${checkInGoal.toLocaleString()} words`
               : (() => {
-                  const h = Math.floor((user.goalValue || 0) / 60);
-                  const m = (user.goalValue || 0) % 60;
+                  const h = Math.floor(checkInGoal / 60);
+                  const m = checkInGoal % 60;
                   return h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ""}` : `${m}m`;
                 })();
 

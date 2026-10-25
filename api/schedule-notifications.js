@@ -76,11 +76,13 @@ function buildSchedule(admin, user) {
   const endMs = admin.endDate ? new Date(admin.endDate).getTime() : Infinity;
   const prefs = user.notifPrefs || {};
 
+  // Each check-in's goal is the weekly goal scaled to the check-in's length (matches the app)
+  const periodGoal = Math.max(1, Math.round((user.goalValue || 0) * cad / 7));
   const goalLabel = user.goalType === "words"
-    ? `${(user.goalValue || 0).toLocaleString()} words`
+    ? `${periodGoal.toLocaleString()} words`
     : (() => {
-        const h = Math.floor((user.goalValue || 0) / 60);
-        const m = (user.goalValue || 0) % 60;
+        const h = Math.floor(periodGoal / 60);
+        const m = periodGoal % 60;
         return h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ""}` : `${m}m`;
       })();
 

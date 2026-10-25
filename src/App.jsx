@@ -198,6 +198,11 @@ function normalizeWeekKey(key){
   else dt.setDate(dt.getDate()-((dt.getDay()+6)%7)); // any other day → that week's Monday
   return localDateKey(dt);
 }
+// A check-in's goal is the weekly goal scaled to the check-in's length in days:
+// Daily = 1/7 of it, Weekly = all of it, Bi-Weekly = double, Monthly (30 days) = 30/7 of it.
+function periodGoalFor(weeklyGoal,cadDays){return Math.max(1,Math.round((weeklyGoal||0)*cadDays/7));}
+// Plain-English name for a check-in period, used in notification text
+function periodName(cadDays){return cadDays===1?"daily goal":cadDays===7?"weekly goal":cadDays===14?"2-week goal":"monthly goal";}
 function todayIdx(){return(new Date().getDay()+6)%7;}
 function fmtGoal(m){if(m.goalType==="words")return`${m.goalValue.toLocaleString()} words`;const h=Math.floor(m.goalValue/60),mn=m.goalValue%60;return h>0?`${h}h`+(mn>0?` ${mn}m`:""):mn+"m";}
 function fmtProg(m){if(m.goalType==="words")return`${m.progressThisWeek.toLocaleString()} words`;const h=Math.floor(m.progressThisWeek/60),mn=m.progressThisWeek%60;return h>0?`${h}h`+(mn>0?` ${mn}m`:""):mn+"m";}
@@ -1259,8 +1264,7 @@ export default function App(){
         if(latestDeadline>lastReset){
           // A new deadline has passed since last reset — write history and reset progress
           const hist=histValParallel?JSON.parse(histValParallel):[];
-          const periodWeeksR=Math.max(1,Math.round(cadDaysR/7));
-          const periodGoalR=d.goalValue*periodWeeksR;
+          const periodGoalR=periodGoalFor(d.goalValue,cadDaysR);
           const met=d.progressThisWeek>=periodGoalR;
           const deadlineDate=new Date(latestDeadline);
           const periodNum=pastDeadlines.length;
@@ -1310,8 +1314,7 @@ export default function App(){
             const periodNum2=pastDeadlines.length;
             const totalPeriods2=adminData.endDate?Math.round((new Date(adminData.endDate).getTime()-new Date(adminData.startDate).getTime())/(cadDaysR*86400000)):null;
             const remainingCI=totalPeriods2?Math.max(0,totalPeriods2-periodNum2):null;
-            const periodWeeks2=Math.max(1,Math.round(cadDaysR/7));
-            const periodGoal2=d.goalValue*periodWeeks2;
+            const periodGoal2=periodGoalFor(d.goalValue,cadDaysR);
             setCheckInPopup({
               deadlineMs:latestDeadline,
               periodNum:periodNum2,
@@ -1901,20 +1904,21 @@ export default function App(){
   // ── Notification event triggers ──
   // Called when the current user hits 100% — notifies themselves (group push handled server-side later)
   async function maybeNotifyGoalHit(newProgress){
-    const curPeriodWeeks=getPeriodWeeks();
-    const curPeriodGoal=me.goalValue*curPeriodWeeks;
+    const curPeriodDays=getPeriodDays();
+    const curPeriodGoal=periodGoalFor(me.goalValue,curPeriodDays);
     const wasUnder=me.progressThisWeek<curPeriodGoal;
     const nowOver=newProgress>=curPeriodGoal;
     if(wasUnder&&nowOver){
-      const periodLabel=curPeriodWeeks>1?`${curPeriodWeeks}-week period goal`:"weekly goal";
-      await addInAppNotif("memberHitGoal","🌟 Goal crushed!",`You hit your ${fmtGoal(me)} ${periodLabel}. Amazing work!`);
+      const periodLabel=periodName(curPeriodDays);
+      const goalText=fmtGoal({...me,goalValue:curPeriodGoal});
+      await addInAppNotif("memberHitGoal","🌟 Goal crushed!",`You hit your ${goalText} ${periodLabel}. Amazing work!`);
       if(me?.groupId){
         apiPost("/api/notify",{
             groupId:me.groupId,
             notifType:"memberHitGoal",
             excludeUid:uid,
             title:`🌟 ${me.name} crushed their goal!`,
-            body:`${me.avatar} ${me.name} just hit their ${fmtGoal(me)} ${periodLabel}. Get inspired!`,
+            body:`${me.avatar} ${me.name} just hit their ${goalText} ${periodLabel}. Get inspired!`,
           }).catch(()=>{});
       }
     }
@@ -1948,7 +1952,7 @@ export default function App(){
 
   // Called on missed check-in (can be triggered at deadline evaluation)
   async function notifyMissedCheckIn(){
-    await addInAppNotif("missedCheckIn","💔 Missed check-in",`You missed this check-in. ${me.goalType==="words"?`Goal was ${fmtGoal(me)}.`:"Keep going — you've got this!"}`);
+    await addInAppNotif("missedCheckIn","💔 Missed check-in",`You missed this check-in. ${me.goalType==="words"?`Goal was ${fmtGoal({...me,goalValue:periodGoalFor(me.goalValue,getPeriodDays())})}.`:"Keep going — you've got this!"}`);
   }
 
   // Check-in deadline warning (24h before) — called when admin settings include a firstCheckIn
@@ -1957,8 +1961,7 @@ export default function App(){
     const deadline=new Date(admin.firstCheckIn);
     const msLeft=deadline-new Date();
     if(msLeft>0&&msLeft<=86400000){
-      const curPeriodWeeks=getPeriodWeeks();
-      const curPeriodGoal=me.goalValue*curPeriodWeeks;
+      const curPeriodGoal=periodGoalFor(me.goalValue,getPeriodDays());
       const goalLabel=me.goalType==="words"?`${curPeriodGoal.toLocaleString()} words`:(()=>{const h=Math.floor(curPeriodGoal/60),m=curPeriodGoal%60;return h>0?`${h}h`+(m>0?` ${m}m`:""):m+"m";})();
       await addInAppNotif("checkInWarning","⏰ Check-in tomorrow",`Your check-in deadline is in less than 24 hours. Period goal: ${goalLabel}.`);
     }
@@ -1983,20 +1986,19 @@ export default function App(){
   );
   if(!me)return <Setup user={authUser} onSave={handleSetup}/>;
 
-  // ── Period goal: goalValue × weeks in current check-in period ──
-  // Falls back to goalValue if no active challenge is running.
-  function getPeriodWeeks(){
-    if(!admin.firstCheckIn||!admin.startDate)return 1;
+  // ── Period goal: the weekly goal scaled to the current check-in period's length ──
+  // Falls back to a normal week (7 days) if no challenge is running.
+  function getPeriodDays(){
+    if(!admin.firstCheckIn||!admin.startDate)return 7;
     const now2=new Date();
     const startDate2=new Date(admin.startDate);
     const endDate2=admin.endDate?new Date(admin.endDate):null;
-    if(now2<startDate2||(endDate2&&now2>endDate2))return 1;
-    const cadDays=cadenceDaysLocal(admin.frequency||"Weekly");
-    return Math.max(1,Math.round(cadDays/7));
+    if(now2<startDate2||(endDate2&&now2>endDate2))return 7;
+    return cadenceDaysLocal(admin.frequency||"Weekly");
   }
-  const periodWeeks=getPeriodWeeks();
-  const periodGoal=me.goalValue*periodWeeks;
-  const periodActive=periodWeeks>1;
+  const periodDays=getPeriodDays();
+  const periodGoal=periodGoalFor(me.goalValue,periodDays);
+  const periodActive=periodDays!==7;
   const pct=Math.min(Math.round((me.progressThisWeek/periodGoal)*100),100);
   const left=Math.max(periodGoal-me.progressThisWeek,0);
   const missed=history.filter(h=>!h.met).length;
@@ -2546,7 +2548,7 @@ export default function App(){
               </div>
               <div style={{flex:1}}>
                 <div style={{fontSize:20,color:LF.white,fontWeight:800,marginBottom:2}}>{fmtProg(me)}</div>
-                <div style={{fontSize:14,color:LF.hotpink,fontWeight:800,marginBottom:2}}>of {me.goalType==="words"?`${periodGoal.toLocaleString()} words`:(()=>{const h=Math.floor(periodGoal/60),m=periodGoal%60;return h>0?`${h}h`+(m>0?` ${m}m`:""):m+"m";})()}{periodActive?` (${periodWeeks}-wk period)`:""}</div>
+                <div style={{fontSize:14,color:LF.hotpink,fontWeight:800,marginBottom:2}}>of {me.goalType==="words"?`${periodGoal.toLocaleString()} words`:(()=>{const h=Math.floor(periodGoal/60),m=periodGoal%60;return h>0?`${h}h`+(m>0?` ${m}m`:""):m+"m";})()}{periodActive?` (${periodName(periodDays).replace(" goal","")} check-in)`:""}</div>
                 <div style={{fontSize:14,color:pct>=100?LF.lime:LF.yellow,fontWeight:800}}>{pct>=100?"🌟 GOAL CRUSHED! 🌟":fmtLeft()}</div>
                 {history.filter(h=>h.met).length>0&&<div style={{fontSize:14,marginTop:4,color:LF.yellow,fontWeight:800}}>{"🔥".repeat(Math.min(history.filter(h=>h.met).length,3))} {history.filter(h=>h.met).length}wk streak!</div>}
               </div>
@@ -2777,7 +2779,8 @@ export default function App(){
 
           {sorted.length===0&&<div className="card" style={{textAlign:"center",padding:24}}><div style={{fontSize:32,marginBottom:8}}>🦄</div><div style={{fontSize:14,color:LF.pink,fontWeight:800}}>No crew yet! Share your invite link above.</div></div>}
           {sorted.map((w,i)=>{
-            const p=Math.min(Math.round((w.progressThisWeek/w.goalValue)*100),100);
+            const wGoal=periodGoalFor(w.goalValue,periodDays);
+            const p=Math.min(Math.round((w.progressThisWeek/wGoal)*100),100);
             const medals=["🥇","🥈","🥉"];
             const bar=p>=100?`linear-gradient(90deg,${LF.lime},${LF.violet})`:i===0?`linear-gradient(90deg,${LF.yellow},${LF.orange})`:`linear-gradient(90deg,${LF.pink},${LF.purple})`;
             return(
@@ -2787,7 +2790,7 @@ export default function App(){
                   <div style={{fontSize:18}}>{w.avatar}</div>
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,color:w.isYou?LF.yellow:LF.white,fontWeight:800}}>{w.name}{w.isYou&&<span style={{fontSize:12,color:LF.hotpink}}> ← you!</span>}{w.isAdmin&&<span style={{fontSize:12,color:LF.yellow}}> ⭐</span>}</div>
-                    <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700}}>{w.goalType==="words"?`${(w.progressThisWeek||0).toLocaleString()}/${(w.goalValue||0).toLocaleString()}w`:`${w.progressThisWeek||0}/${w.goalValue||0}m`} · 💝 {(w.charityName||w.charity)||"—"}</div>
+                    <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700}}>{w.goalType==="words"?`${(w.progressThisWeek||0).toLocaleString()}/${wGoal.toLocaleString()}w`:`${w.progressThisWeek||0}/${wGoal}m`} · 💝 {(w.charityName||w.charity)||"—"}</div>
                   </div>
                   <div style={{fontSize:16,color:p>=100?LF.lime:LF.yellow,fontWeight:900}}>{p}%</div>
                 </div>
@@ -3099,7 +3102,7 @@ export default function App(){
 
           <div className="card" style={{background:"#ffffff0a",border:"2px solid #ffffff22",textAlign:"center"}}>
             <div style={{fontSize:14,color:LF.white,fontWeight:700,lineHeight:2}}>
-              Miss <span style={{color:LF.yellow,fontWeight:900}}>{fmtGoal(me)}</span> for <span style={{color:LF.yellow,fontWeight:900}}>{admin.threshold} check-ins</span><br/>
+              Miss <span style={{color:LF.yellow,fontWeight:900}}>{fmtGoal({...me,goalValue:periodGoal})}</span> for <span style={{color:LF.yellow,fontWeight:900}}>{admin.threshold} check-ins</span><br/>
               → <span style={{color:LF.pink,fontWeight:900}}>{fmtMoney(admin.stake)}</span>{" "}
               {admin.payoutMode==="winners"&&<span>split among 🏆 members who hit their goals</span>}
               {admin.payoutMode==="pain"&&<span style={{color:"#FF6666"}}>😈 you'll be publicly roasted</span>}
