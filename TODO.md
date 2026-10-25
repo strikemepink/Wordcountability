@@ -7,8 +7,6 @@ Last updated: 10/25/2026
 ## Before November testing (suggested)
 
 - [ ] **Test the 7 bug fixes** (merged into `main` and live as of 10/25/2026): group-wide reset, evening progress wipe, chat/poll overwrites, stale reminders, duplicate "challenge starts" alert, progress check-in timing, junk files. If anything breaks, roll back in Vercel (Deployments → previous deployment → Instant Rollback).
-- [ ] **Database privacy.** The server code reads Firebase without logging in, which only works if the database is publicly readable. If so, names, goals and notification IDs are visible to anyone with the project ID, which contradicts the privacy policy. Check the Firebase rules, add a private Firebase key to Vercel, and lock the rules down.
-- [ ] **Notification security.** Anyone on the internet can send push notifications to users through `/api/notify` because it has no password check.
 - [ ] **Decide the daily-goal rule.** Daily check-ins currently require the full weekly goal every day, and monthly check-ins count as 4 weeks even though they're 30 days. Decide what each check-in's goal should be.
 - [ ] **Launch November testing as the web app** (installs to the iPhone home screen today).
 
@@ -27,3 +25,8 @@ Last updated: 10/25/2026
 - [ ] **Redesign.** The current look is too busy. Model it on the Perfect Pomodoro app's look.
 - [ ] **Real payments (research first).** Make the money stakes actually work. Research money-transmitter rules and payment providers before building. For now, the admin records payments manually and money moves outside the app.
 - [ ] **App Store.** Get the app into the Apple App Store (developer account already set up). Apple often rejects apps that are mostly a website in a wrapper (App Review Guideline 4.2) and has rules for real-money contests (Guideline 5.3), so plan for extra native features and review time.
+
+## Done
+
+- [x] **Database privacy** (10/25/2026). Server functions now use a private Firebase key stored in Vercel. New database rules (`firestore.rules`): each user's data is owner-only, group data is members-only, nothing is public. Bonus: group push notifications now get delivered, and the Stats tab shows the whole group's check-ins.
+- [x] **Notification security** (10/25/2026). Only signed-in users can send notifications, group alerts only from group members, rescheduling only by the group admin, and the hourly reminder job requires its password.
