@@ -6,7 +6,7 @@ Last updated: 10/25/2026
 
 ## Before November testing (suggested)
 
-- [ ] **Test and merge the 7 bug fixes** on branch `claude/pensive-carson-oxbhf8` (group-wide reset, evening progress wipe, chat/poll overwrites, stale reminders, duplicate "challenge starts" alert, progress check-in timing, junk files). Real users don't get them until merged into `main`.
+- [ ] **Test the 7 bug fixes** (merged into `main` and live as of 10/25/2026): group-wide reset, evening progress wipe, chat/poll overwrites, stale reminders, duplicate "challenge starts" alert, progress check-in timing, junk files. If anything breaks, roll back in Vercel (Deployments → previous deployment → Instant Rollback).
 - [ ] **Database privacy.** The server code reads Firebase without logging in, which only works if the database is publicly readable. If so, names, goals and notification IDs are visible to anyone with the project ID, which contradicts the privacy policy. Check the Firebase rules, add a private Firebase key to Vercel, and lock the rules down.
 - [ ] **Notification security.** Anyone on the internet can send push notifications to users through `/api/notify` because it has no password check.
 - [ ] **Decide the daily-goal rule.** Daily check-ins currently require the full weekly goal every day, and monthly check-ins count as 4 weeks even though they're 30 days. Decide what each check-in's goal should be.
