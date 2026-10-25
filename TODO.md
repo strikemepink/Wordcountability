@@ -6,7 +6,6 @@ Last updated: 10/25/2026
 
 ## Before November testing (suggested)
 
-- [ ] **Test the 7 bug fixes** (merged into `main` and live as of 10/25/2026): group-wide reset, evening progress wipe, chat/poll overwrites, stale reminders, duplicate "challenge starts" alert, progress check-in timing, junk files. If anything breaks, roll back in Vercel (Deployments → previous deployment → Instant Rollback).
 - [ ] **Decide the daily-goal rule.** Daily check-ins currently require the full weekly goal every day, and monthly check-ins count as 4 weeks even though they're 30 days. Decide what each check-in's goal should be.
 - [ ] **Launch November testing as the web app** (installs to the iPhone home screen today).
 
@@ -28,5 +27,6 @@ Last updated: 10/25/2026
 
 ## Done
 
+- [x] **Test the 7 bug fixes** (10/25/2026): group-wide reset, evening progress wipe, chat/poll overwrites, stale reminders, duplicate "challenge starts" alert, progress check-in timing, junk files.
 - [x] **Database privacy** (10/25/2026). Server functions now use a private Firebase key stored in Vercel. New database rules (`firestore.rules`): each user's data is owner-only, group data is members-only, nothing is public. Bonus: group push notifications now get delivered, and the Stats tab shows the whole group's check-ins.
 - [x] **Notification security** (10/25/2026). Only signed-in users can send notifications, group alerts only from group members, rescheduling only by the group admin, and the hourly reminder job requires its password.
