@@ -1241,6 +1241,8 @@ export default function App(){
 
       // Snapshot progress BEFORE any reset — used by the check-in pop-up below
       const progressSnapshot=d.progressThisWeek||0;
+      // Progress to show in the pop-up for the latest check-in (changes below if check-ins were skipped)
+      let popupProgress=progressSnapshot;
 
       const cadDaysR=adminData?.frequency==="Daily"?1:adminData?.frequency==="Weekly"?7:adminData?.frequency==="Bi-Weekly"?14:30;
       const cadMsR=cadDaysR*86400000;
@@ -1279,14 +1281,25 @@ export default function App(){
         const latestDeadline=pastDeadlines[pastDeadlines.length-1];
         const lastReset=typeof d.lastResetWeek==="number"?d.lastResetWeek:0;
         if(latestDeadline>lastReset){
-          // A new deadline has passed since last reset — write history and reset progress
+          // One or more deadlines have passed since the last reset — record each one and reset progress.
+          // If the user already had a check-in recorded, every deadline since then gets its own entry:
+          // the progress logged so far counts toward the earliest one, and any later ones they skipped
+          // (didn't open the app) are recorded as missed with 0. For someone with no earlier check-in
+          // (e.g. joined mid-challenge), only the latest deadline is recorded, so they aren't charged
+          // for check-ins from before they joined.
           const hist=histValParallel?JSON.parse(histValParallel):[];
           const periodGoalR=periodGoalFor(d.goalValue,cadDaysR);
-          const met=d.progressThisWeek>=periodGoalR;
-          const deadlineDate=new Date(latestDeadline);
-          const periodNum=pastDeadlines.length;
-          const label=`Check-in ${periodNum} — ${deadlineDate.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}`;
-          const upd=[{week:label,progress:d.progressThisWeek,goal:periodGoalR,goalType:d.goalType,met,isCheckIn:true,deadlineMs:latestDeadline},...hist].slice(0,40);
+          const pending=typeof d.lastResetWeek==="number"
+            ?pastDeadlines.filter(dl=>dl>lastReset)
+            :[latestDeadline];
+          const newEntries=pending.map((dl,i)=>{
+            const progress=i===0?d.progressThisWeek:0;
+            const periodNum=pastDeadlines.indexOf(dl)+1;
+            const label=`Check-in ${periodNum} — ${new Date(dl).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}`;
+            return{week:label,progress,goal:periodGoalR,goalType:d.goalType,met:progress>=periodGoalR,isCheckIn:true,deadlineMs:dl};
+          });
+          popupProgress=newEntries[newEntries.length-1].progress;
+          const upd=[...newEntries.reverse(),...hist].slice(0,40);
           await fsSet(historyDocRef(uid),JSON.stringify(upd));
           setHistory(upd);
           d={...d,progressThisWeek:0,dailyChecks:[false,false,false,false,false,false,false],lastResetWeek:latestDeadline};
@@ -1337,7 +1350,7 @@ export default function App(){
               periodNum:periodNum2,
               totalPeriods:totalPeriods2,
               remainingCheckIns:remainingCI,
-              progress:progressSnapshot, // snapshotted before reset
+              progress:popupProgress, // progress for the latest check-in, taken before reset
               goal:periodGoal2,
               goalType:d.goalType,
             });
