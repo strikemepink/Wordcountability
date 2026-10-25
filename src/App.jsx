@@ -35,6 +35,7 @@ const memberUidDocRef    = (gid, uid) => doc(db, "groups", gid, "memberUids", ui
 const notifDocRef        = (uid)       => doc(db, "users",  uid, "data", "notifications");
 const checkInAcksDocRef  = (uid)       => doc(db, "users",  uid, "data", "checkInAcks");
 const userIndexDocRef    = (uid)       => doc(db, "_index", "users", "members", uid);
+const devicesDocRef      = (uid)       => doc(db, "users",  uid, "data", "devices");
 
 async function fsGet(ref) {
   try { const s = await getDoc(ref); return s.exists() ? s.data().value : null; } catch { return null; }
@@ -59,7 +60,8 @@ async function fsUpdateList(ref, change){
 }
 async function writeUserIndex(uid, d){
   // Full user snapshot used by cron-reminders to find users due for a reminder.
-  // Must include notifPrefs (for reminderTime/writingReminder) and oneSignalPlayerId at top level.
+  // Must include notifPrefs (for reminderTime/writingReminder) at top level. Push devices are
+  // stored separately in the devices list (see addDevice).
   try{
     const tz=Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC";
     await fsSet(userIndexDocRef(uid),JSON.stringify({
@@ -70,6 +72,14 @@ async function writeUserIndex(uid, d){
     }));
   }catch(e){console.warn("writeUserIndex",e);}
 }
+// Saves this device's push ID to the user's list of devices, so notifications reach every
+// phone or computer they've enabled. Uses the latest saved list, so one device never erases
+// another. Keeps the 10 most recently registered devices.
+async function addDevice(uid, playerId){
+  if(!uid||!playerId)return;
+  await fsUpdateList(devicesDocRef(uid),list=>[...list.filter(x=>x!==playerId),playerId].slice(-10));
+}
+
 // Calls one of our own server functions as the signed-in user. The login token lets the
 // server confirm who is asking before it sends notifications or returns group data.
 async function apiPost(path, body){
@@ -557,7 +567,8 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
   const [savingAvatar,setSavingAvatar]=useState(false);
   const [enableStatus,setEnableStatus]=useState(null); // null | "enabling" | "success" | "denied"
   const [syncStatus,setSyncStatus]=useState(null); // null | "syncing" | "success" | "failed"
-  const [hasPlayerId,setHasPlayerId]=useState(!!me.oneSignalPlayerId);
+  // Whether THIS device is set up to receive pushes (checked when the panel opens)
+  const [hasPlayerId,setHasPlayerId]=useState(true);
   // drafts initialized lazily from notifPrefs so they stay in sync after saves
   const initPrefs=me.notifPrefs||DEFAULT_NOTIF_PREFS;
   const [reminderTimeDraft,setReminderTimeDraft]=useState(initPrefs.reminderTime||"09:00");
@@ -575,13 +586,11 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
     initOneSignal();
     getNotifPermissionState().then(async(s)=>{
       setNotifPerms(s);
-      // If permission already granted but player ID missing, silently retry saving it
-      if(s==="granted"&&!me.oneSignalPlayerId){
+      // If permission is granted, make sure this device is in the user's device list
+      if(s==="granted"){
         const id=await getOneSignalPlayerId();
-        if(id){
-          await onUpdateMe({oneSignalPlayerId:id});
-          setHasPlayerId(true);
-        }
+        if(id)await addDevice(uid,id);
+        setHasPlayerId(!!id);
       }
     });
   },[]);
@@ -605,7 +614,8 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
     if(result){
       setEnableStatus("success");
       setNotifPerms("granted");
-      await onUpdateMe({notifPrefs,oneSignalPlayerId:result});
+      await addDevice(uid,result);
+      await onUpdateMe({notifPrefs});
       setHasPlayerId(true);
       return;
     }
@@ -613,14 +623,14 @@ function SettingsPanel({me, uid, db, onClose, onAvatarChange, onSignOut, onOpenA
     setEnableStatus(null);
   }
 
-  // Manual sync — re-fetches player ID from OneSignal and saves to Firestore
+  // Manual sync — re-fetches this device's push ID from OneSignal and adds it to the device list
   async function handleSyncPlayerId(){
     setSyncStatus("syncing");
     // Give OneSignal a moment to fully initialize before asking for the ID
     await new Promise(r=>setTimeout(r,1500));
     const id=await getOneSignalPlayerId();
     if(id){
-      await onUpdateMe({oneSignalPlayerId:id});
+      await addDevice(uid,id);
       setHasPlayerId(true);
       setSyncStatus("success");
     }else{
@@ -1368,6 +1378,8 @@ export default function App(){
       // ── Background loads — run in parallel after the app is already visible ──
       initOneSignal();
       writeUserIndex(uid,d);
+      // If this device already allows notifications, make sure it's in the device list
+      getNotifPermissionState().then(s=>s==="granted"?getOneSignalPlayerId():null).then(id=>addDevice(uid,id)).catch(()=>{});
 
       // Fetch notifications and check member doc existence simultaneously
       const [notifVal] = await Promise.all([
@@ -1883,6 +1895,7 @@ export default function App(){
     // ledger, other members' cards) is left alone so one member can't wipe the whole group.
     await fsDel(userDocRef(uid)); await fsDel(historyDocRef(uid));
     await fsDel(notifDocRef(uid)); await fsDel(checkInAcksDocRef(uid)); await fsDel(userIndexDocRef(uid));
+    await fsDel(devicesDocRef(uid));
     if(me?.groupId){
       const gid=me.groupId;
       await fsDel(memberDocRef(gid,uid));
@@ -1904,14 +1917,10 @@ export default function App(){
 
   // Merges partial updates into the live me state and saves to Firestore + index
   // Used by SettingsPanel so it always writes against the latest me, never stale props
-  // Always writes the Firestore oneSignalPlayerId to the index — never the live OneSignal ID
-  // from the current device, which may differ from the saved iPhone player ID.
   async function handleUpdateMe(updates){
     const upd={...me,...updates};
     setMe(upd);
     await fsSet(userDocRef(uid),JSON.stringify(upd));
-    // Always use the oneSignalPlayerId already saved in Firestore for the index,
-    // so a Mac/desktop save never overwrites the iPhone player ID.
     writeUserIndex(uid,upd);
   }
 

@@ -60,6 +60,17 @@ async function isGroupMember(groupId, uid) {
   return docExists(`groups/${groupId}/memberUids/${uid}`);
 }
 
+// ── Devices ───────────────────────────────────────────────────────
+
+// Returns every push device ID saved for a user: their device list, plus the single ID older
+// app versions saved in the user index. indexEntry (optional) saves a read if already loaded.
+async function getPlayerIds(uid, indexEntry) {
+  if (!uid) return [];
+  const devices = (await getValue(`users/${uid}/data/devices`)) || [];
+  const idx = indexEntry || (await getValue(`_index/users/members/${uid}`));
+  return [...new Set([...devices, idx?.oneSignalPlayerId].filter(Boolean))];
+}
+
 // ── OneSignal ─────────────────────────────────────────────────────
 
 // Sends a push to the given player IDs. sendAfterIso (optional) schedules it for later.
@@ -85,4 +96,4 @@ async function sendPush(playerIds, title, body, sendAfterIso = null) {
   return { sent: playerIds.length, notifId: json.id || null, onesignal: json };
 }
 
-module.exports = { getValue, setValue, listValues, getCallerUid, isGroupMember, sendPush };
+module.exports = { getValue, setValue, listValues, getCallerUid, isGroupMember, getPlayerIds, sendPush };

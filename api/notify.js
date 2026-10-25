@@ -5,7 +5,7 @@
  * the user's Firebase login token in the Authorization header.
  * Supports three modes:
  *   1. To self:  { toSelf: true, title, body, type }
- *      Sends to the caller's own saved device (the player ID stored in their profile).
+ *      Sends to every device the caller has saved (phone, computer, etc.).
  *   2. Fan-out:  { groupId, notifType, title, body }
  *      Caller must be a member of the group. Sends to every other member who has that
  *      notification type enabled.
@@ -16,7 +16,7 @@
  * POST /api/notify
  */
 
-const { getValue, setValue, listValues, getCallerUid, isGroupMember, sendPush } = require("./_lib/server");
+const { getValue, setValue, listValues, getCallerUid, isGroupMember, getPlayerIds, sendPush } = require("./_lib/server");
 
 const FAN_OUT_TYPES = ["memberHitGoal", "newPoll", "newChatMessage"];
 
@@ -31,13 +31,13 @@ async function getGroupPlayerIds(groupId, notifType, excludeUid) {
     memberUids.map(async ({ id: uid }) => {
       if (uid === excludeUid) return;
       try {
-        const idx = await getValue(`_index/users/members/${uid}`);
-        if (!idx?.oneSignalPlayerId) return;
+        const ids = await getPlayerIds(uid);
+        if (!ids.length) return;
         const user = await getValue(`users/${uid}`);
         if (!user) return;
         const prefs = user.notifPrefs || {};
         if (prefs[notifType] === false) return;
-        playerIds.push(idx.oneSignalPlayerId);
+        playerIds.push(...ids);
       } catch { /* skip this user */ }
     })
   );
@@ -62,11 +62,11 @@ module.exports = async function handler(req, res) {
     const callerUid = await getCallerUid(req);
     if (!callerUid) return res.status(401).json({ error: "Sign-in required" });
 
-    // Mode 1: send to the caller's own saved device ("playerId" kept for older app versions)
+    // Mode 1: send to all of the caller's saved devices ("playerId" kept for older app versions)
     if (toSelf || playerId) {
-      const idx = await getValue(`_index/users/members/${callerUid}`);
-      if (!idx?.oneSignalPlayerId) return res.status(200).json({ ok: true, sent: 0, note: "No device saved" });
-      const result = await sendPush([idx.oneSignalPlayerId], title, body);
+      const ids = await getPlayerIds(callerUid);
+      if (!ids.length) return res.status(200).json({ ok: true, sent: 0, note: "No device saved" });
+      const result = await sendPush(ids, title, body);
       return res.status(200).json({ ok: true, type, ...result });
     }
 
@@ -95,8 +95,8 @@ module.exports = async function handler(req, res) {
       await Promise.all(
         memberUids.map(async ({ id: uid }) => {
           try {
-            const idx = await getValue(`_index/users/members/${uid}`);
-            if (!idx?.oneSignalPlayerId) return;
+            const ids = await getPlayerIds(uid);
+            if (!ids.length) return;
             const user = await getValue(`users/${uid}`);
             if (!user) return;
             const prefs = user.notifPrefs || {};
@@ -105,7 +105,7 @@ module.exports = async function handler(req, res) {
             if (warnMs <= now) {
               // Less than 24h away — send immediately
               const result = await sendPush(
-                [idx.oneSignalPlayerId],
+                ids,
                 "⏳ Poll closing soon",
                 `"${question}" closes in less than 24 hours — vote if you haven't!`
               );
@@ -113,7 +113,7 @@ module.exports = async function handler(req, res) {
             } else {
               // Schedule for 24h before deadline
               const result = await sendPush(
-                [idx.oneSignalPlayerId],
+                ids,
                 "⏳ Poll closing soon",
                 `"${question}" closes tomorrow — vote if you haven't!`,
                 new Date(warnMs).toISOString()

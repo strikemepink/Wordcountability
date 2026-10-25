@@ -6,17 +6,17 @@
 // Cancels any previously scheduled notifications before scheduling new ones,
 // so rescheduling when the admin edits settings is safe.
 
-const { getValue, setValue, listValues, getCallerUid } = require("./_lib/server");
+const { getValue, setValue, listValues, getCallerUid, getPlayerIds } = require("./_lib/server");
 
 const ONESIGNAL_APP_ID  = process.env.VITE_ONESIGNAL_APP_ID;
 const ONESIGNAL_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
 
 // ── OneSignal helpers ─────────────────────────────────────────────
 
-// Schedules a single push to one player at a specific UTC time.
+// Schedules a single push to all of one user's devices at a specific UTC time.
 // Returns the OneSignal notification ID (used for cancellation later).
-async function scheduleOneSignalNotif(playerId, title, body, sendAtUtcMs) {
-  if (!playerId) return null;
+async function scheduleOneSignalNotif(playerIds, title, body, sendAtUtcMs) {
+  if (!playerIds?.length) return null;
   try {
     const res = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
@@ -26,7 +26,7 @@ async function scheduleOneSignalNotif(playerId, title, body, sendAtUtcMs) {
       },
       body: JSON.stringify({
         app_id: ONESIGNAL_APP_ID,
-        include_player_ids: [playerId],
+        include_player_ids: playerIds,
         headings: { en: title },
         contents: { en: body },
         web_url: "https://wordcountability.vercel.app",
@@ -141,7 +141,11 @@ module.exports = async function handler(req, res) {
 
     // 1. Load all group members from the user index
     const allUsers = (await listValues("_index/users/members")).map(d => d.data);
-    const groupMembers = allUsers.filter(u => u && u.groupId === groupId && u.oneSignalPlayerId);
+    const groupMembers = [];
+    for (const u of allUsers.filter(u => u && u.uid && u.groupId === groupId)) {
+      const playerIds = await getPlayerIds(u.uid, u);
+      if (playerIds.length) groupMembers.push({ ...u, playerIds });
+    }
 
     if (groupMembers.length === 0) {
       return res.status(200).json({ ok: true, scheduled: 0, cancelled: 0, message: "No members with push enabled" });
@@ -163,13 +167,13 @@ module.exports = async function handler(req, res) {
     let scheduleCount = 0;
 
     for (const user of groupMembers) {
-      if (!user.uid || !user.oneSignalPlayerId) continue;
+      if (!user.uid || !user.playerIds.length) continue;
       const notifList = buildSchedule(admin, user);
       const ids = [];
 
       for (const notif of notifList) {
         const id = await scheduleOneSignalNotif(
-          user.oneSignalPlayerId,
+          user.playerIds,
           notif.title,
           notif.body,
           notif.sendAtMs

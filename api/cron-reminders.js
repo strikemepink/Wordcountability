@@ -7,7 +7,7 @@
 //   - Missed check-in: fires in the hour after a check-in deadline if the user missed their goal
 //   - Challenge starting soon: fires when the challenge start is 23-24h away (the only sender of this push)
 
-const { getValue, listValues, sendPush } = require("./_lib/server");
+const { getValue, listValues, getPlayerIds, sendPush } = require("./_lib/server");
 
 const MOTIVATIONAL_MESSAGES = [
   "Yoda says: Become writer only by writing.",
@@ -81,13 +81,13 @@ function periodGoalFor(weeklyGoal, cadDays) {
 
 function shouldSendReminder(user, nowUtc) {
   const prefs = user.notifPrefs || {};
-  if (!prefs.writingReminder || !user.oneSignalPlayerId) return false;
+  if (!prefs.writingReminder || !user.playerIds?.length) return false;
   return isScheduledNow(prefs.reminderTime, prefs.reminderFrequency, user, nowUtc);
 }
 
 function shouldSendProgressNotif(user, nowUtc) {
   const prefs = user.notifPrefs || {};
-  if (!prefs.progressNotif || !user.oneSignalPlayerId) return false;
+  if (!prefs.progressNotif || !user.playerIds?.length) return false;
   // If combined, use the writing reminder's time and frequency. This still works when the
   // writing reminder itself is switched off (previously the progress check-in silently stopped).
   if (prefs.progressNotifCombined !== false) {
@@ -246,6 +246,8 @@ module.exports = async function handler(req, res) {
         const user = doc.data;
         if (!user) continue;
         checked++;
+        // Every device this user has saved (phone, computer, etc.)
+        user.playerIds = await getPlayerIds(user.uid || doc.id, user);
 
         const prefs = user.notifPrefs || {};
         const sendingReminder = shouldSendReminder(user, nowUtc);
@@ -255,7 +257,7 @@ module.exports = async function handler(req, res) {
         // ── 1. Writing reminder ──────────────────────────────────
         if (sendingReminder) {
           const msg = MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
-          await sendPush([user.oneSignalPlayerId], "✍️ Time to write!", msg);
+          await sendPush(user.playerIds, "✍️ Time to write!", msg);
           sent++;
         }
 
@@ -263,7 +265,7 @@ module.exports = async function handler(req, res) {
         if (sendingProgress && user.groupId) {
           const progressMsg = buildProgressMessage(user, admin, nowUtc);
           if (progressMsg) {
-            await sendPush([user.oneSignalPlayerId], progressMsg.title, progressMsg.body);
+            await sendPush(user.playerIds, progressMsg.title, progressMsg.body);
             sent++;
           }
         }
@@ -271,7 +273,7 @@ module.exports = async function handler(req, res) {
         // ── 3. Missed check-in ───────────────────────────────────
         // Fires in the hour immediately after a check-in deadline passes,
         // but only if the user actually missed their goal.
-        if (prefs.missedCheckIn && user.oneSignalPlayerId && admin) {
+        if (prefs.missedCheckIn && user.playerIds.length && admin) {
           const deadline = deadlinePassedThisHour(admin, nowMs);
           if (deadline) {
             const cad = cadenceDays(admin.frequency || "Weekly");
@@ -295,7 +297,7 @@ module.exports = async function handler(req, res) {
                 body = `You still made progress this period and that's worth a round of applause. Think about what you can do to hit your goal next check-in. You can do this!`;
               }
 
-              await sendPush([user.oneSignalPlayerId], "💔 Check-in missed", body);
+              await sendPush(user.playerIds, "💔 Check-in missed", body);
               sent++;
             }
           }
@@ -303,7 +305,7 @@ module.exports = async function handler(req, res) {
 
         // ── 4. Challenge starting soon ───────────────────────────
         // Fires once when the challenge start is 23-24h away.
-        if (prefs.challengeStarting && user.oneSignalPlayerId && admin) {
+        if (prefs.challengeStarting && user.playerIds.length && admin) {
           if (challengeStartsIn24h(admin, nowMs)) {
             const checkInGoal = periodGoalFor(user.goalValue, cadenceDays(admin.frequency || "Weekly"));
             const goalLabel = user.goalType === "words"
@@ -314,7 +316,7 @@ module.exports = async function handler(req, res) {
                   return h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ""}` : `${m}m`;
                 })();
 
-            await sendPush([user.oneSignalPlayerId], "🚀 Challenge starts tomorrow!", `Your writing challenge kicks off in 24 hours. Your goal: ${goalLabel} per check-in. Get ready!`);
+            await sendPush(user.playerIds, "🚀 Challenge starts tomorrow!", `Your writing challenge kicks off in 24 hours. Your goal: ${goalLabel} per check-in. Get ready!`);
             sent++;
           }
         }
