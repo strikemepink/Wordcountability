@@ -234,7 +234,12 @@ const G = `
   .bottom-nav-inner{display:flex;width:100%;max-width:500px;justify-content:space-around;}
   .nav-btn{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:#5B6878;padding:4px 0;}
   .nav-btn.on{color:#6D47B5;}
-  .nav-btn svg{width:23px;height:23px;}`;
+  .nav-btn svg{width:23px;height:23px;}
+  .page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding-top:4px;}
+  .page-title{font-family:'Poppins',sans-serif;font-weight:600;font-size:28px;line-height:1.1;margin:0;color:#14213D;}
+  .ghost-btn{background:#fff;border:1.5px solid #14213D2e;border-radius:12px;padding:8px 14px;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:#14213D;cursor:pointer;flex-shrink:0;}
+  .ghost-btn:hover{border-color:#8C62D1;}
+  .muted{color:#5B6878;}`;
 
 // ── Helpers ──────────────────────────────────────────────────────
 // Formats a date as "YYYY-MM-DD" using the user's local calendar (not UTC)
@@ -328,17 +333,17 @@ function PwaPrompt({onClose}){
     <div className="modal-bg" onClick={onClose}>
       <div className="card modal" onClick={e=>e.stopPropagation()} style={{textAlign:"center"}}>
         <div style={{fontSize:40,marginBottom:12}}>📲</div>
-        <div style={{fontSize:20,fontWeight:900,color:"#B85400",marginBottom:8}}>Install Wordcountability</div>
-        <div style={{fontSize:14,color:"#5B6878",fontWeight:700,lineHeight:1.7,marginBottom:20}}>
+        <div style={{fontSize:20,fontWeight:700,color:"#B85400",marginBottom:8}}>Install Wordcountability</div>
+        <div style={{fontSize:14,color:"#5B6878",fontWeight:500,lineHeight:1.7,marginBottom:20}}>
           Install the app to your home screen to get writing reminders and quick access. It takes 5 seconds!
         </div>
         {isIos&&(
           <div style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
-            <div style={{fontSize:13,fontWeight:900,color:"#6D47B5",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>On iPhone / iPad</div>
-            <div style={{background:"#8C62D122",border:"1.5px solid #8C62D155",borderRadius:10,padding:"8px 12px",marginBottom:10,fontSize:13,color:LF.hotpink,fontWeight:800,lineHeight:1.6}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#6D47B5",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>On iPhone / iPad</div>
+            <div style={{background:"#8C62D122",border:"1.5px solid #8C62D155",borderRadius:10,padding:"8px 12px",marginBottom:10,fontSize:13,color:LF.hotpink,fontWeight:600,lineHeight:1.6}}>
               ⚠️ You must use <span style={{color:LF.yellow}}>Safari</span> — this won't work in Chrome or other browsers on iPhone.
             </div>
-            <div style={{fontSize:14,color:"#14213D",fontWeight:700,lineHeight:2}}>
+            <div style={{fontSize:14,color:"#14213D",fontWeight:500,lineHeight:2}}>
               1. Tap the <span style={{color:"#B85400"}}>Share</span> button at the bottom of Safari ⬆️<br/>
               2. Scroll down and tap <span style={{color:"#B85400"}}>Add to Home Screen</span><br/>
               3. Tap <span style={{color:"#B85400"}}>Add</span> ✅
@@ -347,8 +352,8 @@ function PwaPrompt({onClose}){
         )}
         {isAndroid&&(
           <div style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
-            <div style={{fontSize:13,fontWeight:900,color:"#6D47B5",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>On Android</div>
-            <div style={{fontSize:14,color:"#14213D",fontWeight:700,lineHeight:2}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#6D47B5",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>On Android</div>
+            <div style={{fontSize:14,color:"#14213D",fontWeight:500,lineHeight:2}}>
               1. Tap the <span style={{color:"#B85400"}}>menu</span> (⋮) in your browser<br/>
               2. Tap <span style={{color:"#B85400"}}>Add to Home Screen</span><br/>
               3. Tap <span style={{color:"#B85400"}}>Add</span> ✅
@@ -357,7 +362,7 @@ function PwaPrompt({onClose}){
         )}
         {!isIos&&!isAndroid&&(
           <div style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
-            <div style={{fontSize:14,color:"#14213D",fontWeight:700,lineHeight:2}}>
+            <div style={{fontSize:14,color:"#14213D",fontWeight:500,lineHeight:2}}>
               On <span style={{color:"#B85400"}}>iPhone</span>: open in <span style={{color:"#B85400"}}>Safari</span> ⬆️ Share → Add to Home Screen<br/>
               On <span style={{color:"#B85400"}}>Android</span>: Chrome menu ⋮ → Add to Home Screen
             </div>
@@ -377,51 +382,51 @@ function PrivacyModal({onClose}){
     <div className="modal-bg" onClick={onClose}>
       <div className="privacy-modal" onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <div style={{fontSize:20,fontWeight:900,color:LF.yellow}}>🔒 Privacy Policy</div>
+          <div style={{fontSize:20,fontWeight:700,color:LF.yellow}}>🔒 Privacy Policy</div>
           <button onClick={onClose} style={{background:"none",border:"none",color:"#5B6878",fontSize:22,cursor:"pointer",lineHeight:1}}>✕</button>
         </div>
         <div style={{fontSize:14,color:"#3D4A5C",lineHeight:1.8,display:"flex",flexDirection:"column",gap:16}}>
           <div style={{fontSize:12,color:"#5B6878"}}>Last updated: April 2026</div>
 
           <div>
-            <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>What is Wordcountability?</div>
+            <div style={{fontWeight:700,color:LF.hotpink,marginBottom:6}}>What is Wordcountability?</div>
             Wordcountability is a writing accountability app that helps you and your group track weekly writing goals. It is a personal project, not a commercial product.
           </div>
 
           <div>
-            <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>What information do we collect?</div>
+            <div style={{fontWeight:700,color:LF.hotpink,marginBottom:6}}>What information do we collect?</div>
             When you sign in with Google, we receive your name and email address from Google. We store your writing progress, goals, group activity, and chat messages so they sync across your devices.
           </div>
 
           <div>
-            <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>How is your information used?</div>
+            <div style={{fontWeight:700,color:LF.hotpink,marginBottom:6}}>How is your information used?</div>
             Your information is used only to make the app work — syncing your progress, showing your group leaderboard, and enabling group chat. We do not use your data for advertising or marketing.
           </div>
 
           <div>
-            <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>Who can see your data?</div>
+            <div style={{fontWeight:700,color:LF.hotpink,marginBottom:6}}>Who can see your data?</div>
             Your writing progress and display name are visible to members of your group. Your email address is never shown to other users. No data is sold or shared with third parties.
           </div>
 
           <div>
-            <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>Data storage</div>
+            <div style={{fontWeight:700,color:LF.hotpink,marginBottom:6}}>Data storage</div>
             Your data is stored securely using Google Firebase, which is hosted in the United States. Google's privacy policy applies to their infrastructure.
           </div>
 
           <div>
-            <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>Push Notifications</div>
+            <div style={{fontWeight:700,color:LF.hotpink,marginBottom:6}}>Push Notifications</div>
             If you enable push notifications, a push subscription token is stored in your account and shared with OneSignal, Inc. to enable delivery of notifications to your device. OneSignal does not receive your email address or writing data. OneSignal's privacy policy is available at{" "}
             <a href="https://onesignal.com/privacy" target="_blank" rel="noreferrer" style={{color:LF.lime}}>onesignal.com/privacy</a>.
           </div>
 
           <div>
-            <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>Deleting your data</div>
+            <div style={{fontWeight:700,color:LF.hotpink,marginBottom:6}}>Deleting your data</div>
             You can delete your own data at any time using the "Reset all data" option in the Stakes tab. To request complete account deletion, email us at{" "}
             <a href="mailto:erica.kritt.author@gmail.com" style={{color:LF.lime}}>erica.kritt.author@gmail.com</a>.
           </div>
 
           <div>
-            <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>Contact</div>
+            <div style={{fontWeight:700,color:LF.hotpink,marginBottom:6}}>Contact</div>
             Questions about this policy? Email{" "}
             <a href="mailto:erica.kritt.author@gmail.com" style={{color:LF.lime}}>erica.kritt.author@gmail.com</a>.
           </div>
@@ -450,7 +455,7 @@ function SignIn({onPrivacy}){
     <div className="leopard leopard-setup" style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"32px 24px",fontFamily:"'Inter',sans-serif",color:"#14213D"}}>
       <style>{G}</style><BgCircles/>
       <div style={{maxWidth:380,width:"100%",display:"flex",flexDirection:"column",alignItems:"center",gap:24,textAlign:"center"}}>
-        <div style={{fontSize:44,fontWeight:900,lineHeight:1.1}}>Wordcountability</div>
+        <div style={{fontSize:44,fontWeight:700,lineHeight:1.1}}>Wordcountability</div>
         <div style={{fontSize:18,color:LF.hotpink,fontWeight:700,lineHeight:1.5}}>
           Your writing accountability crew. Sign in to sync across all your devices. 📝🌈
         </div>
@@ -463,7 +468,7 @@ function SignIn({onPrivacy}){
           </svg>
           {loading?"Signing in…":"Continue with Google"}
         </button>
-        {error&&<div style={{color:LF.pink,fontWeight:800,fontSize:15}}>{error}</div>}
+        {error&&<div style={{color:LF.pink,fontWeight:600,fontSize:15}}>{error}</div>}
         <div style={{fontSize:13,color:"#5B6878",lineHeight:1.6}}>
           Your progress syncs across devices using your Google account.<br/>No separate password needed.
         </div>
@@ -498,13 +503,13 @@ function Setup({user,onSave}){
       <style>{G}</style><BgCircles/>
       <div style={{maxWidth:420,width:"100%",display:"flex",flexDirection:"column",gap:16}}>
         <div style={{textAlign:"center",marginBottom:4}}>
-          <div style={{fontSize:38,fontWeight:900,lineHeight:1.1}}>Wordcountability</div>
+          <div style={{fontSize:38,fontWeight:700,lineHeight:1.1}}>Wordcountability</div>
           <div style={{fontSize:14,color:LF.hotpink,marginTop:6}}>Signed in as {user.email}</div>
         </div>
 
         <div className="card"><span className="lbl">Your Name</span>
           <input className="inp" value={name} onChange={e=>{setName(e.target.value);setError("");}} placeholder="e.g. Alex"/>
-          {error&&<div style={{fontSize:14,color:LF.yellow,fontWeight:800,marginTop:8,lineHeight:1.5}}>{error}</div>}
+          {error&&<div style={{fontSize:14,color:LF.yellow,fontWeight:600,marginTop:8,lineHeight:1.5}}>{error}</div>}
         </div>
 
         <div className="card"><span className="lbl">Pick Your Player</span>
@@ -766,14 +771,14 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
       <div className="settings-panel" style={{animation:"slideInRight 0.3s cubic-bezier(0.4,0,0.2,1)"}}>
         {/* Header */}
         <div style={{padding:"20px 20px 14px",borderBottom:"1px solid #14213D0d",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-          <div style={{fontSize:18,fontWeight:900,color:LF.white}}>Settings</div>
+          <div style={{fontSize:18,fontWeight:700,color:LF.white}}>Settings</div>
           <button onClick={onClose} style={{background:"none",border:"none",color:"#5B6878",fontSize:22,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
         </div>
 
         {/* Section tabs */}
         <div style={{display:"flex",borderBottom:"1px solid #14213D0d",flexShrink:0,overflowX:"auto"}}>
           {[{id:"profile",icon:"👤"},{id:"notifications",icon:"🔔"},{id:"accolades",icon:"🏆"},{id:"about",icon:"ℹ️"}].map(s=>(
-            <button key={s.id} onClick={()=>setSection(s.id)} style={{flex:1,background:"none",border:"none",borderBottom:`3px solid ${section===s.id?LF.pink:"transparent"}`,color:section===s.id?LF.pink:"#6B7685",fontFamily:"'Inter',sans-serif",fontSize:11,fontWeight:900,textTransform:"uppercase",letterSpacing:1,padding:"10px 4px",cursor:"pointer",whiteSpace:"nowrap",transition:"color 0.2s"}}>
+            <button key={s.id} onClick={()=>setSection(s.id)} style={{flex:1,background:"none",border:"none",borderBottom:`3px solid ${section===s.id?LF.pink:"transparent"}`,color:section===s.id?LF.pink:"#6B7685",fontFamily:"'Inter',sans-serif",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,padding:"10px 4px",cursor:"pointer",whiteSpace:"nowrap",transition:"color 0.2s"}}>
               {s.icon}
             </button>
           ))}
@@ -787,8 +792,8 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
             <div className="settings-section">
               <div style={{textAlign:"center",padding:"20px 0 16px"}}>
                 <div style={{fontSize:56,marginBottom:8}}>{selectedAvatar}</div>
-                <div style={{fontSize:18,fontWeight:900,color:LF.white}}>{me.name}</div>
-                <div style={{fontSize:13,color:"#5B6878",fontWeight:700,marginTop:2}}>#{me.groupId}</div>
+                <div style={{fontSize:18,fontWeight:700,color:LF.white}}>{me.name}</div>
+                <div style={{fontSize:13,color:"#5B6878",fontWeight:500,marginTop:2}}>#{me.groupId}</div>
               </div>
               <div style={{marginBottom:16}}>
                 <div className="settings-section-title">Change Avatar</div>
@@ -804,15 +809,15 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                 )}
               </div>
               <div style={{borderTop:"1px solid #14213D0d",paddingTop:16,display:"flex",flexDirection:"column",gap:8}}>
-                <button onClick={onOpenPrivacy} style={{background:"#14213D0a",border:"1px solid #14213D1f",borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Inter',sans-serif",color:"#14213D",fontSize:14,fontWeight:700}}>
+                <button onClick={onOpenPrivacy} style={{background:"#14213D0a",border:"1px solid #14213D1f",borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Inter',sans-serif",color:"#14213D",fontSize:14,fontWeight:500}}>
                   🔒 Privacy Policy
                 </button>
                 {isAdmin&&(
-                  <button onClick={()=>{onOpenAdmin();onClose();}} style={{background:`linear-gradient(135deg,${LF.yellow}33,${LF.orange}33)`,border:`1px solid ${LF.yellow}44`,borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Inter',sans-serif",color:LF.yellow,fontSize:14,fontWeight:800}}>
+                  <button onClick={()=>{onOpenAdmin();onClose();}} style={{background:`linear-gradient(135deg,${LF.yellow}33,${LF.orange}33)`,border:`1px solid ${LF.yellow}44`,borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Inter',sans-serif",color:LF.yellow,fontSize:14,fontWeight:600}}>
                     ⚙️ Admin Settings
                   </button>
                 )}
-                <button onClick={onSignOut} style={{background:"#BF1E4111",border:"1px solid #BF1E4133",borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Inter',sans-serif",color:"#BF1E41",fontSize:14,fontWeight:700}}>
+                <button onClick={onSignOut} style={{background:"#BF1E4111",border:"1px solid #BF1E4133",borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Inter',sans-serif",color:"#BF1E41",fontSize:14,fontWeight:500}}>
                   ↩ Sign Out
                 </button>
               </div>
@@ -827,20 +832,20 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                 {/* Status banner */}
                 {notifPerms==="denied"?(
                   <div style={{background:"#BF1E4111",border:"2px solid #BF1E4133",borderRadius:14,padding:"12px 14px",marginBottom:16}}>
-                    <div style={{fontSize:14,fontWeight:800,color:"#BF1E41",marginBottom:4}}>🚫 Notifications blocked</div>
-                    <div style={{fontSize:13,color:"#5B6878",fontWeight:700,lineHeight:1.6}}>
+                    <div style={{fontSize:14,fontWeight:600,color:"#BF1E41",marginBottom:4}}>🚫 Notifications blocked</div>
+                    <div style={{fontSize:13,color:"#5B6878",fontWeight:500,lineHeight:1.6}}>
                       You've blocked notifications for this site. To re-enable, go to your browser or device Settings → Notifications → Wordcountability and allow notifications.
                     </div>
                   </div>
                 ):notifPerms==="granted"?(
                   <div style={{background:"#82B63A11",border:"1px solid #82B63A33",borderRadius:14,padding:"10px 14px",marginBottom:16}}>
                     {hasPlayerId?(
-                      <div style={{fontSize:13,color:LF.lime,fontWeight:700}}>✅ Push notifications are enabled</div>
+                      <div style={{fontSize:13,color:LF.lime,fontWeight:500}}>✅ Push notifications are enabled</div>
                     ):(
                       <>
-                        <div style={{fontSize:13,color:LF.yellow,fontWeight:700,marginBottom:10}}>⚠️ Notifications are allowed but not fully connected. Tap below to finish setup.</div>
-                        {syncStatus==="success"&&<div style={{fontSize:13,color:LF.lime,fontWeight:700,marginBottom:8}}>✅ Connected! You're all set.</div>}
-                        {syncStatus==="failed"&&<div style={{fontSize:13,color:"#BF1E41",fontWeight:700,marginBottom:8}}>Couldn't connect — try closing and reopening the app, then tap again.</div>}
+                        <div style={{fontSize:13,color:LF.yellow,fontWeight:500,marginBottom:10}}>⚠️ Notifications are allowed but not fully connected. Tap below to finish setup.</div>
+                        {syncStatus==="success"&&<div style={{fontSize:13,color:LF.lime,fontWeight:500,marginBottom:8}}>✅ Connected! You're all set.</div>}
+                        {syncStatus==="failed"&&<div style={{fontSize:13,color:"#BF1E41",fontWeight:500,marginBottom:8}}>Couldn't connect — try closing and reopening the app, then tap again.</div>}
                         <button
                           className="btn"
                           onClick={handleSyncPlayerId}
@@ -854,16 +859,16 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                   </div>
                 ):(
                   <>
-                    <div style={{background:"#14213D08",border:"1px solid #14213D1f",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#5B6878",fontWeight:700}}>
+                    <div style={{background:"#14213D08",border:"1px solid #14213D1f",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#5B6878",fontWeight:500}}>
                       🔔 Enable push notifications to get writing reminders and group updates on your device.
                     </div>
                     {enableStatus==="success"&&(
-                      <div style={{background:"#82B63A11",border:"1px solid #82B63A33",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:LF.lime,fontWeight:700}}>
+                      <div style={{background:"#82B63A11",border:"1px solid #82B63A33",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:LF.lime,fontWeight:500}}>
                         ✅ Notifications enabled! You're all set.
                       </div>
                     )}
                     {enableStatus==="denied"&&(
-                      <div style={{background:"#BF1E4111",border:"1px solid #BF1E4133",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#BF1E41",fontWeight:700}}>
+                      <div style={{background:"#BF1E4111",border:"1px solid #BF1E4133",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#BF1E41",fontWeight:500}}>
                         🚫 Permission denied. Go to your browser settings to allow notifications for this site.
                       </div>
                     )}
@@ -883,7 +888,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                     <div className="notif-row">
                       <div style={{display:"flex",alignItems:"center",gap:10}}>
                         <span style={{fontSize:18}}>{icon}</span>
-                        <span style={{fontSize:14,color:LF.white,fontWeight:700}}>{label}</span>
+                        <span style={{fontSize:14,color:LF.white,fontWeight:500}}>{label}</span>
                       </div>
                       <label className="toggle">
                         <input type="checkbox" checked={!!notifPrefs[key]} onChange={e=>handleNotifToggle(key,e.target.checked)}/>
@@ -893,7 +898,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
 
                     {/* Nudge if toggles on but permission not yet granted */}
                     {notifPrefs[key]&&notifPerms==="default"&&(
-                      <div style={{fontSize:12,color:LF.hotpink,fontWeight:700,padding:"4px 0 6px 28px"}}>
+                      <div style={{fontSize:12,color:LF.hotpink,fontWeight:500,padding:"4px 0 6px 28px"}}>
                         ↑ Tap "Enable Push Notifications" above to activate this.
                       </div>
                     )}
@@ -903,7 +908,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                       <div style={{background:"#14213D06",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px",display:"flex",flexDirection:"column",gap:8}}>
                         {reminderSaved?(
                           <>
-                            <div style={{fontSize:13,color:LF.lime,fontWeight:800}}>
+                            <div style={{fontSize:13,color:LF.lime,fontWeight:600}}>
                               ✅ Reminder set for {(()=>{const t=notifPrefs.reminderTime||"09:00";const[h,m]=t.split(":");const hr=parseInt(h);return`${hr===0?12:hr>12?hr-12:hr}:${m} ${hr<12?"AM":"PM"}`;})()}  · {notifPrefs.reminderFrequency||"Daily"}
                             </div>
                             <button
@@ -918,15 +923,15 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                         ):(
                           <>
                             <div>
-                              <div style={{fontSize:12,color:"#5B6878",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
+                              <div style={{fontSize:12,color:"#5B6878",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
                               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                                 {["Daily","Weekly","Monthly"].map(f=>(
-                                  <button key={f} onClick={()=>setReminderFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${reminderFreqDraft===f?LF.pink:"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:reminderFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#14213D0d",color:"#14213D",fontWeight:700}}>{f}</button>
+                                  <button key={f} onClick={()=>setReminderFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${reminderFreqDraft===f?LF.pink:"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:reminderFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#14213D0d",color:"#14213D",fontWeight:500}}>{f}</button>
                                 ))}
                               </div>
                             </div>
                             <div>
-                              <div style={{fontSize:12,color:"#5B6878",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
+                              <div style={{fontSize:12,color:"#5B6878",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
                               <select value={reminderTimeDraft} onChange={e=>setReminderTimeDraft(e.target.value)} className="inp" style={{maxWidth:160,padding:"8px 12px",fontSize:14}}>
                                 {Array.from({length:24},(_,i)=>{const h=i%12===0?12:i%12;const ampm=i<12?"AM":"PM";const val=`${String(i).padStart(2,"0")}:00`;return(<option key={i} value={val}>{h}:00 {ampm}</option>);})}
                               </select>
@@ -950,7 +955,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                         <div className="notif-row">
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
                             <span style={{fontSize:18}}>📊</span>
-                            <span style={{fontSize:14,color:LF.white,fontWeight:700}}>Progress Check-in</span>
+                            <span style={{fontSize:14,color:LF.white,fontWeight:500}}>Progress Check-in</span>
                           </div>
                           <label className="toggle">
                             <input type="checkbox" checked={!!notifPrefs.progressNotif} onChange={e=>handlePrefChange("progressNotif",e.target.checked)}/>
@@ -958,30 +963,30 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                           </label>
                         </div>
                         {notifPrefs.progressNotif&&notifPerms==="default"&&(
-                          <div style={{fontSize:12,color:LF.hotpink,fontWeight:700,padding:"4px 0 6px 28px"}}>
+                          <div style={{fontSize:12,color:LF.hotpink,fontWeight:500,padding:"4px 0 6px 28px"}}>
                             ↑ Tap "Enable Push Notifications" above to activate this.
                           </div>
                         )}
                         {notifPrefs.progressNotif&&(
                           <div style={{background:"#14213D06",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px",display:"flex",flexDirection:"column",gap:8}}>
-                            <div style={{fontSize:13,color:"#5B6878",fontWeight:700,lineHeight:1.5}}>
+                            <div style={{fontSize:13,color:"#5B6878",fontWeight:500,lineHeight:1.5}}>
                               A personalised update on where you stand — on track, behind, or crushing it 🎉
                             </div>
                             <div className="notif-row" style={{padding:0}}>
-                              <span style={{fontSize:13,color:LF.white,fontWeight:700}}>Combine with writing reminder</span>
+                              <span style={{fontSize:13,color:LF.white,fontWeight:500}}>Combine with writing reminder</span>
                               <label className="toggle">
                                 <input type="checkbox" checked={notifPrefs.progressNotifCombined!==false} onChange={e=>{handlePrefChange("progressNotifCombined",e.target.checked);setProgressSaved(false);}}/>
                                 <span className="toggle-slider"/>
                               </label>
                             </div>
                             {notifPrefs.progressNotifCombined!==false?(
-                              <div style={{fontSize:12,color:"#6B7685",fontWeight:700}}>
+                              <div style={{fontSize:12,color:"#6B7685",fontWeight:500}}>
                                 ✅ Will arrive with your writing reminder ({notifPrefs.reminderFrequency||"Daily"} at {(()=>{const t=notifPrefs.reminderTime||"09:00";const[h,m]=t.split(":");const hr=parseInt(h);return`${hr===0?12:hr>12?hr-12:hr}:${m} ${hr<12?"AM":"PM"}`;})()})
                               </div>
                             ):(
                               progressSaved?(
                                 <>
-                                  <div style={{fontSize:13,color:LF.lime,fontWeight:800}}>
+                                  <div style={{fontSize:13,color:LF.lime,fontWeight:600}}>
                                     ✅ Progress check-in set for {(()=>{const t=notifPrefs.progressNotifTime||"09:00";const[h,m]=t.split(":");const hr=parseInt(h);return`${hr===0?12:hr>12?hr-12:hr}:${m} ${hr<12?"AM":"PM"}`;})()}  · {notifPrefs.progressNotifFrequency||"Daily"}
                                   </div>
                                   <button
@@ -996,15 +1001,15 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                               ):(
                                 <>
                                   <div>
-                                    <div style={{fontSize:12,color:"#5B6878",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
+                                    <div style={{fontSize:12,color:"#5B6878",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
                                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                                       {["Daily","Weekly"].map(f=>(
-                                        <button key={f} onClick={()=>setProgressFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${progressFreqDraft===f?LF.pink:"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:progressFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#14213D0d",color:"#14213D",fontWeight:700}}>{f}</button>
+                                        <button key={f} onClick={()=>setProgressFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${progressFreqDraft===f?LF.pink:"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:progressFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#14213D0d",color:"#14213D",fontWeight:500}}>{f}</button>
                                       ))}
                                     </div>
                                   </div>
                                   <div>
-                                    <div style={{fontSize:12,color:"#5B6878",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
+                                    <div style={{fontSize:12,color:"#5B6878",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
                                     <select value={progressTimeDraft} onChange={e=>setProgressTimeDraft(e.target.value)} className="inp" style={{maxWidth:160,padding:"8px 12px",fontSize:14}}>
                                       {Array.from({length:24},(_,i)=>{const h=i%12===0?12:i%12;const ampm=i<12?"AM":"PM";const val=`${String(i).padStart(2,"0")}:00`;return(<option key={i} value={val}>{h}:00 {ampm}</option>);})}
                                     </select>
@@ -1028,10 +1033,10 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                     {/* Chat frequency sub-option */}
                     {key==="newChatMessage"&&notifPrefs.newChatMessage&&(
                       <div style={{background:"#14213D06",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px"}}>
-                        <div style={{fontSize:12,color:"#5B6878",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
+                        <div style={{fontSize:12,color:"#5B6878",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
                         <div style={{display:"flex",gap:6}}>
                           {["Every message","Digest"].map(f=>(
-                            <button key={f} onClick={()=>handlePrefChange("chatFrequency",f)} style={{padding:"5px 12px",border:`2px solid ${notifPrefs.chatFrequency===f?LF.violet:"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:notifPrefs.chatFrequency===f?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"#14213D0d",color:"#14213D",fontWeight:700}}>{f}</button>
+                            <button key={f} onClick={()=>handlePrefChange("chatFrequency",f)} style={{padding:"5px 12px",border:`2px solid ${notifPrefs.chatFrequency===f?LF.violet:"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:notifPrefs.chatFrequency===f?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"#14213D0d",color:"#14213D",fontWeight:500}}>{f}</button>
                           ))}
                         </div>
                       </div>
@@ -1048,8 +1053,8 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
             <div className="settings-section" style={{paddingTop:20}}>
               <div className="card" style={{textAlign:"center",padding:"32px 20px",border:`2px solid ${LF.yellow}33`}}>
                 <div style={{fontSize:48,marginBottom:12}}>🏆</div>
-                <div style={{fontSize:18,fontWeight:900,color:LF.yellow,marginBottom:8}}>Accolades</div>
-                <div style={{fontSize:14,color:"#5B6878",fontWeight:700,lineHeight:1.6}}>
+                <div style={{fontSize:18,fontWeight:700,color:LF.yellow,marginBottom:8}}>Accolades</div>
+                <div style={{fontSize:14,color:"#5B6878",fontWeight:500,lineHeight:1.6}}>
                   Earn badges as you write, hit goals, and show up for your crew. Coming soon!
                 </div>
               </div>
@@ -1060,12 +1065,12 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
           {section==="about"&&(
             <div className="settings-section" style={{paddingTop:20,display:"flex",flexDirection:"column",gap:12}}>
               <div className="card" style={{border:`2px solid ${LF.purple}44`}}>
-                <div style={{fontSize:15,fontWeight:900,color:LF.hotpink,marginBottom:14}}>About Wordcountability</div>
-                <div style={{fontSize:14,color:"#5B6878",fontWeight:700,lineHeight:1.8}}>
+                <div style={{fontSize:15,fontWeight:700,color:LF.hotpink,marginBottom:14}}>About Wordcountability</div>
+                <div style={{fontSize:14,color:"#5B6878",fontWeight:500,lineHeight:1.8}}>
                   <p style={{margin:"0 0 12px"}}>Wordcountability is a space to help writers do the hardest part — put words on the page.</p>
                   <p style={{margin:"0 0 16px"}}>This app motivates writing groups to write, whether in short sprints or building consistent habits.</p>
 
-                  <div style={{fontSize:13,color:LF.hotpink,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:8}}>How it works</div>
+                  <div style={{fontSize:13,color:LF.hotpink,fontWeight:700,textTransform:"uppercase",letterSpacing:2,marginBottom:8}}>How it works</div>
                   <p style={{margin:"0 0 12px"}}>Users get a signup link from an admin or enter a group code. The admin in consultation with the group can set the challenge parameters, like how long it will last, how many there'll be, and how many you can miss before you don't meet your goal.</p>
                   <p style={{margin:"0 0 16px"}}>But it's not just fun and games, Wordcountability wants you to put your money where your words are.</p>
 
@@ -1078,29 +1083,29 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                   <p style={{margin:"0 0 12px"}}>On top of that, groups can also set parameters for recognizing top performers.</p>
                   <p style={{margin:"0 0 16px"}}>The app has built-in notifications, a chat feature, and a dashboard to keep up to date with where you stand.</p>
 
-                  <div style={{fontSize:13,color:LF.hotpink,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:8}}>Understanding Goals</div>
+                  <div style={{fontSize:13,color:LF.hotpink,fontWeight:700,textTransform:"uppercase",letterSpacing:2,marginBottom:8}}>Understanding Goals</div>
                   <p style={{margin:"0 0 12px"}}>Users have two options — they can set their goal as a weekly word count, or as a weekly amount of time spent on their works in progress.</p>
                   <p style={{margin:"0 0 20px"}}>Let's say you have a challenge that lasts a month with weekly check-ins, and you pledge to write 5,000 words a week. That means you can log your progress each day, but if it doesn't add up to 5,000 by the end of the week — you did not meet your goal.</p>
 
                   <p style={{margin:"0 0 20px"}}>Your goal is always set as a weekly target — but your progress is tracked against your current check-in period. So if your group has a two-week check-in, your target for that period is double your weekly goal. If there's no active challenge, progress resets each week as usual.</p>
 
                   <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                    <button onClick={()=>{onStartTour();onClose();}} style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,border:"none",borderRadius:50,padding:"10px 20px",color:"#14213D",fontFamily:"'Inter',sans-serif",fontSize:14,fontWeight:800,cursor:"pointer",textAlign:"center"}}>
+                    <button onClick={()=>{onStartTour();onClose();}} style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,border:"none",borderRadius:50,padding:"10px 20px",color:"#14213D",fontFamily:"'Inter',sans-serif",fontSize:14,fontWeight:600,cursor:"pointer",textAlign:"center"}}>
                       🌈 Take a tour of the app
                     </button>
                     <div style={{textAlign:"center"}}>
-                      <span style={{fontSize:13,color:"#6B7685",fontWeight:700}}>Check out our FAQs</span>
-                      <span style={{fontSize:13,color:LF.purple,fontWeight:700}}> — Coming soon</span>
+                      <span style={{fontSize:13,color:"#6B7685",fontWeight:500}}>Check out our FAQs</span>
+                      <span style={{fontSize:13,color:LF.purple,fontWeight:500}}> — Coming soon</span>
                     </div>
                     <div style={{textAlign:"center"}}>
-                      <a href="mailto:erica.kritt.author@gmail.com" style={{fontSize:13,color:LF.hotpink,fontWeight:800,textDecoration:"underline"}}>Reach out to Erica the developer</a>
+                      <a href="mailto:erica.kritt.author@gmail.com" style={{fontSize:13,color:LF.hotpink,fontWeight:600,textDecoration:"underline"}}>Reach out to Erica the developer</a>
                     </div>
                   </div>
                 </div>
               </div>
               <div className="card" style={{border:`2px solid ${LF.purple}44`}}>
-                <div style={{fontSize:15,fontWeight:900,color:LF.hotpink,marginBottom:8}}>About the Developer</div>
-                <div style={{fontSize:14,color:"#5B6878",fontWeight:700,lineHeight:1.7,fontStyle:"italic"}}>Content coming soon 🌈</div>
+                <div style={{fontSize:15,fontWeight:700,color:LF.hotpink,marginBottom:8}}>About the Developer</div>
+                <div style={{fontSize:14,color:"#5B6878",fontWeight:500,lineHeight:1.7,fontStyle:"italic"}}>Content coming soon 🌈</div>
               </div>
             </div>
           )}
@@ -1119,15 +1124,15 @@ function NotifFeed({notifications, onClose, onMarkAllRead}){
       <div className="settings-panel-overlay" onClick={onClose}/>
       <div className="notif-feed" style={{animation:"slideInRight 0.3s cubic-bezier(0.4,0,0.2,1)"}}>
         <div style={{padding:"20px 20px 14px",borderBottom:"1px solid #14213D0d",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-          <div style={{fontSize:18,fontWeight:900,color:LF.white}}>Notifications{unread>0&&<span style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,color:"#14213D",fontSize:12,fontWeight:800,padding:"2px 8px",borderRadius:20,marginLeft:8}}>{unread}</span>}</div>
+          <div style={{fontSize:18,fontWeight:700,color:LF.white}}>Notifications{unread>0&&<span style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,color:"#14213D",fontSize:12,fontWeight:600,padding:"2px 8px",borderRadius:20,marginLeft:8}}>{unread}</span>}</div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            {unread>0&&<button onClick={onMarkAllRead} style={{background:"none",border:"none",color:LF.hotpink,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:800,textDecoration:"underline"}}>Mark all read</button>}
+            {unread>0&&<button onClick={onMarkAllRead} style={{background:"none",border:"none",color:LF.hotpink,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,textDecoration:"underline"}}>Mark all read</button>}
             <button onClick={onClose} style={{background:"none",border:"none",color:"#5B6878",fontSize:22,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
           </div>
         </div>
         <div style={{flex:1,overflowY:"auto",padding:"8px 0"}}>
           {notifications.length===0?(
-            <div style={{textAlign:"center",padding:"48px 24px",color:"#5B6878",fontSize:14,fontWeight:700}}>
+            <div style={{textAlign:"center",padding:"48px 24px",color:"#5B6878",fontSize:14,fontWeight:500}}>
               <div style={{fontSize:40,marginBottom:12}}>🔔</div>
               No notifications yet
             </div>
@@ -1139,8 +1144,8 @@ function NotifFeed({notifications, onClose, onMarkAllRead}){
                 </div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:14,fontWeight:n.read?700:900,color:n.read?"#5B6878":LF.white,marginBottom:2}}>{n.title}</div>
-                  <div style={{fontSize:13,color:"#6B7685",fontWeight:700,lineHeight:1.5}}>{n.body}</div>
-                  <div style={{fontSize:11,color:"#8A94A3",fontWeight:700,marginTop:4}}>{fmtDate(n.ts)}</div>
+                  <div style={{fontSize:13,color:"#6B7685",fontWeight:500,lineHeight:1.5}}>{n.body}</div>
+                  <div style={{fontSize:11,color:"#8A94A3",fontWeight:500,marginTop:4}}>{fmtDate(n.ts)}</div>
                 </div>
                 {!n.read&&<div style={{width:8,height:8,borderRadius:"50%",background:LF.pink,flexShrink:0,marginTop:6}}/>}
               </div>
@@ -2197,11 +2202,11 @@ export default function App(){
           <div className="modal-bg" style={{zIndex:300}}>
             <div className="card modal" style={{padding:28,textAlign:"center",maxWidth:380}}>
               <div style={{fontSize:52,marginBottom:12}}>{emoji}</div>
-              {totalPeriods&&<div style={{fontSize:11,color:"#6B7685",fontWeight:900,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Check-in {periodNum} of {totalPeriods}</div>}
-              <div style={{fontSize:18,fontWeight:900,color:metGoal?LF.lime:LF.yellow,marginBottom:12,lineHeight:1.4}}>{heading}</div>
-              <div style={{fontSize:15,color:"#5B6878",fontWeight:700,lineHeight:1.7,marginBottom:8}}>{message}</div>
+              {totalPeriods&&<div style={{fontSize:11,color:"#6B7685",fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Check-in {periodNum} of {totalPeriods}</div>}
+              <div style={{fontSize:18,fontWeight:700,color:metGoal?LF.lime:LF.yellow,marginBottom:12,lineHeight:1.4}}>{heading}</div>
+              <div style={{fontSize:15,color:"#5B6878",fontWeight:500,lineHeight:1.7,marginBottom:8}}>{message}</div>
               {!metGoal&&progress>0&&(
-                <div style={{fontSize:13,color:"#6B7685",fontWeight:700,marginBottom:16}}>
+                <div style={{fontSize:13,color:"#6B7685",fontWeight:500,marginBottom:16}}>
                   You logged {fmtProgress} of your {fmtGoal} goal ({pct}%).
                 </div>
               )}
@@ -2229,16 +2234,16 @@ export default function App(){
           <div className="modal-bg" style={{zIndex:300}}>
             <div className="card modal" style={{padding:28,textAlign:"center",maxWidth:380}}>
               <div style={{fontSize:52,marginBottom:12}}>{step.emoji}</div>
-              <div style={{fontSize:11,color:"#6B7685",fontWeight:900,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Step {tourStep+1} of {TOUR_STEPS.length}</div>
-              <div style={{fontSize:20,fontWeight:900,color:LF.yellow,marginBottom:12,lineHeight:1.3}}>{step.title}</div>
-              <div style={{fontSize:15,color:"#5B6878",fontWeight:700,lineHeight:1.7,marginBottom:24}}>{step.body}</div>
+              <div style={{fontSize:11,color:"#6B7685",fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Step {tourStep+1} of {TOUR_STEPS.length}</div>
+              <div style={{fontSize:20,fontWeight:700,color:LF.yellow,marginBottom:12,lineHeight:1.3}}>{step.title}</div>
+              <div style={{fontSize:15,color:"#5B6878",fontWeight:500,lineHeight:1.7,marginBottom:24}}>{step.body}</div>
               <div style={{display:"flex",gap:8}}>
                 {isLast?(
                   <button className="btn btn-sm" style={{flex:1,fontSize:15}} onClick={()=>setShowTour(false)}>Now it's time to write! 🌈</button>
                 ):(
                   <>
                     <button className="btn btn-sm" style={{flex:1,fontSize:15}} onClick={()=>setTourStep(s=>s+1)}>Next →</button>
-                    <button onClick={()=>setShowTour(false)} style={{flex:1,background:"#14213D0d",border:"2px solid #14213D1f",borderRadius:50,padding:11,fontFamily:"'Inter',sans-serif",fontSize:14,color:"#6B7685",cursor:"pointer",fontWeight:700}}>Skip</button>
+                    <button onClick={()=>setShowTour(false)} style={{flex:1,background:"#14213D0d",border:"2px solid #14213D1f",borderRadius:50,padding:11,fontFamily:"'Inter',sans-serif",fontSize:14,color:"#6B7685",cursor:"pointer",fontWeight:500}}>Skip</button>
                   </>
                 )}
               </div>
@@ -2258,8 +2263,8 @@ export default function App(){
       {showCharityModal&&(
         <div className="modal-bg">
           <div className="card modal" style={{padding:24}}>
-            <div style={{fontSize:22,fontWeight:900,color:LF.pink,marginBottom:4}}>💝 Pick Your Charity</div>
-            <div style={{fontSize:14,color:"#5B6878",fontWeight:700,marginBottom:18,lineHeight:1.6}}>
+            <div style={{fontSize:22,fontWeight:700,color:LF.pink,marginBottom:4}}>💝 Pick Your Charity</div>
+            <div style={{fontSize:14,color:"#5B6878",fontWeight:500,marginBottom:18,lineHeight:1.6}}>
               {me.charityName
                 ? `Currently: ${me.charityName}. Choose a new one below.`
                 : "Stakes go to each member's chosen charity. Pick yours!"}
@@ -2272,14 +2277,14 @@ export default function App(){
                 return(
                   <button key={c.url} onClick={()=>saveCharityFromModal(c.name,c.url)}
                     style={{background:sel?`linear-gradient(135deg,${LF.pink}33,${LF.purple}33)`:"#14213D08",border:`2px solid ${sel?LF.pink:"#14213D1f"}`,borderRadius:14,padding:"12px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
-                    <div style={{fontSize:15,fontWeight:800,color:sel?LF.pink:LF.white}}>{sel?"✨ ":""}{c.name}</div>
+                    <div style={{fontSize:15,fontWeight:600,color:sel?LF.pink:LF.white}}>{sel?"✨ ":""}{c.name}</div>
                   </button>
                 );
               })}
 
               {/* Custom option */}
               <div style={{border:`2px solid ${charityCustomStep==="confirm"?LF.violet:"#14213D1f"}`,borderRadius:14,padding:"12px 14px",background:"#14213D08"}}>
-                <div style={{fontSize:15,fontWeight:800,color:LF.white,marginBottom:charityCustomStep==="url"?10:0}}>🔗 Custom charity</div>
+                <div style={{fontSize:15,fontWeight:600,color:LF.white,marginBottom:charityCustomStep==="url"?10:0}}>🔗 Custom charity</div>
 
                 {charityCustomStep==="url"&&(<>
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -2301,12 +2306,12 @@ export default function App(){
                     </button>
                   </div>
                   {charityCustomUrl&&!isValidUrl(charityCustomUrl)&&(
-                    <div style={{fontSize:12,color:LF.pink,fontWeight:800,marginTop:6}}>Please enter a valid URL</div>
+                    <div style={{fontSize:12,color:LF.pink,fontWeight:600,marginTop:6}}>Please enter a valid URL</div>
                   )}
                 </>)}
 
                 {charityCustomStep==="confirm"&&(<>
-                  <div style={{fontSize:13,color:"#5B6878",fontWeight:700,marginTop:6,marginBottom:8}}>
+                  <div style={{fontSize:13,color:"#5B6878",fontWeight:500,marginTop:6,marginBottom:8}}>
                     We found this name — edit if needed:
                   </div>
                   <input className="inp" value={charityEditName} onChange={e=>setCharityEditName(e.target.value)}
@@ -2318,7 +2323,7 @@ export default function App(){
                       Save ✨
                     </button>
                     <button onClick={()=>{setCharityCustomStep("url");setCharityFetchedName(null);}}
-                      style={{flex:1,background:"#14213D0d",border:"2px solid #14213D1f",borderRadius:50,cursor:"pointer",fontSize:13,color:"#14213D",fontFamily:"'Inter',sans-serif",fontWeight:700}}>
+                      style={{flex:1,background:"#14213D0d",border:"2px solid #14213D1f",borderRadius:50,cursor:"pointer",fontSize:13,color:"#14213D",fontFamily:"'Inter',sans-serif",fontWeight:500}}>
                       ← Back
                     </button>
                   </div>
@@ -2344,12 +2349,12 @@ export default function App(){
         return(
           <div className="modal-bg" onClick={()=>{setShowPastDayModal(false);setPastDaySelected(null);setPastDayInput("");}}>
             <div className="card modal" style={{padding:24}} onClick={e=>e.stopPropagation()}>
-              <div style={{fontSize:20,fontWeight:900,color:LF.pink,marginBottom:4}}>📅 Log a Previous Day</div>
-              <div style={{fontSize:14,color:"#5B6878",fontWeight:700,marginBottom:16,lineHeight:1.6}}>
+              <div style={{fontSize:20,fontWeight:700,color:LF.pink,marginBottom:4}}>📅 Log a Previous Day</div>
+              <div style={{fontSize:14,color:"#5B6878",fontWeight:500,marginBottom:16,lineHeight:1.6}}>
                 Pick a day from this check-in period and add your {me.goalType==="words"?"words":"minutes"}.
               </div>
               {days.length===0?(
-                <div style={{fontSize:14,color:"#5B6878",fontWeight:700,textAlign:"center",padding:"16px 0"}}>No previous days available in this period yet.</div>
+                <div style={{fontSize:14,color:"#5B6878",fontWeight:500,textAlign:"center",padding:"16px 0"}}>No previous days available in this period yet.</div>
               ):(
                 <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16,maxHeight:220,overflowY:"auto"}}>
                   {[...days].reverse().map((d,i)=>{
@@ -2359,7 +2364,7 @@ export default function App(){
                     return(
                       <button key={i} onClick={()=>setPastDaySelected(d)}
                         style={{background:sel?`linear-gradient(135deg,${LF.pink}33,${LF.purple}33)`:"#14213D08",border:`2px solid ${sel?LF.pink:"#14213D1f"}`,borderRadius:14,padding:"10px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
-                        <div style={{fontSize:14,fontWeight:800,color:sel?LF.pink:LF.white}}>{sel?"✨ ":""}{label}</div>
+                        <div style={{fontSize:14,fontWeight:600,color:sel?LF.pink:LF.white}}>{sel?"✨ ":""}{label}</div>
                       </button>
                     );
                   })}
@@ -2367,7 +2372,7 @@ export default function App(){
               )}
               {pastDaySelected&&(
                 <div style={{marginBottom:16}}>
-                  <div style={{fontSize:13,color:"#5B6878",fontWeight:800,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>
+                  <div style={{fontSize:13,color:"#5B6878",fontWeight:700,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>
                     {me.goalType==="words"?"Words written":"Minutes written"}
                   </div>
                   <div style={{display:"flex",gap:8}}>
@@ -2403,7 +2408,7 @@ export default function App(){
       {showAdmin&&amAdmin&&(
         <div className="modal-bg">
           <div className="card modal" style={{overflowX:"hidden"}}>
-            <div style={{fontSize:18,color:LF.yellow,marginBottom:16,fontWeight:900}}>⚙️ Admin Settings</div>
+            <div style={{fontSize:18,color:LF.yellow,marginBottom:16,fontWeight:700}}>⚙️ Admin Settings</div>
 
             <span className="lbl">Challenge Duration</span>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
@@ -2420,11 +2425,11 @@ export default function App(){
             {adminDraft.firstCheckIn&&(()=>{
               const start=new Date(adminDraft.firstCheckIn);
               start.setDate(start.getDate()-(adminDraft.frequency==="Daily"?1:adminDraft.frequency==="Weekly"?7:adminDraft.frequency==="Bi-Weekly"?14:30));
-              return <div style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:12,padding:"10px 14px",marginBottom:14,fontSize:13,color:LF.lime,fontWeight:800}}>
+              return <div style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:12,padding:"10px 14px",marginBottom:14,fontSize:13,color:LF.lime,fontWeight:600}}>
                 🚀 Challenge starts: {start.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {start.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
               </div>;
             })()}
-            {!adminDraft.firstCheckIn&&<div style={{fontSize:12,color:"#5B6878",fontWeight:700,marginBottom:14}}>Pick a date to see when the challenge will start.</div>}
+            {!adminDraft.firstCheckIn&&<div style={{fontSize:12,color:"#5B6878",fontWeight:500,marginBottom:14}}>Pick a date to see when the challenge will start.</div>}
 
             <span className="lbl">What happens when someone fails?</span>
             <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
@@ -2434,8 +2439,8 @@ export default function App(){
                 {mode:"pain",   icon:"😈",label:"To The Pain",desc:"No money — whoever fails gets mercilessly ridiculed.",grad:`linear-gradient(135deg,#BF1E41,#FF7F11)`,col:"#fff"},
               ].map(({mode,icon,label,desc,grad,col})=>(
                 <button key={mode} onClick={()=>setAdminDraft(s=>({...s,payoutMode:mode}))} style={{background:adminDraft.payoutMode===mode?grad:"#14213D0a",border:`2px solid ${adminDraft.payoutMode===mode?"transparent":"#14213D1f"}`,borderRadius:14,padding:"10px 14px",cursor:"pointer",textAlign:"left"}}>
-                  <div style={{fontSize:15,color:adminDraft.payoutMode===mode?col:"#fff",fontWeight:800,marginBottom:2}}>{icon} {label}</div>
-                  <div style={{fontSize:13,color:adminDraft.payoutMode===mode?col+"cc":"#6B7685",fontWeight:700}}>{desc}</div>
+                  <div style={{fontSize:15,color:adminDraft.payoutMode===mode?col:"#fff",fontWeight:600,marginBottom:2}}>{icon} {label}</div>
+                  <div style={{fontSize:13,color:adminDraft.payoutMode===mode?col+"cc":"#6B7685",fontWeight:500}}>{desc}</div>
                 </button>
               ))}
             </div>
@@ -2443,7 +2448,7 @@ export default function App(){
             <div style={{background:"#14213D0a",border:"1px solid #14213D1f",borderRadius:14,padding:12,marginBottom:14}}>
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:adminDraft.prizeEnabled?10:0}}>
                 <input type="checkbox" id="prizeToggle" checked={!!adminDraft.prizeEnabled} onChange={e=>setAdminDraft(s=>({...s,prizeEnabled:e.target.checked}))} style={{accentColor:LF.pink,width:18,height:18,flexShrink:0}}/>
-                <label htmlFor="prizeToggle" style={{fontSize:14,color:"#14213D",fontWeight:700,cursor:"pointer"}}>🏅 Also offer a Prize for the top performer</label>
+                <label htmlFor="prizeToggle" style={{fontSize:14,color:"#14213D",fontWeight:500,cursor:"pointer"}}>🏅 Also offer a Prize for the top performer</label>
               </div>
               {adminDraft.prizeEnabled&&(<>
                 <span className="lbl" style={{marginTop:6}}>Prize Metric</span>
@@ -2468,9 +2473,9 @@ export default function App(){
 
             <div style={{background:"#BF1E4111",border:"2px solid #BF1E4133",borderRadius:14,padding:14,marginBottom:14}}>
               <span className="lbl" style={{color:LF.orange}}>🔒 Goal Lock</span>
-              <div style={{fontSize:13,color:"#5B6878",fontWeight:700,marginBottom:10}}>When locked, members cannot lower their goals. Open a temporary change window to allow edits.</div>
+              <div style={{fontSize:13,color:"#5B6878",fontWeight:500,marginBottom:10}}>When locked, members cannot lower their goals. Open a temporary change window to allow edits.</div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <span style={{fontSize:13,color:"#14213D",fontWeight:800}}>Change window (days):</span>
+                <span style={{fontSize:13,color:"#14213D",fontWeight:600}}>Change window (days):</span>
                 <input className="inp" type="number" min="1" max="14" value={adminDraft.changeWindowDays||3} onChange={e=>setAdminDraft(s=>({...s,changeWindowDays:parseInt(e.target.value)||3}))} style={{width:70,padding:"6px 10px",fontSize:13}}/>
               </div>
             </div>
@@ -2520,11 +2525,11 @@ export default function App(){
               return(
                 <div style={{background:"#B8540011",border:`2px solid ${LF.yellow}44`,borderRadius:14,padding:14,marginBottom:14}}>
                   <span className="lbl" style={{color:LF.yellow}}>💸 Record Check-in Payments</span>
-                  <div style={{fontSize:12,color:"#5B6878",fontWeight:700,marginBottom:10}}>
+                  <div style={{fontSize:12,color:"#5B6878",fontWeight:500,marginBottom:10}}>
                     Check-in: {dlLabel} · {Math.round(48-hoursAgo)}h remaining to attach payments
                   </div>
                   {alreadyRecorded?(
-                    <div style={{fontSize:13,color:LF.lime,fontWeight:800,textAlign:"center",padding:"8px 0"}}>✅ Payments already recorded for this check-in.</div>
+                    <div style={{fontSize:13,color:LF.lime,fontWeight:600,textAlign:"center",padding:"8px 0"}}>✅ Payments already recorded for this check-in.</div>
                   ):(
                     <>
                       {paymentRows.length===0&&(
@@ -2535,12 +2540,12 @@ export default function App(){
                       {paymentRows.length>0&&(<>
                         {isCharity&&(
                           <>
-                            <div style={{fontSize:12,color:"#5B6878",fontWeight:700,marginBottom:6}}>One row per charity. Enter the amount donated.</div>
+                            <div style={{fontSize:12,color:"#5B6878",fontWeight:500,marginBottom:6}}>One row per charity. Enter the amount donated.</div>
                             {paymentRows.map((row,i)=>(
                               <div key={i} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center"}}>
                                 <input className="inp" placeholder="Charity name" value={row.name} onChange={e=>{const r=[...paymentRows];r[i]={...r[i],name:e.target.value};setPaymentRows(r);}} style={{flex:2,padding:"8px 12px",fontSize:13}}/>
                                 <div style={{position:"relative",flex:1}}>
-                                  <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#5B6878",fontWeight:800,fontSize:13,pointerEvents:"none"}}>$</span>
+                                  <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#5B6878",fontWeight:600,fontSize:13,pointerEvents:"none"}}>$</span>
                                   <input className="inp" type="number" min="0" placeholder="0.00" value={row.amount} onChange={e=>{const r=[...paymentRows];r[i]={...r[i],amount:e.target.value};setPaymentRows(r);}} style={{width:"100%",padding:"8px 12px 8px 22px",fontSize:13}}/>
                                 </div>
                                 <button onClick={()=>setPaymentRows(paymentRows.filter((_,j)=>j!==i))} style={{background:"#BF1E4122",border:"2px solid #BF1E4144",borderRadius:10,width:32,height:32,cursor:"pointer",color:"#BF1E41",fontSize:14,flexShrink:0}}>✕</button>
@@ -2551,13 +2556,13 @@ export default function App(){
                         )}
                         {isPayout&&(
                           <>
-                            <div style={{fontSize:12,color:"#5B6878",fontWeight:700,marginBottom:6}}>Enter amount per member. Positive = received money. Negative = paid out.</div>
+                            <div style={{fontSize:12,color:"#5B6878",fontWeight:500,marginBottom:6}}>Enter amount per member. Positive = received money. Negative = paid out.</div>
                             {paymentRows.map((row,i)=>(
                               <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
                                 <div style={{fontSize:18,flexShrink:0}}>{row.avatar||"🦄"}</div>
-                                <div style={{flex:1,fontSize:13,fontWeight:700,color:LF.white}}>{row.memberName}</div>
+                                <div style={{flex:1,fontSize:13,fontWeight:500,color:LF.white}}>{row.memberName}</div>
                                 <div style={{position:"relative",width:110}}>
-                                  <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#5B6878",fontWeight:800,fontSize:13,pointerEvents:"none"}}>$</span>
+                                  <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#5B6878",fontWeight:600,fontSize:13,pointerEvents:"none"}}>$</span>
                                   <input className="inp" type="number" placeholder="0.00" value={row.amount} onChange={e=>{const r=[...paymentRows];r[i]={...r[i],amount:e.target.value};setPaymentRows(r);}} style={{width:"100%",padding:"8px 12px 8px 22px",fontSize:13}}/>
                                 </div>
                               </div>
@@ -2565,7 +2570,7 @@ export default function App(){
                           </>
                         )}
                         {paymentSaved?(
-                          <div style={{fontSize:13,color:LF.lime,fontWeight:800,textAlign:"center",padding:"8px 0"}}>✅ Saved!</div>
+                          <div style={{fontSize:13,color:LF.lime,fontWeight:600,textAlign:"center",padding:"8px 0"}}>✅ Saved!</div>
                         ):(
                           <button className="btn btn-yellow" onClick={()=>recordCheckInPayments(latestDeadline)} disabled={paymentSaving} style={{width:"100%",fontSize:13,marginTop:4}}>
                             {paymentSaving?"Saving…":"Save Payments 💸"}
@@ -2655,11 +2660,11 @@ export default function App(){
                 <div style={{fontFamily:"'Poppins',sans-serif",fontSize:27,fontWeight:700,lineHeight:1.1,color:"#14213D"}}>{me.goalType==="words"?me.progressThisWeek.toLocaleString():fmtProg(me)}</div>
                 <div style={{fontSize:14,color:"#5B6878",marginTop:3}}>of {goalLabel} {periodActive?"this check-in":"this week"}</div>
                 {info?.isActive&&(
-                  <span style={{display:"inline-block",marginTop:10,fontSize:13,fontWeight:700,color:"#0062B1",border:"1.5px solid #0062B1",padding:"4px 12px",borderRadius:999}}>
+                  <span style={{display:"inline-block",marginTop:10,fontSize:13,fontWeight:500,color:"#0062B1",border:"1.5px solid #0062B1",padding:"4px 12px",borderRadius:999}}>
                     {info.dLeft>0?`${info.dLeft} day${info.dLeft===1?"":"s"}, `:""}{info.hLeft} hour{info.hLeft===1?"":"s"} left
                   </span>
                 )}
-                {streak>0&&<div style={{fontSize:13,marginTop:8,color:"#B85400",fontWeight:700}}>🔥 {streak}-week streak</div>}
+                {streak>0&&<div style={{fontSize:13,marginTop:8,color:"#B85400",fontWeight:500}}>🔥 {streak}-week streak</div>}
               </div>
             </div>
             <div style={{display:"flex",gap:8,marginTop:18}}>
@@ -2701,7 +2706,7 @@ export default function App(){
                     )}
                   </div>
                   {!isToday&&(
-                    <div style={{fontSize:12,color:LF.yellow,fontWeight:800,marginBottom:8}}>
+                    <div style={{fontSize:12,color:LF.yellow,fontWeight:600,marginBottom:8}}>
                       📅 Logging for {(()=>{const dow=(pastDaySelected.getDay()+6)%7;return`${dayNames[dow]}, ${pastDaySelected.toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;})()}
                     </div>
                   )}
@@ -2746,7 +2751,7 @@ export default function App(){
               {pastDaySelected?(
                 // Past-day time entry for timer mode
                 <div>
-                  <div style={{fontSize:12,color:LF.yellow,fontWeight:800,marginBottom:8}}>
+                  <div style={{fontSize:12,color:LF.yellow,fontWeight:600,marginBottom:8}}>
                     📅 Logging for {(()=>{const dayNames=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];const dow=(pastDaySelected.getDay()+6)%7;return`${dayNames[dow]}, ${pastDaySelected.toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;})()}
                   </div>
                   <div style={{display:"flex",gap:10}}>
@@ -2762,7 +2767,7 @@ export default function App(){
                 <>
                   <div style={{textAlign:"center",padding:"12px 0 16px"}}>
                     <div style={{fontFamily:"Poppins,sans-serif",fontSize:48,color:"#14213D",fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtTimer(timerSecs)}</div>
-                    <div style={{fontSize:14,fontWeight:800,marginTop:4,color:timerRunning?"#6D47B5":"#5B6878"}}>{timerRunning?"● Writing in progress…":timerSecs>0?"Paused":"Tap Start when you begin"}</div>
+                    <div style={{fontSize:14,fontWeight:600,marginTop:4,color:timerRunning?"#6D47B5":"#5B6878"}}>{timerRunning?"● Writing in progress…":timerSecs>0?"Paused":"Tap Start when you begin"}</div>
                   </div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                     {!timerRunning
@@ -2773,12 +2778,12 @@ export default function App(){
                   </div>
                   {timerSessions.length>0&&(
                     <div style={{marginTop:12,borderTop:`1px solid ${LF.purple}33`,paddingTop:10}}>
-                      <div style={{fontSize:12,color:LF.lime,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Today's Sessions</div>
-                      {timerSessions.map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,color:"#14213D",fontWeight:800,padding:"2px 0"}}><span>Session {i+1}</span><span style={{color:LF.lime}}>{s.mins}m ✓</span></div>)}
-                      <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:800,marginTop:6,color:LF.yellow}}><span>Total today</span><span>{timerSessions.reduce((a,s)=>a+s.mins,0)}m 🔥</span></div>
+                      <div style={{fontSize:12,color:LF.lime,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Today's Sessions</div>
+                      {timerSessions.map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,color:"#14213D",fontWeight:600,padding:"2px 0"}}><span>Session {i+1}</span><span style={{color:LF.lime}}>{s.mins}m ✓</span></div>)}
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:600,marginTop:6,color:LF.yellow}}><span>Total today</span><span>{timerSessions.reduce((a,s)=>a+s.mins,0)}m 🔥</span></div>
                     </div>
                   )}
-                  <div style={{fontSize:12,color:"#6B7685",fontWeight:700,marginTop:10,textAlign:"center"}}>Sessions under 1 minute aren't counted</div>
+                  <div style={{fontSize:12,color:"#6B7685",fontWeight:500,marginTop:10,textAlign:"center"}}>Sessions under 1 minute aren't counted</div>
                 </>
               )}
             </div>
@@ -2810,64 +2815,58 @@ export default function App(){
 
         {/* ── GROUP ── */}
         {tab==="Group"&&(<>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{fontSize:14,color:LF.lime,fontWeight:800}}>#{me.groupId} · This Period 🏆</div>
-            <button className="btn btn-teal" onClick={()=>loadMembers(me.groupId)} style={{fontSize:13,padding:"6px 12px"}}>↻ Refresh</button>
+          <div className="page-head">
+            <div>
+              <p className="eyebrow">#{me.groupId}</p>
+              <h2 className="page-title">Group</h2>
+            </div>
+            <button className="ghost-btn" onClick={()=>loadMembers(me.groupId)}>↻ Refresh</button>
           </div>
           {challengeNotStarted&&(
-            <div className="card" style={{border:`2px solid ${LF.violet}88`,background:"#0062B111",textAlign:"center"}}>
-              <div style={{fontSize:13,color:LF.lime,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>⏳ Challenge Countdown</div>
-              <div style={{fontSize:32,fontWeight:900,color:LF.yellow,letterSpacing:2,marginBottom:4}}>
-                {countdownDays>0&&<span>{countdownDays}<span style={{fontSize:14,color:"#5B6878",marginRight:8}}>d</span></span>}
-                {countdownHours>0&&<span>{countdownHours}<span style={{fontSize:14,color:"#5B6878",marginRight:8}}>h</span></span>}
-                <span>{countdownMins}<span style={{fontSize:14,color:"#5B6878"}}>m</span></span>
+            <div className="card" style={{textAlign:"center"}}>
+              <div className="card-title" style={{marginBottom:8}}>Challenge starts in</div>
+              <div style={{fontFamily:"'Poppins',sans-serif",fontSize:34,fontWeight:700,color:"#14213D",marginBottom:6}}>
+                {countdownDays>0&&<span>{countdownDays}<span style={{fontSize:15,color:"#5B6878",margin:"0 10px 0 2px"}}>d</span></span>}
+                {countdownHours>0&&<span>{countdownHours}<span style={{fontSize:15,color:"#5B6878",margin:"0 10px 0 2px"}}>h</span></span>}
+                <span>{countdownMins}<span style={{fontSize:15,color:"#5B6878",marginLeft:2}}>m</span></span>
               </div>
-              <div style={{fontSize:13,color:"#5B6878",fontWeight:800}}>
-                Challenge starts {challengeStartDate.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {challengeStartDate.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
+              <div style={{fontSize:14,color:"#5B6878"}}>
+                {challengeStartDate.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {challengeStartDate.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}
               </div>
-              <div style={{fontSize:12,color:"#5B6878",fontWeight:700,marginTop:4}}>First check-in: {admin.firstCheckIn?new Date(admin.firstCheckIn).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div>
+              <div style={{fontSize:13,color:"#5B6878",marginTop:4}}>First check-in: {admin.firstCheckIn?new Date(admin.firstCheckIn).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"—"}</div>
             </div>
           )}
 
           {/* Share invite card */}
-          <div className="card" style={{border:`2px solid ${LF.purple}55`}}>
-            <span className="lbl">📝 Invite Your Crew</span>
-            <div style={{fontSize:14,color:"#5B6878",marginBottom:12}}>Share this link — anyone can join by signing in with Google and entering your Group ID.</div>
-            <div style={{background:"#14213D0a",borderRadius:12,padding:"10px 14px",marginBottom:12,fontFamily:"monospace",fontSize:13,color:LF.yellow,wordBreak:"break-all"}}>{APP_URL}</div>
-            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
-              <div style={{fontSize:14,color:"#5B6878"}}>Group ID:</div>
-              <div style={{fontSize:15,fontWeight:900,color:LF.white}}>#{me.groupId}</div>
-            </div>
-            <button
-              className="btn"
-              onClick={()=>shareGroup(me.groupId,setShareCopied)}
-              style={{width:"100%",fontSize:15,background:`linear-gradient(135deg,${LF.violet},${LF.purple})`}}
-            >
-              {shareCopied?"✓ Copied to clipboard!":"📤 Share Invite"}
+          <div className="card">
+            <div className="card-title" style={{marginBottom:6}}>Invite your crew</div>
+            <div style={{fontSize:14,color:"#5B6878",lineHeight:1.5,marginBottom:12}}>Share this link. Anyone can join by signing in with Google and entering your Group ID.</div>
+            <div style={{background:"#14213D08",border:"1px solid #14213D1f",borderRadius:12,padding:"10px 14px",marginBottom:10,fontFamily:"monospace",fontSize:13,color:"#0062B1",wordBreak:"break-all"}}>{APP_URL}</div>
+            <div style={{fontSize:14,color:"#5B6878",marginBottom:14}}>Group ID: <b style={{color:"#14213D"}}>#{me.groupId}</b></div>
+            <button className="btn" onClick={()=>shareGroup(me.groupId,setShareCopied)} style={{width:"100%"}}>
+              {shareCopied?"Copied to clipboard ✓":"Share invite"}
             </button>
-            <div style={{fontSize:12,color:"#5B6878",marginTop:8,textAlign:"center"}}>
-              On mobile, this opens your share sheet (iMessage, WhatsApp, email, etc.)
-            </div>
+            <div style={{fontSize:12,color:"#5B6878",marginTop:8,textAlign:"center"}}>On a phone, this opens your share options (Messages, WhatsApp, email and more).</div>
           </div>
 
           {amAdmin&&(
-            <div className="card" style={{border:`2px solid ${LF.orange}55`,background:"#BF1E4111"}}>
-              <span className="lbl" style={{color:LF.orange}}>🔒 Goal Lock Controls</span>
-              <div style={{fontSize:13,color:"#5B6878",fontWeight:700,marginBottom:10}}>
-                {isLocked?"Goals are currently locked.":admin.changeWindowOpen?`🔓 Change window open — closes in ~${changeHoursLeft||"?"}h`:"Goals are unlocked."}
+            <div className="card">
+              <div className="card-title" style={{marginBottom:6}}>Goal lock</div>
+              <div style={{fontSize:14,color:"#5B6878",marginBottom:12}}>
+                {isLocked?"Goals are locked. Members can raise their goal but not lower it.":admin.changeWindowOpen?`Change window is open. It closes in about ${changeHoursLeft||"?"} hours.`:"Goals are unlocked."}
               </div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                <button className={admin.goalsLocked?"btn btn-teal":"btn btn-red"} onClick={toggleGoalLock} style={{fontSize:13,padding:"8px 16px"}}>
-                  {admin.goalsLocked?"🔓 Unlock Goals":"🔒 Lock Goals"}
+                <button className={admin.goalsLocked?"btn btn-teal":"btn btn-red"} onClick={toggleGoalLock} style={{fontSize:15,padding:"9px 16px"}}>
+                  {admin.goalsLocked?"Unlock goals":"Lock goals"}
                 </button>
                 {admin.goalsLocked&&!admin.changeWindowOpen&&(
-                  <button className="btn btn-yellow" onClick={openChangeWindow} style={{fontSize:13,padding:"8px 16px"}}>
-                    🪟 Open {admin.changeWindowDays||3}-Day Window
+                  <button className="btn btn-yellow" onClick={openChangeWindow} style={{fontSize:15,padding:"9px 16px"}}>
+                    Open {admin.changeWindowDays||3}-day change window
                   </button>
                 )}
                 {admin.changeWindowOpen&&(
-                  <button className="btn btn-red" onClick={async()=>{const upd={...admin,changeWindowOpen:false,changeWindowEnd:null};await fsSet(adminDocRef(me.groupId),JSON.stringify(upd));setAdmin(upd);setAdminDraft(upd);}} style={{fontSize:13,padding:"8px 16px"}}>
-                    Close Window Early
+                  <button className="btn btn-red" onClick={async()=>{const upd={...admin,changeWindowOpen:false,changeWindowEnd:null};await fsSet(adminDocRef(me.groupId),JSON.stringify(upd));setAdmin(upd);setAdminDraft(upd);}} style={{fontSize:15,padding:"9px 16px"}}>
+                    Close window early
                   </button>
                 )}
               </div>
@@ -2875,39 +2874,43 @@ export default function App(){
           )}
 
           {!amAdmin&&admin.changeWindowOpen&&(
-            <div className="card" style={{border:`2px solid ${LF.lime}55`,background:"#82B63A11"}}>
-              <div style={{fontSize:15,color:LF.lime,fontWeight:800,marginBottom:4}}>🔓 Goal Change Window is Open!</div>
-              <div style={{fontSize:13,color:"#5B6878",fontWeight:700}}>You can adjust your goal until this window closes (~{changeHoursLeft}h left).</div>
+            <div className="card">
+              <div className="card-title" style={{marginBottom:4,color:"#0062B1"}}>Goal change window is open</div>
+              <div style={{fontSize:14,color:"#5B6878"}}>You can adjust your goal for about {changeHoursLeft} more hours.</div>
             </div>
           )}
           {!amAdmin&&isLocked&&(
-            <div className="card" style={{border:`2px solid ${LF.orange}44`}}>
-              <div style={{fontSize:15,color:LF.orange,fontWeight:800,marginBottom:4}}>🔒 Goals Are Locked</div>
-              <div style={{fontSize:13,color:"#5B6878",fontWeight:700}}>Raising your goal is always allowed!</div>
+            <div className="card">
+              <div className="card-title" style={{marginBottom:4}}>Goals are locked</div>
+              <div style={{fontSize:14,color:"#5B6878"}}>You can still raise your goal anytime.</div>
             </div>
           )}
 
-          {sorted.length===0&&<div className="card" style={{textAlign:"center",padding:24}}><div style={{fontSize:32,marginBottom:8}}>🦄</div><div style={{fontSize:14,color:LF.pink,fontWeight:800}}>No crew yet! Share your invite link above.</div></div>}
+          {sorted.length===0&&<div className="card" style={{textAlign:"center",padding:24}}><div style={{fontSize:32,marginBottom:8}}>🦄</div><div style={{fontSize:15,color:"#5B6878"}}>No crew yet. Share your invite link above.</div></div>}
           {sorted.map((w,i)=>{
             const wGoal=periodGoalFor(w.goalValue,periodDays);
             const p=Math.min(Math.round((w.progressThisWeek/wGoal)*100),100);
             const medals=["🥇","🥈","🥉"];
-            const bar=p>=100?`linear-gradient(90deg,${LF.lime},${LF.violet})`:i===0?`linear-gradient(90deg,${LF.yellow},${LF.orange})`:`linear-gradient(90deg,${LF.pink},${LF.purple})`;
+            const bar=p>=100?"#00BFB2":i===0?"#FF7F11":"#8C62D1";
+            const isAdminMember=adminUids.includes(w.uid);
             return(
-              <div key={w.uid||w.name} className="card" style={{border:`2px solid ${w.isYou?LF.pink:LF.purple}44`,background:w.isYou?"#8C62D111":""}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                  <div style={{fontSize:18}}>{medals[i]||`${i+1}`}</div>
-                  <div style={{fontSize:18}}>{w.avatar}</div>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:14,color:w.isYou?LF.yellow:LF.white,fontWeight:800}}>{w.name}{w.isYou&&<span style={{fontSize:12,color:LF.hotpink}}> ← you!</span>}{adminUids.includes(w.uid)&&<span style={{fontSize:12,color:LF.yellow}}> ⭐</span>}</div>
-                    <div style={{fontSize:12,color:"#5B6878",fontWeight:700}}>{w.goalType==="words"?`${(w.progressThisWeek||0).toLocaleString()}/${wGoal.toLocaleString()}w`:`${w.progressThisWeek||0}/${wGoal}m`} · 💝 {(w.charityName||w.charity)||"—"}</div>
+              <div key={w.uid||w.name} className="card" style={{background:w.isYou?"#FBF8FF":undefined}}>
+                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+                  <div style={{width:26,textAlign:"center",fontSize:medals[i]?20:15,fontWeight:500,color:"#5B6878"}}>{medals[i]||i+1}</div>
+                  <div style={{fontSize:24}}>{w.avatar}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:16,fontWeight:700,color:"#14213D"}}>
+                      {w.name}{w.isYou&&<span style={{fontSize:13,fontWeight:600,color:"#6D47B5"}}> (you)</span>}
+                      {isAdminMember&&<span style={{fontSize:11,fontWeight:500,color:"#6D47B5",border:"1px solid #8C62D166",borderRadius:999,padding:"1px 7px",marginLeft:6,verticalAlign:"middle"}}>Admin</span>}
+                    </div>
+                    <div style={{fontSize:13,color:"#5B6878",marginTop:2}}>{w.goalType==="words"?`${(w.progressThisWeek||0).toLocaleString()} / ${wGoal.toLocaleString()} words`:`${w.progressThisWeek||0} / ${wGoal} min`}{(w.charityName||w.charity)?` · ${w.charityName||w.charity}`:""}</div>
                   </div>
-                  <div style={{fontSize:16,color:p>=100?LF.lime:LF.yellow,fontWeight:900}}>{p}%</div>
+                  <div style={{fontFamily:"'Poppins',sans-serif",fontSize:19,fontWeight:700,color:p>=100?"#00897F":"#14213D"}}>{p}%</div>
                 </div>
-                {amAdmin&&w.uid&&!adminUids.includes(w.uid)&&(
-                  <button onClick={()=>makeAdmin(w)} style={{background:"none",border:`1px solid ${LF.yellow}66`,borderRadius:20,padding:"3px 10px",color:LF.yellow,fontFamily:"'Inter',sans-serif",fontSize:11,fontWeight:800,cursor:"pointer",marginBottom:8}}>⭐ Make admin</button>
-                )}
                 <div className="pbar-bg"><div className="pbar-fill" style={{width:`${p}%`,background:bar}}/></div>
+                {amAdmin&&w.uid&&!isAdminMember&&(
+                  <button className="ghost-btn" onClick={()=>makeAdmin(w)} style={{marginTop:12,fontSize:13,padding:"5px 12px"}}>Make admin</button>
+                )}
               </div>
             );
           })}
@@ -2915,18 +2918,21 @@ export default function App(){
 
         {/* ── CHAT ── */}
         {tab==="Chat"&&(<>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{fontSize:15,fontWeight:800,color:"#14213D"}}>💬 Group Chat</div>
-            <div style={{display:"flex",gap:6}}>
-              <button className="btn btn-sm" style={{fontSize:12,padding:"6px 10px",background:"#14213D1f",boxShadow:"none"}} onClick={()=>{loadChat(me.groupId);loadPolls(me.groupId);}}>↻ Refresh</button>
-              <button className="btn btn-sm" onClick={()=>setShowPollForm(s=>!s)} style={{fontSize:12,padding:"6px 12px"}}>📊 {showPollForm?"Cancel":"Poll"}</button>
+          <div className="page-head">
+            <div>
+              <p className="eyebrow">#{me.groupId}</p>
+              <h2 className="page-title">Chat</h2>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button className="ghost-btn" onClick={()=>{loadChat(me.groupId);loadPolls(me.groupId);}}>↻ Refresh</button>
+              <button className="ghost-btn" onClick={()=>setShowPollForm(s=>!s)} style={{color:"#6D47B5",borderColor:"#8C62D188"}}>{showPollForm?"Cancel":"New poll"}</button>
             </div>
           </div>
 
           {showPollForm&&(
-            <div className="card" style={{border:`2px solid ${LF.yellow}55`}}>
-              <span className="lbl">📊 Create a Poll</span>
-              <input className="inp" placeholder="Your question..." value={pollQ} onChange={e=>setPollQ(e.target.value)} style={{marginBottom:10}}/>
+            <div className="card">
+              <div className="card-title" style={{marginBottom:12}}>Create a poll</div>
+              <input className="inp" placeholder="Your question" value={pollQ} onChange={e=>setPollQ(e.target.value)} style={{marginBottom:10}}/>
               {pollOpts.map((o,i)=>(
                 <div key={i} style={{display:"flex",gap:6,marginBottom:8}}>
                   <input className="inp" placeholder={`Option ${i+1}`} value={o} onChange={e=>{const opts=[...pollOpts];opts[i]=e.target.value;setPollOpts(opts);}} style={{flex:1}}/>
@@ -2934,41 +2940,41 @@ export default function App(){
                 </div>
               ))}
               {pollOpts.length<6&&<button onClick={()=>setPollOpts([...pollOpts,""])} style={{background:"none",border:"2px dashed #14213D26",borderRadius:10,padding:8,width:"100%",cursor:"pointer",color:"#14213D",fontSize:14,marginBottom:10}}>+ Add Option</button>}
-              <span className="lbl" style={{marginTop:4}}>Voting Deadline (optional)</span>
+              <div style={{fontSize:13,fontWeight:600,color:"#5B6878",margin:"4px 0 6px"}}>Voting deadline (optional)</div>
               <input className="inp" type="datetime-local" value={pollDeadline} onChange={e=>setPollDeadline(e.target.value)} style={{marginBottom:12}}/>
               <div style={{display:"flex",gap:8}}>
-                <button className="btn btn-yellow" onClick={submitPoll} style={{flex:1,fontSize:14}}>Post Poll 📊</button>
-                <button onClick={()=>setShowPollForm(false)} style={{flex:1,background:"#14213D0d",border:"2px solid #14213D1f",borderRadius:50,cursor:"pointer",fontSize:14,color:"#14213D"}}>Cancel</button>
+                <button className="btn" onClick={submitPoll} style={{flex:1}}>Post poll</button>
+                <button className="ghost-btn" onClick={()=>setShowPollForm(false)} style={{flex:1}}>Cancel</button>
               </div>
             </div>
           )}
 
-          <div style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:20,padding:12,display:"flex",flexDirection:"column",gap:10,minHeight:240,maxHeight:480,overflowY:"auto"}}>
+          <div style={{background:"rgba(255,255,255,0.92)",border:"2px solid #00BFB2",borderRadius:20,padding:12,display:"flex",flexDirection:"column",gap:12,minHeight:240,maxHeight:480,overflowY:"auto"}}>
             {(()=>{
               const items=[...messages.map(m=>({...m,_type:"msg"})),...polls.map(p=>({...p,_type:"poll"}))].sort((a,b)=>a.ts-b.ts);
-              if(items.length===0)return <div style={{textAlign:"center",padding:36,color:"#5B6878",fontSize:15}}>Say hi to your crew! 🌈</div>;
+              if(items.length===0)return <div style={{textAlign:"center",padding:36,color:"#5B6878",fontSize:15}}>Say hi to your crew! 👋</div>;
               return items.map(item=>{
                 if(item._type==="msg"){
                   const msg=item; const isMe=msg.author===me.name;
                   return(
-                    <div key={msg.id} className="msg-in" style={{display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3}}>
-                      {!isMe&&<div style={{fontSize:12,color:"#5B6878",fontWeight:800,paddingLeft:4}}>{msg.avatar} {msg.author}</div>}
-                      <div style={{maxWidth:"80%",background:isMe?`linear-gradient(135deg,${LF.pink}cc,${LF.purple}cc)`:"#14213D0d",border:`1px solid ${isMe?LF.pink:"#14213D26"}`,borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px",padding:"9px 13px"}}>
-                        <div style={{fontSize:14,fontWeight:700,color:"#14213D",lineHeight:1.5}}>{msg.text}</div>
-                        <div style={{fontSize:11,color:"#5B6878",marginTop:3}}>{fmtDate(msg.ts)}</div>
+                    <div key={msg.id} className="msg-in" style={{display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3,position:"relative",zIndex:openPicker===msg.id?5:1}}>
+                      {!isMe&&<div style={{fontSize:12,color:"#5B6878",fontWeight:600,paddingLeft:4}}>{msg.avatar} {msg.author}</div>}
+                      <div style={{maxWidth:"80%",background:isMe?"#8C62D1":"#F3F1F6",borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px",padding:"9px 13px"}}>
+                        <div style={{fontSize:15,fontWeight:500,color:isMe?"#fff":"#14213D",lineHeight:1.5}}>{msg.text}</div>
+                        <div style={{fontSize:11,color:isMe?"#FFFFFFCC":"#5B6878",marginTop:3}}>{fmtDate(msg.ts)}</div>
                       </div>
                       <div style={{display:"flex",flexWrap:"wrap",gap:3,paddingLeft:isMe?0:4,paddingRight:isMe?4:0,justifyContent:isMe?"flex-end":"flex-start",alignItems:"center"}}>
                         {REACTIONS.filter(r=>(msg.reactions[r]||[]).length>0).map(r=>{
                           const cnt=(msg.reactions[r]||[]).length;
                           const reacted=(msg.reactions[r]||[]).includes(me.name);
-                          return <button key={r} onClick={()=>addReaction(msg.id,r)} style={{background:reacted?`${LF.pink}33`:"#14213D0d",border:`1px solid ${reacted?LF.pink:"#14213D26"}`,borderRadius:20,padding:"2px 8px",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",gap:3}}>
-                            {r}<span style={{fontSize:11,color:reacted?LF.pink:"#fff",fontWeight:800}}>{cnt}</span>
+                          return <button key={r} onClick={()=>addReaction(msg.id,r)} style={{background:reacted?"#8C62D11f":"#fff",border:`1px solid ${reacted?"#8C62D1":"#14213D26"}`,borderRadius:20,padding:"2px 8px",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",gap:3}}>
+                            {r}<span style={{fontSize:12,color:reacted?"#6D47B5":"#5B6878",fontWeight:500}}>{cnt}</span>
                           </button>;
                         })}
                         <div style={{position:"relative"}}>
-                          <button onClick={()=>setOpenPicker(openPicker===msg.id?null:msg.id)} style={{background:"#14213D0d",border:"1px solid #14213D26",borderRadius:20,padding:"2px 8px",cursor:"pointer",fontSize:12,color:"#14213D"}}>＋😊</button>
+                          <button onClick={()=>setOpenPicker(openPicker===msg.id?null:msg.id)} style={{background:"#fff",border:"1px solid #14213D26",borderRadius:20,padding:"2px 8px",cursor:"pointer",fontSize:12,color:"#14213D"}} aria-label="Add reaction">＋😊</button>
                           {openPicker===msg.id&&(
-                            <div style={{position:"absolute",bottom:"110%",left:isMe?"auto":"0",right:isMe?"0":"auto",background:"#2D006E",border:"2px solid #14213D26",borderRadius:16,padding:8,display:"flex",flexWrap:"wrap",gap:4,width:196,zIndex:50,boxShadow:"0 8px 32px #14213D66"}}>
+                            <div style={{position:"absolute",top:"110%",left:isMe?"auto":"0",right:isMe?"0":"auto",background:"#fff",border:"2px solid #8377D1",borderRadius:16,padding:8,display:"flex",flexWrap:"wrap",gap:4,width:196,zIndex:50,boxShadow:"0 8px 28px #14213D33"}}>
                               {REACTIONS.map(r=><button key={r} onClick={()=>{addReaction(msg.id,r);setOpenPicker(null);}} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",padding:"2px 4px",borderRadius:8}}>{r}</button>)}
                             </div>
                           )}
@@ -2987,13 +2993,13 @@ export default function App(){
                 const canVote=!resolved&&!expired;
                 const hoursLeft=deadlineDate&&!expired?Math.ceil((deadlineDate-new Date())/3600000):null;
                 return(
-                  <div key={poll.id} className="msg-in" style={{background:"#2D006E99",border:`2px solid ${resolved?"#4F7A1F":expired?"#14213D26":LF.pink}55`,borderRadius:16,padding:12}}>
+                  <div key={poll.id} className="msg-in" style={{background:"#fff",border:`2px solid ${resolved?"#00BFB2":expired?"#14213D26":"#8377D1"}`,borderRadius:16,padding:14}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                       <div>
-                        <div style={{fontSize:11,color:"#5B6878",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>📊 {poll.author} · poll</div>
-                        <div style={{fontSize:15,fontWeight:900,color:"#14213D"}}>{poll.question}</div>
-                        {deadlineDate&&<div style={{fontSize:11,color:expired?"#BF1E41":hoursLeft&&hoursLeft<24?LF.yellow:"#5B6878",fontWeight:700,marginTop:2}}>{expired?"⏰ Voting closed":`⏰ ${hoursLeft}h left`}</div>}
-                        {resolved&&<div style={{fontSize:12,color:LF.lime,fontWeight:800,marginTop:2}}>✅ Result: {resolved}</div>}
+                        <div style={{fontSize:11,color:"#0062B1",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:3}}>Poll · {poll.author}</div>
+                        <div style={{fontFamily:"'Poppins',sans-serif",fontSize:16,fontWeight:600,color:"#14213D"}}>{poll.question}</div>
+                        {deadlineDate&&<div style={{fontSize:11,color:expired?"#BF1E41":hoursLeft&&hoursLeft<24?LF.yellow:"#5B6878",fontWeight:500,marginTop:2}}>{expired?"Voting closed":`${hoursLeft} hours left to vote`}</div>}
+                        {resolved&&<div style={{fontSize:13,color:"#00897F",fontWeight:500,marginTop:3}}>Result: {resolved}</div>}
                       </div>
                       {(amAdmin||poll.author===me.name)&&(
                         <button onClick={()=>deletePoll(poll.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:15,color:"#5B6878",padding:"0 4px"}}>🗑️</button>
@@ -3006,24 +3012,24 @@ export default function App(){
                         const isLeading=o.votes.length>0&&o.votes.length===leading.votes.length;
                         return(
                           <div key={i}>
-                            <button onClick={()=>canVote&&votePoll(poll.id,i)} style={{width:"100%",textAlign:"left",padding:"8px 12px",borderRadius:10,cursor:canVote?"pointer":"default",fontFamily:"'Inter',sans-serif",fontSize:14,fontWeight:voted?900:700,border:`2px solid ${voted?LF.pink:isLeading&&canVote?LF.yellow:"#14213D26"}`,background:voted?`${LF.pink}33`:isLeading&&canVote?"#B8540011":"#14213D0a",color:voted?LF.pink:isLeading&&canVote?LF.yellow:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <button onClick={()=>canVote&&votePoll(poll.id,i)} style={{width:"100%",textAlign:"left",padding:"8px 12px",borderRadius:10,cursor:canVote?"pointer":"default",fontFamily:"'Inter',sans-serif",fontSize:14,fontWeight:voted?700:500,border:`2px solid ${voted?"#8C62D1":isLeading&&canVote?"#FF7F11":"#14213D26"}`,background:voted?"#8C62D114":isLeading&&canVote?"#FF7F1112":"#fff",color:voted?"#6D47B5":isLeading&&canVote?"#B85400":"#14213D",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                               <span>{voted?"✓ ":isLeading&&canVote?"🏆 ":""}{o.text}</span>
                               <span style={{fontSize:12,opacity:0.8,marginLeft:8,flexShrink:0}}>{pct2}%</span>
                             </button>
                             <div className="pbar-bg" style={{height:3,marginTop:2}}>
-                              <div className="pbar-fill" style={{width:`${pct2}%`,background:voted?`linear-gradient(90deg,${LF.pink},${LF.purple})`:"#14213D26"}}/>
+                              <div className="pbar-fill" style={{width:`${pct2}%`,background:voted?"#8C62D1":"#14213D26"}}/>
                             </div>
                           </div>
                         );
                       })}
                     </div>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
-                      <div style={{fontSize:12,color:"#5B6878",fontWeight:700}}>{myVoteIdx>=0?"✓ You voted":canVote?"Tap an option to vote":"Voting closed"}</div>
+                      <div style={{fontSize:12,color:"#5B6878",fontWeight:500}}>{myVoteIdx>=0?"✓ You voted":canVote?"Tap an option to vote":"Voting closed"}</div>
                       {amAdmin&&!resolved&&(
                         <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
-                          <span style={{fontSize:11,color:"#6B7685",fontWeight:700}}>override:</span>
+                          <span style={{fontSize:12,color:"#5B6878",fontWeight:600}}>Set result:</span>
                           {poll.options.map((o,i)=>(
-                            <button key={i} onClick={()=>overridePollResult(poll.id,o.text)} style={{background:"#14213D0a",border:"1px solid #14213D1f",borderRadius:8,padding:"2px 8px",cursor:"pointer",fontSize:11,color:"#5B6878",fontWeight:700}}>{o.text}</button>
+                            <button key={i} onClick={()=>overridePollResult(poll.id,o.text)} style={{background:"#14213D0a",border:"1px solid #14213D1f",borderRadius:8,padding:"2px 8px",cursor:"pointer",fontSize:11,color:"#5B6878",fontWeight:500}}>{o.text}</button>
                           ))}
                         </div>
                       )}
@@ -3035,114 +3041,116 @@ export default function App(){
             <div ref={chatEndRef}/>
           </div>
           <div style={{display:"flex",gap:8}}>
-            <input className="inp" placeholder="Say something... ✨" value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMessage()} style={{flex:1}}/>
-            <button className="btn" onClick={sendMessage} style={{padding:"11px 18px",flexShrink:0}}>💌</button>
+            <input className="inp" placeholder="Say something…" value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMessage()} style={{flex:1,minWidth:0}}/>
+            <button className="btn" onClick={sendMessage} style={{padding:"11px 18px",flexShrink:0}}>Send</button>
           </div>
         </>)}
 
-        {/* ── STATS ── */}
-        {tab==="Stats"&&(<>
-          <div style={{fontSize:15,color:LF.white,fontWeight:800}}>📊 Group Stats &amp; Ledger</div>
+        {/* ── STATS (includes your own history) ── */}
+        {tab==="Stats"&&(()=>{
+          const fmtAmount=(v,type)=>type==="words"?`${(v||0).toLocaleString()} words`:(()=>{const h=Math.floor((v||0)/60),m=(v||0)%60;return h>0?`${h}h`+(m>0?` ${m}m`:""):`${m}m`;})();
+          const statNum={fontFamily:"'Poppins',sans-serif",fontSize:24,fontWeight:700,color:"#14213D"};
+          const statLbl={fontSize:13,color:"#5B6878",marginTop:2};
+          const divider="1px solid #14213D14";
+          const metCount=history.filter(h=>h.met).length;
+          return(<>
+          <div className="page-head">
+            <div>
+              <p className="eyebrow">#{me.groupId}</p>
+              <h2 className="page-title">Stats</h2>
+            </div>
+          </div>
+
+          {/* Your history */}
           <div className="card">
-            <span className="lbl">🌍 Total Group Output — All Time</span>
+            <div className="card-title" style={{marginBottom:12}}>Your history</div>
+            {history.length===0?(
+              <div style={{fontSize:14,color:"#5B6878",textAlign:"center",padding:"8px 0"}}>Your history appears at the end of each week or check-in.</div>
+            ):(<>
+              <div style={{display:"flex",marginBottom:6}}>
+                {[{l:"Periods",v:history.length,c:"#14213D"},{l:"Goal met",v:metCount,c:"#00897F"},{l:"Missed",v:history.length-metCount,c:"#6D47B5"}].map((st,i)=>(
+                  <div key={i} style={{flex:1,textAlign:"center",borderRight:i<2?divider:"none"}}>
+                    <div style={{...statNum,color:st.c}}>{st.v}</div>
+                    <div style={statLbl}>{st.l}</div>
+                  </div>
+                ))}
+              </div>
+              {history.map((h,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderTop:divider}}>
+                  <div style={{fontSize:20}}>{h.met?"🌟":"✏️"}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,color:"#5B6878"}}>{h.week}</div>
+                    <div style={{fontSize:15,fontWeight:600,color:"#14213D"}}>{fmtAmount(h.progress,h.goalType)} <span style={{fontWeight:500,color:"#5B6878"}}>of {fmtAmount(h.goal,h.goalType)}</span></div>
+                  </div>
+                  <span style={{fontSize:12,fontWeight:500,padding:"3px 10px",borderRadius:999,color:h.met?"#00897F":"#6D47B5",border:`1.5px solid ${h.met?"#00BFB2":"#8C62D1"}`}}>{h.met?"Goal met":"Missed"}</span>
+                </div>
+              ))}
+            </>)}
+          </div>
+
+          {/* Group totals */}
+          <div className="card">
+            <div className="card-title" style={{marginBottom:12}}>Group output, all time</div>
             <div style={{display:"flex"}}>
-              {totalGroupWords>0&&<div style={{flex:1,textAlign:"center",borderRight:totalGroupMinutes>0?`1px solid ${LF.purple}33`:"none"}}>
-                <div style={{fontSize:24,color:LF.yellow,fontWeight:900}}>{totalGroupWords.toLocaleString()}</div>
-                <div style={{fontSize:13,color:"#5B6878",fontWeight:800,marginTop:2}}>Total Words ✍️</div>
+              {totalGroupWords>0&&<div style={{flex:1,textAlign:"center",borderRight:totalGroupMinutes>0?divider:"none"}}>
+                <div style={statNum}>{totalGroupWords.toLocaleString()}</div>
+                <div style={statLbl}>words</div>
               </div>}
               {totalGroupMinutes>0&&<div style={{flex:1,textAlign:"center"}}>
-                <div style={{fontSize:24,color:LF.yellow,fontWeight:900}}>{Math.round(totalGroupMinutes/60)}h {totalGroupMinutes%60}m</div>
-                <div style={{fontSize:13,color:"#5B6878",fontWeight:800,marginTop:2}}>Total Time ⏱️</div>
+                <div style={statNum}>{Math.floor(totalGroupMinutes/60)}h {totalGroupMinutes%60}m</div>
+                <div style={statLbl}>writing time</div>
               </div>}
-              {totalGroupWords===0&&totalGroupMinutes===0&&<div style={{flex:1,textAlign:"center",padding:16,color:"#5B6878",fontSize:13}}>No progress logged yet 🌈</div>}
+              {totalGroupWords===0&&totalGroupMinutes===0&&<div style={{flex:1,textAlign:"center",padding:12,color:"#5B6878",fontSize:14}}>No progress logged yet.</div>}
             </div>
           </div>
 
+          {/* All-time leaderboard */}
           <div className="card">
-            <span className="lbl">💸 Money Ledger</span>
-            <div style={{display:"flex",marginBottom:14}}>
-              <div style={{flex:1,textAlign:"center",borderRight:`1px solid ${LF.purple}33`}}>
-                <div style={{fontSize:20,color:LF.white,fontWeight:900}}>{fmtMoney(totalCharity)}</div>
-                <div style={{fontSize:13,color:"#5B6878",fontWeight:800,marginTop:2}}>Donated 💝</div>
-              </div>
-              <div style={{flex:1,textAlign:"center",borderRight:`1px solid ${LF.purple}33`}}>
-                <div style={{fontSize:20,color:LF.yellow,fontWeight:900}}>{fmtMoney(totalPayouts)}</div>
-                <div style={{fontSize:13,color:"#5B6878",fontWeight:800,marginTop:2}}>To Winners 🏆</div>
-              </div>
-              <div style={{flex:1,textAlign:"center"}}>
-                <div style={{fontSize:20,color:LF.white,fontWeight:900}}>{totalPrizes}</div>
-                <div style={{fontSize:13,color:"#5B6878",fontWeight:800,marginTop:2}}>Prizes 🎁</div>
-              </div>
-            </div>
-            {totalCharity===0&&totalPayouts===0&&totalPrizes===0&&<div style={{textAlign:"center",padding:14,color:"#5B6878",fontSize:13}}>No payments recorded yet. Keep writing! 🦄</div>}
-          </div>
-
-          <div className="card">
-            <span className="lbl">🏅 Individual All-Time Progress</span>
-            {[...members].sort((a,b)=>(b.totalProgress||0)-(a.totalProgress||0)).map(w=>(
-              <div key={w.name} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${LF.purple}22`}}>
-                <div style={{fontSize:18}}>{w.avatar}</div>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:14,fontWeight:700,color:w.isYou?LF.yellow:LF.white}}>{w.name}{w.isYou?" (you)":""}</div>
-                  <div style={{fontSize:12,color:"#5B6878",fontWeight:700}}>💝 {(w.charityName||w.charity)||"—"}</div>
+            <div className="card-title" style={{marginBottom:4}}>All-time progress</div>
+            {[...members].sort((a,b)=>(b.totalProgress||0)-(a.totalProgress||0)).map((w,i)=>(
+              <div key={w.uid||w.name} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderTop:i>0?divider:"none"}}>
+                <div style={{fontSize:22}}>{w.avatar}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:15,fontWeight:600,color:"#14213D"}}>{w.name}{w.isYou&&<span style={{color:"#6D47B5",fontWeight:600}}> (you)</span>}</div>
+                  {(w.charityName||w.charity)&&<div style={{fontSize:13,color:"#5B6878"}}>{w.charityName||w.charity}</div>}
                 </div>
-                <div style={{fontSize:15,color:LF.white,fontWeight:800}}>{w.goalType==="words"?`${(w.totalProgress||0).toLocaleString()}w`:`${Math.round((w.totalProgress||0)/60)}h`}</div>
+                <div style={{fontFamily:"'Poppins',sans-serif",fontSize:16,fontWeight:700,color:"#14213D"}}>{fmtAmount(w.totalProgress,w.goalType)}</div>
               </div>
             ))}
           </div>
 
-          {/* ── Check-in History ── */}
-          {groupCheckIns===null&&tab==="Stats"&&(
-            <div className="card" style={{textAlign:"center",padding:20,color:"#5B6878",fontSize:13}}>Loading check-in history… 🦄</div>
+          {/* Group check-ins */}
+          {groupCheckIns===null&&(
+            <div className="card" style={{textAlign:"center",padding:20,color:"#5B6878",fontSize:14}}>Loading check-in results…</div>
           )}
           {groupCheckIns!==null&&groupCheckIns.length===0&&(
-            <div className="card" style={{textAlign:"center",padding:24}}>
-              <div style={{fontSize:28,marginBottom:8}}>🌈</div>
-              <div style={{fontSize:14,color:LF.pink,fontWeight:800}}>Check-in history appears after the first deadline.</div>
-            </div>
+            <div className="card" style={{textAlign:"center",padding:20,color:"#5B6878",fontSize:14}}>Group check-in results appear after the first deadline.</div>
           )}
-          {(groupCheckIns||[]).map((ci,ciIdx)=>{
-            // Find any ledger entries attached to this check-in via checkInMs
+          {(groupCheckIns||[]).map(ci=>{
             const ciPayments=(ledger.entries||[]).filter(e=>e.checkInMs===ci.deadlineMs);
             return(
             <div key={ci.deadlineMs} className="card">
-              {/* Check-in header — label from the first entry (all share the same label) */}
-              <span className="lbl">🏁 {ci.label}</span>
-              {ci.entries.map((e,ei)=>{
-                // Format progress the same way as the rest of the app
-                const prog=e.goalType==="words"
-                  ?`${(e.progress||0).toLocaleString()}w`
-                  :`${Math.round((e.progress||0)/60)}h`;
-                const goal=e.goalType==="words"
-                  ?`${(e.goal||0).toLocaleString()}w`
-                  :`${Math.round((e.goal||0)/60)}h`;
-                return(
-                  <div key={e.name} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:ei<ci.entries.length-1?`1px solid ${LF.purple}22`:"none"}}>
-                    <div style={{fontSize:18}}>{e.avatar}</div>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:14,fontWeight:700,color:e.isYou?LF.yellow:LF.white}}>{e.name}{e.isYou?" (you)":""}</div>
-                      <div style={{fontSize:12,color:"#5B6878",fontWeight:700}}>{prog} of {goal}</div>
-                    </div>
-                    <div style={{fontSize:18}}>{e.met?"✅":"❌"}</div>
+              <div className="card-title" style={{marginBottom:4}}>{ci.label}</div>
+              {ci.entries.map((e,ei)=>(
+                <div key={e.name} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderTop:ei>0?divider:"none"}}>
+                  <div style={{fontSize:22}}>{e.avatar}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:15,fontWeight:600,color:"#14213D"}}>{e.name}{e.isYou&&<span style={{color:"#6D47B5"}}> (you)</span>}</div>
+                    <div style={{fontSize:13,color:"#5B6878"}}>{fmtAmount(e.progress,e.goalType)} of {fmtAmount(e.goal,e.goalType)}</div>
                   </div>
-                );
-              })}
-              {/* If no other members have their uid stored yet, show a note */}
+                  <span style={{fontSize:12,fontWeight:500,padding:"3px 10px",borderRadius:999,color:e.met?"#00897F":"#6D47B5",border:`1.5px solid ${e.met?"#00BFB2":"#8C62D1"}`}}>{e.met?"Goal met":"Missed"}</span>
+                </div>
+              ))}
               {ci.entries.length===1&&(
-                <div style={{fontSize:12,color:"#8A94A3",marginTop:8,textAlign:"center"}}>Other members will appear after they next open the app.</div>
+                <div style={{fontSize:12,color:"#5B6878",marginTop:8,textAlign:"center"}}>Other members will appear after they next open the app.</div>
               )}
-              {/* Payment summary — only shown when the admin has recorded payments for this check-in */}
               {ciPayments.length>0&&(
-                <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${LF.yellow}33`}}>
-                  <div style={{fontSize:11,color:LF.yellow,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:8}}>💸 Money Allocated</div>
-                  {ciPayments.map((p,pi)=>(
-                    <div key={p.id||pi} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:pi<ciPayments.length-1?`1px solid ${LF.purple}22`:"none"}}>
-                      <div style={{fontSize:13,fontWeight:700,color:p.type==="charity"?LF.lime:p.amount>=0?LF.yellow:"#BF1E41"}}>
-                        {p.type==="charity"?`💝 ${p.name}`:`${p.amount>=0?"🏆":"💸"} ${p.name}`}
-                      </div>
-                      <div style={{fontSize:13,fontWeight:800,color:p.type==="charity"?LF.lime:p.amount>=0?LF.yellow:"#BF1E41"}}>
-                        {p.amount>=0?"+":""}{fmtMoney(p.amount)}
-                      </div>
+                <div style={{marginTop:12,paddingTop:12,borderTop:divider}}>
+                  <div style={{fontSize:12,color:"#0062B1",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8}}>Money allocated</div>
+                  {ciPayments.map((pm,pi)=>(
+                    <div key={pm.id||pi} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",fontSize:14}}>
+                      <div style={{color:"#14213D"}}>{pm.type==="charity"?`To ${pm.name}`:pm.amount>=0?`Paid to ${pm.name}`:`Paid by ${pm.name}`}</div>
+                      <div style={{fontWeight:500,color:pm.amount>=0?"#14213D":"#BF1E41"}}>{pm.amount>=0?"+":""}{fmtMoney(pm.amount)}</div>
                     </div>
                   ))}
                 </div>
@@ -3151,28 +3159,39 @@ export default function App(){
             );
           })}
 
-          {(ledger.entries||[]).length>0&&(
-            <div className="card">
-              <span className="lbl">📋 Payment History</span>
-              {[...(ledger.entries||[])].reverse().slice(0,20).map(e=>(
-                <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${LF.purple}22`}}>
-                  <div>
-                    {/* Use charityName first — fall back to charity URL only if name is missing */}
-                    <div style={{fontSize:13,fontWeight:800,color:e.type==="charity"?LF.lime:LF.yellow}}>{e.type==="charity"?`💝 ${e.name} → ${e.charityName||"charity"}`:`🏆 Payout to ${e.name}`}</div>
-                    <div style={{fontSize:11,color:"#5B6878"}}>{fmtDate(e.ts)} · by {e.recordedBy}</div>
-                  </div>
-                  <div style={{fontSize:13,color:e.type==="charity"?LF.lime:LF.yellow,fontWeight:800}}>{fmtMoney(e.amount)}</div>
+          {/* Money */}
+          <div className="card">
+            <div className="card-title" style={{marginBottom:12}}>Money</div>
+            <div style={{display:"flex"}}>
+              {[{l:"donated",v:fmtMoney(totalCharity)},{l:"to winners",v:fmtMoney(totalPayouts)},{l:"prizes",v:totalPrizes}].map((st,i)=>(
+                <div key={i} style={{flex:1,textAlign:"center",borderRight:i<2?divider:"none"}}>
+                  <div style={{...statNum,fontSize:20}}>{st.v}</div>
+                  <div style={statLbl}>{st.l}</div>
                 </div>
               ))}
             </div>
-          )}
-        </>)}
+            {(ledger.entries||[]).length>0&&(
+              <div style={{marginTop:14}}>
+                {[...(ledger.entries||[])].reverse().slice(0,20).map(e=>(
+                  <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderTop:divider,gap:10}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:14,fontWeight:600,color:"#14213D"}}>{e.type==="charity"?`${e.name} → ${e.charityName||"charity"}`:`Payout to ${e.name}`}</div>
+                      <div style={{fontSize:12,color:"#5B6878"}}>{fmtDate(e.ts)} · recorded by {e.recordedBy}</div>
+                    </div>
+                    <div style={{fontSize:14,fontWeight:500,color:"#14213D"}}>{fmtMoney(e.amount)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          </>);
+        })()}
 
         {/* ── STAKES ── */}
         {tab==="Stakes"&&(<>
           <div className="card">
             <span className="lbl">Goal Type &amp; Target</span>
-            {isLocked&&<div style={{fontSize:13,color:LF.orange,fontWeight:800,marginBottom:10}}>🔒 Goals locked — you can raise but not lower{admin.changeWindowOpen?` (~${changeHoursLeft}h window open)`:"."}.</div>}
+            {isLocked&&<div style={{fontSize:13,color:LF.orange,fontWeight:600,marginBottom:10}}>🔒 Goals locked — you can raise but not lower{admin.changeWindowOpen?` (~${changeHoursLeft}h window open)`:"."}.</div>}
             <div className="pill" style={{marginBottom:12}}>
               <button onClick={()=>setGoalTypeEdit("words")} style={{background:goalTypeEdit==="words"?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"transparent",color:"#14213D"}}>✍️ Words</button>
               <button onClick={()=>setGoalTypeEdit("time")}  style={{background:goalTypeEdit==="time"?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"transparent",color:"#14213D"}}>⏱️ Time</button>
@@ -3181,7 +3200,7 @@ export default function App(){
               <input className="inp" type="number" value={goalInput} onChange={e=>setGoalInput(e.target.value)} style={{flex:1}}/>
               <button className="btn" onClick={updateGoal} style={{padding:"11px 18px"}}>Set ✨</button>
             </div>
-            <div style={{fontSize:13,color:LF.hotpink,marginTop:8,fontWeight:800}}>Current: {fmtGoal(me)}/week</div>
+            <div style={{fontSize:13,color:LF.hotpink,marginTop:8,fontWeight:600}}>Current: {fmtGoal(me)}/week</div>
           </div>
 
           {admin.payoutMode==="charity"&&(
@@ -3190,8 +3209,8 @@ export default function App(){
               {me.charityName?(
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
                   <div>
-                    <div style={{fontSize:17,fontWeight:900,color:LF.lime}}>✨ {me.charityName}</div>
-                    <div style={{fontSize:12,color:"#5B6878",fontWeight:700,marginTop:2}}>Your stakes go here if you miss your goal.</div>
+                    <div style={{fontSize:17,fontWeight:700,color:LF.lime}}>✨ {me.charityName}</div>
+                    <div style={{fontSize:12,color:"#5B6878",fontWeight:500,marginTop:2}}>Your stakes go here if you miss your goal.</div>
                   </div>
                   {!isLocked&&(
                     <button className="btn btn-teal" onClick={()=>setShowCharityModal(true)} style={{fontSize:13,padding:"8px 14px",flexShrink:0}}>
@@ -3201,22 +3220,22 @@ export default function App(){
                 </div>
               ):(
                 <div>
-                  <div style={{fontSize:14,color:"#5B6878",fontWeight:700,marginBottom:12}}>You haven't picked a charity yet!</div>
+                  <div style={{fontSize:14,color:"#5B6878",fontWeight:500,marginBottom:12}}>You haven't picked a charity yet!</div>
                   {!isLocked&&(
                     <button className="btn btn-sm" onClick={()=>setShowCharityModal(true)} style={{width:"100%",fontSize:15}}>
                       💝 Pick My Charity
                     </button>
                   )}
-                  {isLocked&&<div style={{fontSize:13,color:LF.orange,fontWeight:800}}>🔒 Goals are locked — charity can't be changed.</div>}
+                  {isLocked&&<div style={{fontSize:13,color:LF.orange,fontWeight:600}}>🔒 Goals are locked — charity can't be changed.</div>}
                 </div>
               )}
             </div>
           )}
 
           <div className="card" style={{background:"#14213D08",border:"2px solid #14213D1f",textAlign:"center"}}>
-            <div style={{fontSize:14,color:LF.white,fontWeight:700,lineHeight:2}}>
-              Miss <span style={{color:LF.yellow,fontWeight:900}}>{fmtGoal({...me,goalValue:periodGoal})}</span> for <span style={{color:LF.yellow,fontWeight:900}}>{admin.threshold} check-ins</span><br/>
-              → <span style={{color:LF.pink,fontWeight:900}}>{fmtMoney(admin.stake)}</span>{" "}
+            <div style={{fontSize:14,color:LF.white,fontWeight:500,lineHeight:2}}>
+              Miss <span style={{color:LF.yellow,fontWeight:700}}>{fmtGoal({...me,goalValue:periodGoal})}</span> for <span style={{color:LF.yellow,fontWeight:700}}>{admin.threshold} check-ins</span><br/>
+              → <span style={{color:LF.pink,fontWeight:700}}>{fmtMoney(admin.stake)}</span>{" "}
               {admin.payoutMode==="winners"&&<span>split among 🏆 members who hit their goals</span>}
               {admin.payoutMode==="pain"&&<span style={{color:"#BF1E41"}}>😈 you'll be publicly roasted</span>}
               {admin.payoutMode==="charity"&&<span>goes to 💝 {me.charityName||me.charity||"your charity"}</span>}
@@ -3227,39 +3246,6 @@ export default function App(){
             <button onClick={()=>setShowPrivacy(true)} style={{background:"none",border:"none",color:"#5B6878",fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",textDecoration:"underline"}}>Privacy Policy</button>
             <button onClick={handleReset} style={{background:"none",border:"none",color:"#6B7685",fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",textDecoration:"underline"}}>Reset all data…</button>
           </div>
-        </>)}
-
-        {/* ── HISTORY ── */}
-        {tab==="Stats"&&(<>
-          <div style={{fontSize:14,color:LF.lime,fontWeight:800}}>📅 Your Writing History</div>
-          {history.length===0&&<div className="card" style={{textAlign:"center",padding:24}}><div style={{fontSize:28,marginBottom:8}}>🌈</div><div style={{fontSize:14,color:LF.pink,fontWeight:800}}>History appears at end of each period.</div></div>}
-          {history.map((h,i)=>(
-            <div key={i} className="card" style={{border:`2px solid ${h.met?LF.lime:LF.pink}44`}}>
-              <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <div style={{fontSize:24}}>{h.met?"🌟":"💔"}</div>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:13,color:LF.white,fontWeight:800,marginBottom:2}}>{h.week}</div>
-                  <div style={{fontSize:16,color:h.met?LF.lime:LF.pink,fontWeight:800}}>
-                    {h.goalType==="words"?`${(h.progress||0).toLocaleString()} words`:`${h.progress||0} min`}
-                    <span style={{fontSize:12,color:"#5B6878",fontWeight:700}}> / {h.goalType==="words"?`${(h.goal||0).toLocaleString()}w`:`${h.goal||0}m`}</span>
-                  </div>
-                </div>
-                <div style={{fontSize:12,color:LF.white,background:h.met?`linear-gradient(135deg,${LF.lime},${LF.violet})`:`linear-gradient(135deg,${LF.pink},${LF.purple})`,padding:"4px 10px",borderRadius:20,fontWeight:800}}>{h.met?"NAILED IT":"missed"}</div>
-              </div>
-            </div>
-          ))}
-          {history.length>0&&(
-            <div className="card">
-              <div style={{display:"flex"}}>
-                {[{l:"Periods",v:history.length,c:LF.lime},{l:"Nailed it",v:history.filter(h=>h.met).length,c:LF.lime},{l:"Missed",v:history.filter(h=>!h.met).length,c:LF.pink}].map((s,i)=>(
-                  <div key={i} style={{flex:1,textAlign:"center",borderRight:i<2?`1px solid ${LF.purple}33`:"none"}}>
-                    <div style={{fontSize:22,color:s.c,fontWeight:900}}>{s.v}</div>
-                    <div style={{fontSize:12,color:LF.white,fontWeight:800,marginTop:2}}>{s.l}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </>)}
 
       </div>
