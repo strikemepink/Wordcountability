@@ -151,7 +151,8 @@ const G = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap');
   /* Palette: teal #00BFB2 · lavender #8377D1 · yellow #F4E409 · orange #FF7F11 · pink #FF1053
               blue #0062B1 · purple #8C62D1 · green #82B63A · mustard #C8A73B · crimson #BF1E41
-     Text sits on a cream background, so small text uses deeper shades of these colours. */
+     Text sits on a cream background, so small text uses deeper shades of these colours.
+     Design rule: never pair green with red or pink (reads as Christmas). */
   *{box-sizing:border-box;} body{margin:0;background:#FFF7EE;color:#14213D;}
   .leopard{background:#FFF7EE;color:#14213D;position:relative;}
   .root{min-height:100vh;font-family:'Inter',sans-serif;color:#14213D;font-weight:500;display:flex;flex-direction:column;align-items:center;padding-bottom:104px;position:relative;}
@@ -164,11 +165,17 @@ const G = `
   .bgc .c3{width:22px;height:22px;top:6px;left:63%;background:#0062B1;border-width:5px;border-color:#FF1053}
   .bgc .c4{width:110px;height:110px;bottom:120px;right:-50px;background:#00BFB2;border-width:12px;border-color:#8377D1}
   .bgc .c5{width:200px;height:200px;bottom:-110px;left:-80px;background:#8377D1;border-width:16px;border-color:#FF7F11}
-  .bgc .c6{width:46px;height:46px;bottom:150px;left:14px;background:#FF1053;border-width:7px;border-color:#82B63A}
+  .bgc .c6{width:46px;height:46px;bottom:150px;left:14px;background:#FF1053;border-width:7px;border-color:#8377D1}
   .bgc .c7{width:80px;height:80px;top:44%;left:-46px;background:#F4E409;border-width:10px;border-color:#BF1E41}
   .bgc .c8{width:64px;height:64px;top:30%;right:-30px;background:#8C62D1;border-width:9px;border-color:#00BFB2}
   .bgc .c9{width:38px;height:38px;top:64%;right:6px;background:#C8A73B;border-width:6px;border-color:#0062B1}
   .card{background:rgba(255,255,255,0.92);border:1px solid #14213D1f;border-radius:20px;padding:20px;position:relative;box-shadow:0 2px 14px rgba(20,33,61,0.06);}
+  /* Each card gets a thin outline in one of the palette colours, cycling down the page */
+  .card:nth-child(5n+1){border:2px solid #C8A73B;}
+  .card:nth-child(5n+2){border:2px solid #00BFB2;}
+  .card:nth-child(5n+3){border:2px solid #FF7F11;}
+  .card:nth-child(5n+4){border:2px solid #8C62D1;}
+  .card:nth-child(5n+5){border:2px solid #0062B1;}
   .card::before{display:none;}
   .btn{background:#8C62D1;color:#fff;border:none;border-radius:14px;padding:12px 22px;font-family:'Poppins',sans-serif;font-size:19px;cursor:pointer;font-weight:700;transition:transform 0.15s,filter 0.15s;}
   .btn:hover{filter:brightness(1.06);transform:translateY(-1px);}
@@ -191,7 +198,7 @@ const G = `
   .msg-in{animation:msgIn 0.25s ease forwards;}
   .lbl{font-size:12px;color:#0062B1;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;display:block;margin-bottom:10px;}
   .modal-bg{position:fixed;inset:0;background:#14213D66;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;}
-  .modal{max-width:min(440px,calc(100vw - 32px));width:100%;max-height:92vh;overflow-y:auto!important;overflow-x:hidden!important;border:1px solid #14213D1f!important;background:#FFFFFF!important;}
+  .modal{max-width:min(440px,calc(100vw - 32px));width:100%;max-height:92vh;overflow-y:auto!important;overflow-x:hidden!important;border:2px solid #8C62D1!important;background:#FFFFFF!important;}
   .modal.card::before{display:none;}
   .locked-badge{background:#BF1E41;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;}
   .open-badge{background:#82B63A;color:#14213D;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;}
@@ -2614,7 +2621,7 @@ export default function App(){
               {amAdmin&&<span className="chip" style={{color:"#6D47B5",borderColor:"#8C62D166"}}>Admin</span>}
               {endDate&&!challengeNotStarted&&<span className="chip">{daysLeft} days left · {admin.frequency}</span>}
               {isLocked&&<span className="chip" style={{color:"#BF1E41",borderColor:"#BF1E4166"}}>Goals locked</span>}
-              {admin.changeWindowOpen&&<span className="chip" style={{color:"#4F7A1F",borderColor:"#82B63A88"}}>Change window open</span>}
+              {admin.changeWindowOpen&&<span className="chip" style={{color:"#0062B1",borderColor:"#0062B188"}}>Change window open</span>}
               {triggered&&<span className="chip" style={{background:"#BF1E41",color:"#fff",borderColor:"#BF1E41"}}>Pay up</span>}
               {!triggered&&atRisk&&<span className="chip" style={{color:"#B85400",borderColor:"#FF7F1188"}}>At risk</span>}
             </div>
