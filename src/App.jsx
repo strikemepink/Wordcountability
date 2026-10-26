@@ -96,7 +96,8 @@ async function apiPost(path, body){
 }
 
 // ── Constants ────────────────────────────────────────────────────
-const TABS        = ["Dashboard","Group","Chat","Stats","Stakes","History"];
+const TABS        = ["Dashboard","Group","Chat","Stats","Stakes"];
+const TAB_LABELS  = {Dashboard:"Today",Group:"Group",Chat:"Chat",Stats:"Stats",Stakes:"Stakes"};
 const WEEK_DAYS   = ["M","T","W","T","F","S","S"];
 const AVATARS     = ["🦄","🐬","🍉","🐞","🌈","⭐","🌷","🐧","✏️","🙂"];
 const REACTIONS   = ["👍","👎","🦄","🌈","💖","⭐","🔥","🐬","✨","💫"];
@@ -139,66 +140,94 @@ const DEFAULT_NOTIF_PREFS = {
 };
 
 const LF = {
-  pink:"#FF2D9B", hotpink:"#FF6EC7", violet:"#E040FB", yellow:"#FFC200",
-  purple:"#C97FFF", blue:"#C77DFF", orange:"#FF7A00", lime:"#CCFF66",
-  white:"#FFFFFF", offwhite:"#FFF0FA",
+  // Mapped to the new palette. Colours used for text are deeper shades so they read well on cream.
+  pink:"#8C62D1", hotpink:"#6D47B5", violet:"#0062B1", yellow:"#B85400",
+  purple:"#8377D1", blue:"#0062B1", orange:"#FF7F11", lime:"#4F7A1F",
+  white:"#14213D", offwhite:"#FFF7EE",
 };
 
 // ── Global CSS — NO text-shadow anywhere ─────────────────────────
 const G = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap');
-  *{box-sizing:border-box;} body{margin:0;}
-  .leopard         {background:linear-gradient(135deg,#6B0AC9 0%,#9B30FF 20%,#FF2D9B 45%,#FF7A00 65%,#FFC200 85%,#E040FB 100%);background-attachment:fixed;}
-  .leopard-dashboard{background:linear-gradient(135deg,#6B0AC9 0%,#9B30FF 30%,#FF2D9B 70%,#FF6EC7 100%);background-attachment:fixed;}
-  .leopard-group   {background:linear-gradient(135deg,#FF2D9B 0%,#BF5FFF 40%,#6B0AC9 100%);background-attachment:fixed;}
-  .leopard-chat    {background:linear-gradient(135deg,#E040FB 0%,#C77DFF 35%,#6B0AC9 70%,#BF5FFF 100%);background-attachment:fixed;}
-  .leopard-stats   {background:linear-gradient(135deg,#FFC200 0%,#FF7A00 30%,#FF2D9B 65%,#BF5FFF 100%);background-attachment:fixed;}
-  .leopard-stakes  {background:linear-gradient(135deg,#FF2D9B 0%,#FF7A00 40%,#FFC200 100%);background-attachment:fixed;}
-  .leopard-history {background:linear-gradient(135deg,#BF5FFF 0%,#6B0AC9 35%,#C77DFF 70%,#E040FB 100%);background-attachment:fixed;}
-  .leopard-setup   {background:linear-gradient(135deg,#6B0AC9 0%,#9B30FF 20%,#FF2D9B 45%,#FF7A00 65%,#FFC200 85%,#E040FB 100%);background-attachment:fixed;}
-  .root{min-height:100vh;font-family:'Outfit',sans-serif;color:#fff;font-weight:600;display:flex;flex-direction:column;align-items:center;padding-bottom:80px;}
-  .card{background:#1A004488;border:1.5px solid #ffffff22;border-radius:20px;padding:20px;position:relative;backdrop-filter:blur(4px);}
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap');
+  /* Palette: teal #00BFB2 · lavender #8377D1 · yellow #F4E409 · orange #FF7F11 · pink #FF1053
+              blue #0062B1 · purple #8C62D1 · green #82B63A · mustard #C8A73B · crimson #BF1E41
+     Text sits on a cream background, so small text uses deeper shades of these colours. */
+  *{box-sizing:border-box;} body{margin:0;background:#FFF7EE;color:#14213D;}
+  .leopard{background:#FFF7EE;color:#14213D;position:relative;}
+  .root{min-height:100vh;font-family:'Inter',sans-serif;color:#14213D;font-weight:500;display:flex;flex-direction:column;align-items:center;padding-bottom:104px;position:relative;}
+  .root > *{position:relative;z-index:1;}
+  /* Decorative circles: many sizes, each with a thick border in a contrasting palette colour */
+  .bgc{position:fixed!important;inset:0;overflow:hidden;pointer-events:none;z-index:0!important;}
+  .bgc i{position:absolute;border-radius:50%;border-style:solid;}
+  .bgc .c1{width:150px;height:150px;top:-60px;right:-40px;background:#FF7F11;border-width:14px;border-color:#0062B1}
+  .bgc .c2{width:30px;height:30px;top:92px;right:-12px;background:#82B63A;border-width:6px;border-color:#F4E409}
+  .bgc .c3{width:22px;height:22px;top:6px;left:63%;background:#0062B1;border-width:5px;border-color:#FF1053}
+  .bgc .c4{width:110px;height:110px;bottom:120px;right:-50px;background:#00BFB2;border-width:12px;border-color:#8377D1}
+  .bgc .c5{width:200px;height:200px;bottom:-110px;left:-80px;background:#8377D1;border-width:16px;border-color:#FF7F11}
+  .bgc .c6{width:46px;height:46px;bottom:150px;left:14px;background:#FF1053;border-width:7px;border-color:#82B63A}
+  .bgc .c7{width:80px;height:80px;top:44%;left:-46px;background:#F4E409;border-width:10px;border-color:#BF1E41}
+  .bgc .c8{width:64px;height:64px;top:30%;right:-30px;background:#8C62D1;border-width:9px;border-color:#00BFB2}
+  .bgc .c9{width:38px;height:38px;top:64%;right:6px;background:#C8A73B;border-width:6px;border-color:#0062B1}
+  .card{background:rgba(255,255,255,0.92);border:1px solid #14213D1f;border-radius:20px;padding:20px;position:relative;box-shadow:0 2px 14px rgba(20,33,61,0.06);}
   .card::before{display:none;}
-  .btn{background:linear-gradient(135deg,#FF2D9B,#BF5FFF);color:#fff;border:none;border-radius:50px;padding:11px 24px;font-family:'Outfit',sans-serif;font-size:17px;cursor:pointer;font-weight:700;box-shadow:0 4px 20px #FF2D9B44;transition:transform 0.15s,box-shadow 0.15s;}
-  .btn:hover{transform:translateY(-2px);box-shadow:0 6px 28px #FF2D9B66;}
-  .btn-teal{background:linear-gradient(135deg,#E040FB,#C77DFF)!important;box-shadow:0 4px 20px #E040FB44!important;}
-  .btn-yellow{background:linear-gradient(135deg,#FFC200,#FF7A00)!important;color:#1A0030!important;box-shadow:0 4px 20px #FFC20044!important;}
-  .btn-red{background:linear-gradient(135deg,#FF4444,#FF2D9B)!important;box-shadow:0 4px 20px #FF444455!important;}
-  .inp{background:#ffffff18;border:2px solid #ffffff44;border-radius:14px;padding:11px 16px;color:#fff;font-family:'Outfit',sans-serif;font-size:16px;font-weight:600;outline:none;transition:all 0.2s;width:100%;}
-  .inp::placeholder{color:#ffffffbb;}
-  .inp:focus{border-color:#FF2D9B;background:#ffffff22;}
-  .tab{background:none;border:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;letter-spacing:0.5px;padding:10px 12px 14px;transition:color 0.2s;white-space:nowrap;text-transform:uppercase;color:#fff;}
-  .pill{display:flex;background:#ffffff18;border:2px solid #ffffff33;border-radius:50px;padding:4px;gap:4px;}
-  .pill button{flex:1;border:none;border-radius:50px;padding:12px 16px;font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:all 0.2s;color:#ffffffaa;background:transparent;}
-  .pbar-bg{background:#ffffff22;border-radius:50px;height:10px;overflow:hidden;border:1px solid #ffffff22;}
+  .btn{background:#8C62D1;color:#fff;border:none;border-radius:14px;padding:12px 22px;font-family:'Poppins',sans-serif;font-size:19px;cursor:pointer;font-weight:700;transition:transform 0.15s,filter 0.15s;}
+  .btn:hover{filter:brightness(1.06);transform:translateY(-1px);}
+  .btn:disabled{opacity:0.6;cursor:default;transform:none;}
+  /* Smaller buttons use a deeper purple so their white text stays easy to read */
+  .btn-sm{background:#6D47B5;}
+  .btn-teal{background:#0062B1!important;}
+  .btn-yellow{background:#FF7F11!important;color:#14213D!important;}
+  .btn-red{background:#BF1E41!important;}
+  .inp{background:#fff;border:1.5px solid #14213D2e;border-radius:12px;padding:11px 14px;color:#14213D;font-family:'Inter',sans-serif;font-size:16px;font-weight:500;outline:none;transition:all 0.2s;width:100%;}
+  .inp::placeholder{color:#8A94A3;}
+  .inp:focus{border-color:#8C62D1;box-shadow:0 0 0 3px #8C62D133;}
+  .pill{display:flex;background:#14213D0d;border:1px solid #14213D1f;border-radius:14px;padding:4px;gap:4px;}
+  .pill button{flex:1;border:none;border-radius:10px;padding:11px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.2s;color:#5B6878;background:transparent;}
+  .pbar-bg{background:#14213D14;border-radius:50px;height:10px;overflow:hidden;}
   .pbar-fill{height:100%;border-radius:50px;transition:width 0.6s ease;}
-  @keyframes shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
-  .holo{font-weight:900;background:linear-gradient(90deg,#FF9EE0,#fff,#E0AAFF,#FF9EE0);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 3s linear infinite;}
+  .holo{font-family:'Poppins',sans-serif;font-weight:700;color:#14213D;}
   @keyframes pop{0%{transform:scale(0.5);opacity:0;}60%{transform:scale(1.2);}100%{transform:scale(1);opacity:1;}}
   @keyframes msgIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
   .msg-in{animation:msgIn 0.25s ease forwards;}
-  .lbl{font-size:13px;color:#fff;text-transform:uppercase;letter-spacing:2px;font-weight:900;display:block;margin-bottom:10px;}
-  .modal-bg{position:fixed;inset:0;background:#00000088;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;}
-  .modal{max-width:min(440px,calc(100vw - 32px));width:100%;max-height:92vh;overflow-y:auto!important;overflow-x:hidden!important;border:1.5px solid #ffffff33!important;background:#2D006Eee!important;backdrop-filter:blur(12px);}
+  .lbl{font-size:12px;color:#0062B1;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;display:block;margin-bottom:10px;}
+  .modal-bg{position:fixed;inset:0;background:#14213D66;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;}
+  .modal{max-width:min(440px,calc(100vw - 32px));width:100%;max-height:92vh;overflow-y:auto!important;overflow-x:hidden!important;border:1px solid #14213D1f!important;background:#FFFFFF!important;}
   .modal.card::before{display:none;}
-  .locked-badge{background:linear-gradient(135deg,#FF4444,#BF5FFF);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;}
-  .open-badge{background:linear-gradient(135deg,#AAFF00,#E040FB);color:#1A0030;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;}
-  .btn-google{background:#fff;color:#1A0030;border:none;border-radius:50px;padding:12px 28px;font-family:'Outfit',sans-serif;font-size:17px;cursor:pointer;font-weight:700;box-shadow:0 4px 24px #00000044;transition:transform 0.15s,box-shadow 0.15s;display:flex;align-items:center;gap:10px;}
-  .btn-google:hover{transform:translateY(-2px);box-shadow:0 6px 32px #00000066;}
-  .privacy-modal{max-width:500px;width:100%;max-height:88vh;overflow-y:auto;background:#2D006Eee;border:1.5px solid #ffffff33;border-radius:20px;padding:28px;backdrop-filter:blur(12px);}
-  .settings-panel{position:fixed;top:0;right:0;height:100%;width:min(380px,100%);background:#1A0044f5;border-left:1.5px solid #ffffff22;backdrop-filter:blur(16px);z-index:200;display:flex;flex-direction:column;overflow:hidden;transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);}
-  .settings-panel-overlay{position:fixed;inset:0;background:#00000066;z-index:199;}
+  .locked-badge{background:#BF1E41;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;}
+  .open-badge{background:#82B63A;color:#14213D;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;}
+  .btn-google{background:#fff;color:#14213D;border:1.5px solid #14213D2e;border-radius:14px;padding:12px 28px;font-family:'Poppins',sans-serif;font-size:17px;cursor:pointer;font-weight:600;box-shadow:0 2px 14px rgba(20,33,61,0.08);transition:transform 0.15s;display:flex;align-items:center;gap:10px;}
+  .btn-google:hover{transform:translateY(-1px);}
+  .privacy-modal{max-width:500px;width:100%;max-height:88vh;overflow-y:auto;background:#FFFFFF;border:1px solid #14213D1f;border-radius:20px;padding:28px;}
+  .settings-panel{position:fixed;top:0;right:0;height:100%;width:min(380px,100%);background:#FFFDF9;border-left:1px solid #14213D1f;z-index:200;display:flex;flex-direction:column;overflow:hidden;transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);}
+  .settings-panel-overlay{position:fixed;inset:0;background:#14213D55;z-index:199;}
   .settings-section{padding:18px 20px 0;}
-  .settings-section-title{font-size:11px;color:#ffffffbb;text-transform:uppercase;letter-spacing:2px;font-weight:900;margin-bottom:10px;}
-  .notif-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #ffffff11;}
+  .settings-section-title{font-size:11px;color:#5B6878;text-transform:uppercase;letter-spacing:2px;font-weight:800;margin-bottom:10px;}
+  .notif-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #14213D14;}
   .toggle{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;}
   .toggle input{opacity:0;width:0;height:0;}
-  .toggle-slider{position:absolute;inset:0;background:#ffffff33;border-radius:24px;cursor:pointer;transition:background 0.2s;}
-  .toggle-slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform 0.2s;}
-  .toggle input:checked+.toggle-slider{background:linear-gradient(135deg,#FF2D9B,#BF5FFF);}
+  .toggle-slider{position:absolute;inset:0;background:#14213D26;border-radius:24px;cursor:pointer;transition:background 0.2s;}
+  .toggle-slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
+  .toggle input:checked+.toggle-slider{background:#8C62D1;}
   .toggle input:checked+.toggle-slider:before{transform:translateX(20px);}
-  .notif-feed{position:fixed;top:0;right:0;height:100%;width:min(380px,100%);background:#1A0044f5;border-left:1.5px solid #ffffff22;backdrop-filter:blur(16px);z-index:200;display:flex;flex-direction:column;overflow:hidden;}
-  @keyframes slideInRight{from{transform:translateX(100%);}to{transform:translateX(0);}}`;
+  .notif-feed{position:fixed;top:0;right:0;height:100%;width:min(380px,100%);background:#FFFDF9;border-left:1px solid #14213D1f;z-index:200;display:flex;flex-direction:column;overflow:hidden;}
+  @keyframes slideInRight{from{transform:translateX(100%);}to{transform:translateX(0);}}
+  /* Header, headings and bottom tab bar */
+  .app-header{width:100%;max-width:500px;padding:22px 20px 0;display:flex;justify-content:space-between;align-items:center;}
+  .wordmark{font-family:'Poppins',sans-serif;font-weight:700;font-size:23px;line-height:1;}
+  .wordmark .wc{color:#FF7F11;} .wordmark .ab{color:#8C62D1;}
+  .icon-btn{position:relative;width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;cursor:pointer;padding:0;}
+  .icon-btn.bell{border:3px solid #00BFB2;} .icon-btn.me{border:3px solid #F4E409;}
+  .dotbadge{position:absolute;top:5px;right:6px;width:9px;height:9px;border-radius:50%;background:#8C62D1;border:2px solid #fff;}
+  .eyebrow{font-size:12px;letter-spacing:0.14em;font-weight:700;color:#0062B1;text-transform:uppercase;margin:0 0 8px;}
+  .headline{font-family:'Poppins',sans-serif;font-weight:600;font-size:clamp(26px,7.4vw,31px);line-height:1.15;margin:0 0 12px;color:#14213D;}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+  .chip{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:#fff;border:1px solid #14213D1f;color:#14213D;}
+  .card-title{font-family:'Poppins',sans-serif;font-weight:600;font-size:16px;color:#14213D;}
+  .bottom-nav{position:fixed!important;left:0;right:0;bottom:0;z-index:50!important;background:rgba(255,255,255,0.97);border-top:1px solid #14213D1f;display:flex;justify-content:center;padding:8px 6px calc(10px + env(safe-area-inset-bottom));}
+  .bottom-nav-inner{display:flex;width:100%;max-width:500px;justify-content:space-around;}
+  .nav-btn{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:#5B6878;padding:4px 0;}
+  .nav-btn.on{color:#6D47B5;}
+  .nav-btn svg{width:23px;height:23px;}`;
 
 // ── Helpers ──────────────────────────────────────────────────────
 // Formats a date as "YYYY-MM-DD" using the user's local calendar (not UTC)
@@ -251,13 +280,27 @@ async function shareGroup(groupId, setCopied) {
   }
 }
 
+// ── Background circles (decorative, shown behind every screen) ──
+function BgCircles(){
+  return <div className="bgc" aria-hidden="true">{[1,2,3,4,5,6,7,8,9].map(i=><i key={i} className={`c${i}`}/>)}</div>;
+}
+
+// ── Bottom tab bar icons (simple line drawings) ──
+function TabIcon({name}){
+  const common={fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"};
+  if(name==="Dashboard")return <svg viewBox="0 0 24 24" {...common}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>;
+  if(name==="Group")return <svg viewBox="0 0 24 24" {...common}><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17.5" cy="9" r="2.5"/><path d="M16 14.2a5 5 0 0 1 5.5 5.3"/></svg>;
+  if(name==="Chat")return <svg viewBox="0 0 24 24" {...common}><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12Z"/></svg>;
+  if(name==="Stats")return <svg viewBox="0 0 24 24" {...common}><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>;
+  return <svg viewBox="0 0 24 24" {...common}><circle cx="12" cy="12" r="9"/><path d="M14.8 9.2c-.6-.8-1.6-1.2-2.8-1.2-1.7 0-3 .9-3 2s1.3 1.7 3 2 3 .9 3 2-1.3 2-3 2c-1.2 0-2.3-.5-2.8-1.2"/><path d="M12 6.5v11"/></svg>;
+}
+
 // ── Ring ─────────────────────────────────────────────────────────
 function Ring({pct,size=100,stroke=8}){
   const r=(size-stroke*2)/2,c=2*Math.PI*r,off=c-(Math.min(pct,100)/100)*c;
-  return(<svg width={size} height={size} style={{transform:"rotate(-90deg)",filter:`drop-shadow(0 0 8px ${pct>=100?LF.lime:LF.pink}88)`}}>
-    <defs><linearGradient id="rg"><stop offset="0%" stopColor={pct>=100?LF.lime:LF.pink}/><stop offset="100%" stopColor={pct>=100?LF.violet:LF.purple}/></linearGradient></defs>
-    <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#ffffff18" strokeWidth={stroke}/>
-    <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="url(#rg)" strokeWidth={stroke} strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" style={{transition:"stroke-dashoffset 0.6s ease"}}/>
+  return(<svg width={size} height={size} style={{transform:"rotate(-90deg)"}}>
+    <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#14213D17" strokeWidth={stroke}/>
+    <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={pct>=100?"#82B63A":"#8C62D1"} strokeWidth={stroke} strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" style={{transition:"stroke-dashoffset 0.6s ease"}}/>
   </svg>);
 }
 
@@ -278,44 +321,44 @@ function PwaPrompt({onClose}){
     <div className="modal-bg" onClick={onClose}>
       <div className="card modal" onClick={e=>e.stopPropagation()} style={{textAlign:"center"}}>
         <div style={{fontSize:40,marginBottom:12}}>📲</div>
-        <div style={{fontSize:20,fontWeight:900,color:"#FFC200",marginBottom:8}}>Install Wordcountability</div>
-        <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,lineHeight:1.7,marginBottom:20}}>
+        <div style={{fontSize:20,fontWeight:900,color:"#B85400",marginBottom:8}}>Install Wordcountability</div>
+        <div style={{fontSize:14,color:"#5B6878",fontWeight:700,lineHeight:1.7,marginBottom:20}}>
           Install the app to your home screen to get writing reminders and quick access. It takes 5 seconds!
         </div>
         {isIos&&(
-          <div style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
-            <div style={{fontSize:13,fontWeight:900,color:"#FF6EC7",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>On iPhone / iPad</div>
-            <div style={{background:"#FF2D9B22",border:"1.5px solid #FF2D9B55",borderRadius:10,padding:"8px 12px",marginBottom:10,fontSize:13,color:LF.hotpink,fontWeight:800,lineHeight:1.6}}>
+          <div style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
+            <div style={{fontSize:13,fontWeight:900,color:"#6D47B5",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>On iPhone / iPad</div>
+            <div style={{background:"#8C62D122",border:"1.5px solid #8C62D155",borderRadius:10,padding:"8px 12px",marginBottom:10,fontSize:13,color:LF.hotpink,fontWeight:800,lineHeight:1.6}}>
               ⚠️ You must use <span style={{color:LF.yellow}}>Safari</span> — this won't work in Chrome or other browsers on iPhone.
             </div>
-            <div style={{fontSize:14,color:"#fff",fontWeight:700,lineHeight:2}}>
-              1. Tap the <span style={{color:"#FFC200"}}>Share</span> button at the bottom of Safari ⬆️<br/>
-              2. Scroll down and tap <span style={{color:"#FFC200"}}>Add to Home Screen</span><br/>
-              3. Tap <span style={{color:"#FFC200"}}>Add</span> ✅
+            <div style={{fontSize:14,color:"#14213D",fontWeight:700,lineHeight:2}}>
+              1. Tap the <span style={{color:"#B85400"}}>Share</span> button at the bottom of Safari ⬆️<br/>
+              2. Scroll down and tap <span style={{color:"#B85400"}}>Add to Home Screen</span><br/>
+              3. Tap <span style={{color:"#B85400"}}>Add</span> ✅
             </div>
           </div>
         )}
         {isAndroid&&(
-          <div style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
-            <div style={{fontSize:13,fontWeight:900,color:"#FF6EC7",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>On Android</div>
-            <div style={{fontSize:14,color:"#fff",fontWeight:700,lineHeight:2}}>
-              1. Tap the <span style={{color:"#FFC200"}}>menu</span> (⋮) in your browser<br/>
-              2. Tap <span style={{color:"#FFC200"}}>Add to Home Screen</span><br/>
-              3. Tap <span style={{color:"#FFC200"}}>Add</span> ✅
+          <div style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
+            <div style={{fontSize:13,fontWeight:900,color:"#6D47B5",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>On Android</div>
+            <div style={{fontSize:14,color:"#14213D",fontWeight:700,lineHeight:2}}>
+              1. Tap the <span style={{color:"#B85400"}}>menu</span> (⋮) in your browser<br/>
+              2. Tap <span style={{color:"#B85400"}}>Add to Home Screen</span><br/>
+              3. Tap <span style={{color:"#B85400"}}>Add</span> ✅
             </div>
           </div>
         )}
         {!isIos&&!isAndroid&&(
-          <div style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
-            <div style={{fontSize:14,color:"#fff",fontWeight:700,lineHeight:2}}>
-              On <span style={{color:"#FFC200"}}>iPhone</span>: open in <span style={{color:"#FFC200"}}>Safari</span> ⬆️ Share → Add to Home Screen<br/>
-              On <span style={{color:"#FFC200"}}>Android</span>: Chrome menu ⋮ → Add to Home Screen
+          <div style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:14,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
+            <div style={{fontSize:14,color:"#14213D",fontWeight:700,lineHeight:2}}>
+              On <span style={{color:"#B85400"}}>iPhone</span>: open in <span style={{color:"#B85400"}}>Safari</span> ⬆️ Share → Add to Home Screen<br/>
+              On <span style={{color:"#B85400"}}>Android</span>: Chrome menu ⋮ → Add to Home Screen
             </div>
           </div>
         )}
-        <div style={{fontSize:12,color:"#ffffffbb",marginBottom:16}}>Push notifications only work after installing. 🔔</div>
+        <div style={{fontSize:12,color:"#5B6878",marginBottom:16}}>Push notifications only work after installing. 🔔</div>
         <button className="btn" onClick={onClose} style={{width:"100%"}}>Got it! ✨</button>
-        <button onClick={onClose} style={{background:"none",border:"none",color:"#ffffffaa",fontSize:12,cursor:"pointer",marginTop:10,fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>Maybe later</button>
+        <button onClick={onClose} style={{background:"none",border:"none",color:"#6B7685",fontSize:12,cursor:"pointer",marginTop:10,fontFamily:"'Inter',sans-serif",textDecoration:"underline"}}>Maybe later</button>
       </div>
     </div>
   );
@@ -328,10 +371,10 @@ function PrivacyModal({onClose}){
       <div className="privacy-modal" onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div style={{fontSize:20,fontWeight:900,color:LF.yellow}}>🔒 Privacy Policy</div>
-          <button onClick={onClose} style={{background:"none",border:"none",color:"#ffffffcc",fontSize:22,cursor:"pointer",lineHeight:1}}>✕</button>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"#5B6878",fontSize:22,cursor:"pointer",lineHeight:1}}>✕</button>
         </div>
-        <div style={{fontSize:14,color:"#ffffffdd",lineHeight:1.8,display:"flex",flexDirection:"column",gap:16}}>
-          <div style={{fontSize:12,color:"#ffffffcc"}}>Last updated: April 2026</div>
+        <div style={{fontSize:14,color:"#3D4A5C",lineHeight:1.8,display:"flex",flexDirection:"column",gap:16}}>
+          <div style={{fontSize:12,color:"#5B6878"}}>Last updated: April 2026</div>
 
           <div>
             <div style={{fontWeight:900,color:LF.hotpink,marginBottom:6}}>What is Wordcountability?</div>
@@ -397,8 +440,8 @@ function SignIn({onPrivacy}){
     }finally{setLoading(false);}
   }
   return(
-    <div className="leopard leopard-setup" style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"32px 24px",fontFamily:"'Outfit',sans-serif",color:"#fff"}}>
-      <style>{G}</style>
+    <div className="leopard leopard-setup" style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"32px 24px",fontFamily:"'Inter',sans-serif",color:"#14213D"}}>
+      <style>{G}</style><BgCircles/>
       <div style={{maxWidth:380,width:"100%",display:"flex",flexDirection:"column",alignItems:"center",gap:24,textAlign:"center"}}>
         <div style={{fontSize:44,fontWeight:900,lineHeight:1.1}}>Wordcountability</div>
         <div style={{fontSize:18,color:LF.hotpink,fontWeight:700,lineHeight:1.5}}>
@@ -414,10 +457,10 @@ function SignIn({onPrivacy}){
           {loading?"Signing in…":"Continue with Google"}
         </button>
         {error&&<div style={{color:LF.pink,fontWeight:800,fontSize:15}}>{error}</div>}
-        <div style={{fontSize:13,color:"#ffffffcc",lineHeight:1.6}}>
+        <div style={{fontSize:13,color:"#5B6878",lineHeight:1.6}}>
           Your progress syncs across devices using your Google account.<br/>No separate password needed.
         </div>
-        <button onClick={onPrivacy} style={{background:"none",border:"none",color:"#ffffffbb",fontSize:13,cursor:"pointer",fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>
+        <button onClick={onPrivacy} style={{background:"none",border:"none",color:"#5B6878",fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",textDecoration:"underline"}}>
           Privacy Policy
         </button>
       </div>
@@ -444,8 +487,8 @@ function Setup({user,onSave}){
   }
 
   return(
-    <div className="leopard leopard-setup" style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",padding:"32px 24px 48px",fontFamily:"'Outfit',sans-serif",color:"#fff"}}>
-      <style>{G}</style>
+    <div className="leopard leopard-setup" style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",padding:"32px 24px 48px",fontFamily:"'Inter',sans-serif",color:"#14213D"}}>
+      <style>{G}</style><BgCircles/>
       <div style={{maxWidth:420,width:"100%",display:"flex",flexDirection:"column",gap:16}}>
         <div style={{textAlign:"center",marginBottom:4}}>
           <div style={{fontSize:38,fontWeight:900,lineHeight:1.1}}>Wordcountability</div>
@@ -459,28 +502,28 @@ function Setup({user,onSave}){
 
         <div className="card"><span className="lbl">Pick Your Player</span>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {AVATARS.map(a=><button key={a} onClick={()=>setAvatar(a)} style={{width:64,height:64,fontSize:30,border:`2px solid ${avatar===a?LF.pink:"#ffffff33"}`,borderRadius:16,cursor:"pointer",background:avatar===a?"#FF2D9B22":"#ffffff18",transition:"all 0.2s",transform:avatar===a?"scale(1.1)":"scale(1)",boxShadow:avatar===a?"0 0 16px #FF2D9B66":"none"}}>{a}</button>)}
+            {AVATARS.map(a=><button key={a} onClick={()=>setAvatar(a)} style={{width:64,height:64,fontSize:30,border:`2px solid ${avatar===a?LF.pink:"#14213D26"}`,borderRadius:16,cursor:"pointer",background:avatar===a?"#8C62D122":"#14213D0d",transition:"all 0.2s",transform:avatar===a?"scale(1.1)":"scale(1)",boxShadow:avatar===a?"0 0 16px #8C62D166":"none"}}>{a}</button>)}
           </div>
         </div>
 
         <div className="card"><span className="lbl">Weekly Goal Type</span>
           <div className="pill" style={{marginBottom:12}}>
-            <button onClick={()=>setGType("words")} style={{background:gType==="words"?`linear-gradient(135deg,#FF2D9B,#BF5FFF)`:"transparent",color:"#fff"}}>✍️ Word Count</button>
-            <button onClick={()=>setGType("time")}  style={{background:gType==="time"?`linear-gradient(135deg,#E040FB,#C77DFF)`:"transparent",color:"#fff"}}>⏱️ Time</button>
+            <button onClick={()=>setGType("words")} style={{background:gType==="words"?`linear-gradient(135deg,#8C62D1,#8377D1)`:"transparent",color:"#14213D"}}>✍️ Word Count</button>
+            <button onClick={()=>setGType("time")}  style={{background:gType==="time"?`linear-gradient(135deg,#0062B1,#8377D1)`:"transparent",color:"#14213D"}}>⏱️ Time</button>
           </div>
           <input className="inp" type="number" value={gVal} onChange={e=>setGVal(e.target.value)} placeholder={gType==="words"?"e.g. 2000 words":"e.g. 120 minutes"}/>
-          {gType==="time"&&<div style={{fontSize:13,color:"#ffffffcc",marginTop:6}}>Total minutes per week</div>}
+          {gType==="time"&&<div style={{fontSize:13,color:"#5B6878",marginTop:6}}>Total minutes per week</div>}
         </div>
 
         <div className="card"><span className="lbl">Group ID</span>
           <input className="inp" value={grp} onChange={e=>setGrp(e.target.value.toLowerCase().replace(/\s/g,""))} placeholder="e.g. unicornwriters" onKeyDown={e=>e.key==="Enter"&&handleGo()}/>
-          <div style={{fontSize:13,color:"#ffffffcc",marginTop:8}}>Everyone with the same Group ID shares a leaderboard &amp; chat. Create a new one or enter an existing one.</div>
+          <div style={{fontSize:13,color:"#5B6878",marginTop:8}}>Everyone with the same Group ID shares a leaderboard &amp; chat. Create a new one or enter an existing one.</div>
         </div>
 
-        <button className="btn" onClick={handleGo} style={{fontSize:17,padding:16,opacity:ok?1:0.4}}>
+        <button className="btn btn-sm" onClick={handleGo} style={{fontSize:17,padding:16,opacity:ok?1:0.4}}>
           {saving?"Joining…":"Let's GO! 🚀"}
         </button>
-        <button onClick={()=>signOut(auth)} style={{background:"none",border:"none",cursor:"pointer",color:"#ffffffbb",fontSize:13,fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>
+        <button onClick={()=>signOut(auth)} style={{background:"none",border:"none",cursor:"pointer",color:"#5B6878",fontSize:13,fontFamily:"'Inter',sans-serif",textDecoration:"underline"}}>
           Sign out
         </button>
       </div>
@@ -715,15 +758,15 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
       <div className="settings-panel-overlay" onClick={onClose}/>
       <div className="settings-panel" style={{animation:"slideInRight 0.3s cubic-bezier(0.4,0,0.2,1)"}}>
         {/* Header */}
-        <div style={{padding:"20px 20px 14px",borderBottom:"1px solid #ffffff18",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+        <div style={{padding:"20px 20px 14px",borderBottom:"1px solid #14213D0d",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
           <div style={{fontSize:18,fontWeight:900,color:LF.white}}>Settings</div>
-          <button onClick={onClose} style={{background:"none",border:"none",color:"#ffffffcc",fontSize:22,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"#5B6878",fontSize:22,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
         </div>
 
         {/* Section tabs */}
-        <div style={{display:"flex",borderBottom:"1px solid #ffffff18",flexShrink:0,overflowX:"auto"}}>
+        <div style={{display:"flex",borderBottom:"1px solid #14213D0d",flexShrink:0,overflowX:"auto"}}>
           {[{id:"profile",icon:"👤"},{id:"notifications",icon:"🔔"},{id:"accolades",icon:"🏆"},{id:"about",icon:"ℹ️"}].map(s=>(
-            <button key={s.id} onClick={()=>setSection(s.id)} style={{flex:1,background:"none",border:"none",borderBottom:`3px solid ${section===s.id?LF.pink:"transparent"}`,color:section===s.id?LF.pink:"#ffffffaa",fontFamily:"'Outfit',sans-serif",fontSize:11,fontWeight:900,textTransform:"uppercase",letterSpacing:1,padding:"10px 4px",cursor:"pointer",whiteSpace:"nowrap",transition:"color 0.2s"}}>
+            <button key={s.id} onClick={()=>setSection(s.id)} style={{flex:1,background:"none",border:"none",borderBottom:`3px solid ${section===s.id?LF.pink:"transparent"}`,color:section===s.id?LF.pink:"#6B7685",fontFamily:"'Inter',sans-serif",fontSize:11,fontWeight:900,textTransform:"uppercase",letterSpacing:1,padding:"10px 4px",cursor:"pointer",whiteSpace:"nowrap",transition:"color 0.2s"}}>
               {s.icon}
             </button>
           ))}
@@ -738,31 +781,31 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
               <div style={{textAlign:"center",padding:"20px 0 16px"}}>
                 <div style={{fontSize:56,marginBottom:8}}>{selectedAvatar}</div>
                 <div style={{fontSize:18,fontWeight:900,color:LF.white}}>{me.name}</div>
-                <div style={{fontSize:13,color:"#ffffffbb",fontWeight:700,marginTop:2}}>#{me.groupId}</div>
+                <div style={{fontSize:13,color:"#5B6878",fontWeight:700,marginTop:2}}>#{me.groupId}</div>
               </div>
               <div style={{marginBottom:16}}>
                 <div className="settings-section-title">Change Avatar</div>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center"}}>
                   {AVATARS.map(a=>(
-                    <button key={a} onClick={()=>setSelectedAvatar(a)} style={{width:52,height:52,fontSize:26,border:`2px solid ${selectedAvatar===a?LF.pink:"#ffffff33"}`,borderRadius:14,cursor:"pointer",background:selectedAvatar===a?"#FF2D9B22":"#ffffff18",transition:"all 0.2s",transform:selectedAvatar===a?"scale(1.1)":"scale(1)",boxShadow:selectedAvatar===a?"0 0 14px #FF2D9B66":"none"}}>{a}</button>
+                    <button key={a} onClick={()=>setSelectedAvatar(a)} style={{width:52,height:52,fontSize:26,border:`2px solid ${selectedAvatar===a?LF.pink:"#14213D26"}`,borderRadius:14,cursor:"pointer",background:selectedAvatar===a?"#8C62D122":"#14213D0d",transition:"all 0.2s",transform:selectedAvatar===a?"scale(1.1)":"scale(1)",boxShadow:selectedAvatar===a?"0 0 14px #8C62D166":"none"}}>{a}</button>
                   ))}
                 </div>
                 {selectedAvatar!==me.avatar&&(
-                  <button className="btn" onClick={handleAvatarSave} disabled={savingAvatar} style={{width:"100%",marginTop:12,fontSize:15}}>
+                  <button className="btn btn-sm" onClick={handleAvatarSave} disabled={savingAvatar} style={{width:"100%",marginTop:12,fontSize:15}}>
                     {savingAvatar?"Saving…":"Save Avatar ✨"}
                   </button>
                 )}
               </div>
-              <div style={{borderTop:"1px solid #ffffff18",paddingTop:16,display:"flex",flexDirection:"column",gap:8}}>
-                <button onClick={onOpenPrivacy} style={{background:"#ffffff11",border:"1px solid #ffffff22",borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Outfit',sans-serif",color:"#fff",fontSize:14,fontWeight:700}}>
+              <div style={{borderTop:"1px solid #14213D0d",paddingTop:16,display:"flex",flexDirection:"column",gap:8}}>
+                <button onClick={onOpenPrivacy} style={{background:"#14213D0a",border:"1px solid #14213D1f",borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Inter',sans-serif",color:"#14213D",fontSize:14,fontWeight:700}}>
                   🔒 Privacy Policy
                 </button>
                 {isAdmin&&(
-                  <button onClick={()=>{onOpenAdmin();onClose();}} style={{background:`linear-gradient(135deg,${LF.yellow}33,${LF.orange}33)`,border:`1px solid ${LF.yellow}44`,borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Outfit',sans-serif",color:LF.yellow,fontSize:14,fontWeight:800}}>
+                  <button onClick={()=>{onOpenAdmin();onClose();}} style={{background:`linear-gradient(135deg,${LF.yellow}33,${LF.orange}33)`,border:`1px solid ${LF.yellow}44`,borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Inter',sans-serif",color:LF.yellow,fontSize:14,fontWeight:800}}>
                     ⚙️ Admin Settings
                   </button>
                 )}
-                <button onClick={onSignOut} style={{background:"#FF444411",border:"1px solid #FF444433",borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Outfit',sans-serif",color:"#FF8888",fontSize:14,fontWeight:700}}>
+                <button onClick={onSignOut} style={{background:"#BF1E4111",border:"1px solid #BF1E4133",borderRadius:14,padding:"12px 16px",cursor:"pointer",textAlign:"left",fontFamily:"'Inter',sans-serif",color:"#BF1E41",fontSize:14,fontWeight:700}}>
                   ↩ Sign Out
                 </button>
               </div>
@@ -776,21 +819,21 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
 
                 {/* Status banner */}
                 {notifPerms==="denied"?(
-                  <div style={{background:"#FF444411",border:"2px solid #FF444433",borderRadius:14,padding:"12px 14px",marginBottom:16}}>
-                    <div style={{fontSize:14,fontWeight:800,color:"#FF8888",marginBottom:4}}>🚫 Notifications blocked</div>
-                    <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700,lineHeight:1.6}}>
+                  <div style={{background:"#BF1E4111",border:"2px solid #BF1E4133",borderRadius:14,padding:"12px 14px",marginBottom:16}}>
+                    <div style={{fontSize:14,fontWeight:800,color:"#BF1E41",marginBottom:4}}>🚫 Notifications blocked</div>
+                    <div style={{fontSize:13,color:"#5B6878",fontWeight:700,lineHeight:1.6}}>
                       You've blocked notifications for this site. To re-enable, go to your browser or device Settings → Notifications → Wordcountability and allow notifications.
                     </div>
                   </div>
                 ):notifPerms==="granted"?(
-                  <div style={{background:"#CCFF6611",border:"1px solid #CCFF6633",borderRadius:14,padding:"10px 14px",marginBottom:16}}>
+                  <div style={{background:"#82B63A11",border:"1px solid #82B63A33",borderRadius:14,padding:"10px 14px",marginBottom:16}}>
                     {hasPlayerId?(
                       <div style={{fontSize:13,color:LF.lime,fontWeight:700}}>✅ Push notifications are enabled</div>
                     ):(
                       <>
                         <div style={{fontSize:13,color:LF.yellow,fontWeight:700,marginBottom:10}}>⚠️ Notifications are allowed but not fully connected. Tap below to finish setup.</div>
                         {syncStatus==="success"&&<div style={{fontSize:13,color:LF.lime,fontWeight:700,marginBottom:8}}>✅ Connected! You're all set.</div>}
-                        {syncStatus==="failed"&&<div style={{fontSize:13,color:"#FF8888",fontWeight:700,marginBottom:8}}>Couldn't connect — try closing and reopening the app, then tap again.</div>}
+                        {syncStatus==="failed"&&<div style={{fontSize:13,color:"#BF1E41",fontWeight:700,marginBottom:8}}>Couldn't connect — try closing and reopening the app, then tap again.</div>}
                         <button
                           className="btn"
                           onClick={handleSyncPlayerId}
@@ -804,16 +847,16 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                   </div>
                 ):(
                   <>
-                    <div style={{background:"#ffffff0a",border:"1px solid #ffffff22",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#ffffffcc",fontWeight:700}}>
+                    <div style={{background:"#14213D08",border:"1px solid #14213D1f",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#5B6878",fontWeight:700}}>
                       🔔 Enable push notifications to get writing reminders and group updates on your device.
                     </div>
                     {enableStatus==="success"&&(
-                      <div style={{background:"#CCFF6611",border:"1px solid #CCFF6633",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:LF.lime,fontWeight:700}}>
+                      <div style={{background:"#82B63A11",border:"1px solid #82B63A33",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:LF.lime,fontWeight:700}}>
                         ✅ Notifications enabled! You're all set.
                       </div>
                     )}
                     {enableStatus==="denied"&&(
-                      <div style={{background:"#FF444411",border:"1px solid #FF444433",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#FF8888",fontWeight:700}}>
+                      <div style={{background:"#BF1E4111",border:"1px solid #BF1E4133",borderRadius:14,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#BF1E41",fontWeight:700}}>
                         🚫 Permission denied. Go to your browser settings to allow notifications for this site.
                       </div>
                     )}
@@ -850,7 +893,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
 
                     {/* Writing reminder sub-options */}
                     {key==="writingReminder"&&notifPrefs.writingReminder&&(
-                      <div style={{background:"#ffffff08",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px",display:"flex",flexDirection:"column",gap:8}}>
+                      <div style={{background:"#14213D06",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px",display:"flex",flexDirection:"column",gap:8}}>
                         {reminderSaved?(
                           <>
                             <div style={{fontSize:13,color:LF.lime,fontWeight:800}}>
@@ -868,15 +911,15 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                         ):(
                           <>
                             <div>
-                              <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
+                              <div style={{fontSize:12,color:"#5B6878",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
                               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                                 {["Daily","Weekly","Monthly"].map(f=>(
-                                  <button key={f} onClick={()=>setReminderFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${reminderFreqDraft===f?LF.pink:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:reminderFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
+                                  <button key={f} onClick={()=>setReminderFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${reminderFreqDraft===f?LF.pink:"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:reminderFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#14213D0d",color:"#14213D",fontWeight:700}}>{f}</button>
                                 ))}
                               </div>
                             </div>
                             <div>
-                              <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
+                              <div style={{fontSize:12,color:"#5B6878",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
                               <select value={reminderTimeDraft} onChange={e=>setReminderTimeDraft(e.target.value)} className="inp" style={{maxWidth:160,padding:"8px 12px",fontSize:14}}>
                                 {Array.from({length:24},(_,i)=>{const h=i%12===0?12:i%12;const ampm=i<12?"AM":"PM";const val=`${String(i).padStart(2,"0")}:00`;return(<option key={i} value={val}>{h}:00 {ampm}</option>);})}
                               </select>
@@ -913,8 +956,8 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                           </div>
                         )}
                         {notifPrefs.progressNotif&&(
-                          <div style={{background:"#ffffff08",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px",display:"flex",flexDirection:"column",gap:8}}>
-                            <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700,lineHeight:1.5}}>
+                          <div style={{background:"#14213D06",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px",display:"flex",flexDirection:"column",gap:8}}>
+                            <div style={{fontSize:13,color:"#5B6878",fontWeight:700,lineHeight:1.5}}>
                               A personalised update on where you stand — on track, behind, or crushing it 🎉
                             </div>
                             <div className="notif-row" style={{padding:0}}>
@@ -925,7 +968,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                               </label>
                             </div>
                             {notifPrefs.progressNotifCombined!==false?(
-                              <div style={{fontSize:12,color:"#ffffffaa",fontWeight:700}}>
+                              <div style={{fontSize:12,color:"#6B7685",fontWeight:700}}>
                                 ✅ Will arrive with your writing reminder ({notifPrefs.reminderFrequency||"Daily"} at {(()=>{const t=notifPrefs.reminderTime||"09:00";const[h,m]=t.split(":");const hr=parseInt(h);return`${hr===0?12:hr>12?hr-12:hr}:${m} ${hr<12?"AM":"PM"}`;})()})
                               </div>
                             ):(
@@ -946,15 +989,15 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                               ):(
                                 <>
                                   <div>
-                                    <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
+                                    <div style={{fontSize:12,color:"#5B6878",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
                                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                                       {["Daily","Weekly"].map(f=>(
-                                        <button key={f} onClick={()=>setProgressFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${progressFreqDraft===f?LF.pink:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:progressFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
+                                        <button key={f} onClick={()=>setProgressFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${progressFreqDraft===f?LF.pink:"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:progressFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#14213D0d",color:"#14213D",fontWeight:700}}>{f}</button>
                                       ))}
                                     </div>
                                   </div>
                                   <div>
-                                    <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
+                                    <div style={{fontSize:12,color:"#5B6878",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Time</div>
                                     <select value={progressTimeDraft} onChange={e=>setProgressTimeDraft(e.target.value)} className="inp" style={{maxWidth:160,padding:"8px 12px",fontSize:14}}>
                                       {Array.from({length:24},(_,i)=>{const h=i%12===0?12:i%12;const ampm=i<12?"AM":"PM";const val=`${String(i).padStart(2,"0")}:00`;return(<option key={i} value={val}>{h}:00 {ampm}</option>);})}
                                     </select>
@@ -977,11 +1020,11 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
 
                     {/* Chat frequency sub-option */}
                     {key==="newChatMessage"&&notifPrefs.newChatMessage&&(
-                      <div style={{background:"#ffffff08",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px"}}>
-                        <div style={{fontSize:12,color:"#ffffffbb",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
+                      <div style={{background:"#14213D06",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px"}}>
+                        <div style={{fontSize:12,color:"#5B6878",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
                         <div style={{display:"flex",gap:6}}>
                           {["Every message","Digest"].map(f=>(
-                            <button key={f} onClick={()=>handlePrefChange("chatFrequency",f)} style={{padding:"5px 12px",border:`2px solid ${notifPrefs.chatFrequency===f?LF.violet:"#ffffff33"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:13,background:notifPrefs.chatFrequency===f?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"#ffffff18",color:"#fff",fontWeight:700}}>{f}</button>
+                            <button key={f} onClick={()=>handlePrefChange("chatFrequency",f)} style={{padding:"5px 12px",border:`2px solid ${notifPrefs.chatFrequency===f?LF.violet:"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:notifPrefs.chatFrequency===f?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"#14213D0d",color:"#14213D",fontWeight:700}}>{f}</button>
                           ))}
                         </div>
                       </div>
@@ -999,7 +1042,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
               <div className="card" style={{textAlign:"center",padding:"32px 20px",border:`2px solid ${LF.yellow}33`}}>
                 <div style={{fontSize:48,marginBottom:12}}>🏆</div>
                 <div style={{fontSize:18,fontWeight:900,color:LF.yellow,marginBottom:8}}>Accolades</div>
-                <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,lineHeight:1.6}}>
+                <div style={{fontSize:14,color:"#5B6878",fontWeight:700,lineHeight:1.6}}>
                   Earn badges as you write, hit goals, and show up for your crew. Coming soon!
                 </div>
               </div>
@@ -1011,7 +1054,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
             <div className="settings-section" style={{paddingTop:20,display:"flex",flexDirection:"column",gap:12}}>
               <div className="card" style={{border:`2px solid ${LF.purple}44`}}>
                 <div style={{fontSize:15,fontWeight:900,color:LF.hotpink,marginBottom:14}}>About Wordcountability</div>
-                <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,lineHeight:1.8}}>
+                <div style={{fontSize:14,color:"#5B6878",fontWeight:700,lineHeight:1.8}}>
                   <p style={{margin:"0 0 12px"}}>Wordcountability is a space to help writers do the hardest part — put words on the page.</p>
                   <p style={{margin:"0 0 16px"}}>This app motivates writing groups to write, whether in short sprints or building consistent habits.</p>
 
@@ -1035,11 +1078,11 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                   <p style={{margin:"0 0 20px"}}>Your goal is always set as a weekly target — but your progress is tracked against your current check-in period. So if your group has a two-week check-in, your target for that period is double your weekly goal. If there's no active challenge, progress resets each week as usual.</p>
 
                   <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                    <button onClick={()=>{onStartTour();onClose();}} style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,border:"none",borderRadius:50,padding:"10px 20px",color:"#fff",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:800,cursor:"pointer",textAlign:"center"}}>
+                    <button onClick={()=>{onStartTour();onClose();}} style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,border:"none",borderRadius:50,padding:"10px 20px",color:"#14213D",fontFamily:"'Inter',sans-serif",fontSize:14,fontWeight:800,cursor:"pointer",textAlign:"center"}}>
                       🌈 Take a tour of the app
                     </button>
                     <div style={{textAlign:"center"}}>
-                      <span style={{fontSize:13,color:"#ffffffaa",fontWeight:700}}>Check out our FAQs</span>
+                      <span style={{fontSize:13,color:"#6B7685",fontWeight:700}}>Check out our FAQs</span>
                       <span style={{fontSize:13,color:LF.purple,fontWeight:700}}> — Coming soon</span>
                     </div>
                     <div style={{textAlign:"center"}}>
@@ -1050,7 +1093,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
               </div>
               <div className="card" style={{border:`2px solid ${LF.purple}44`}}>
                 <div style={{fontSize:15,fontWeight:900,color:LF.hotpink,marginBottom:8}}>About the Developer</div>
-                <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,lineHeight:1.7,fontStyle:"italic"}}>Content coming soon 🌈</div>
+                <div style={{fontSize:14,color:"#5B6878",fontWeight:700,lineHeight:1.7,fontStyle:"italic"}}>Content coming soon 🌈</div>
               </div>
             </div>
           )}
@@ -1068,29 +1111,29 @@ function NotifFeed({notifications, onClose, onMarkAllRead}){
     <>
       <div className="settings-panel-overlay" onClick={onClose}/>
       <div className="notif-feed" style={{animation:"slideInRight 0.3s cubic-bezier(0.4,0,0.2,1)"}}>
-        <div style={{padding:"20px 20px 14px",borderBottom:"1px solid #ffffff18",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-          <div style={{fontSize:18,fontWeight:900,color:LF.white}}>Notifications{unread>0&&<span style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,color:"#fff",fontSize:12,fontWeight:800,padding:"2px 8px",borderRadius:20,marginLeft:8}}>{unread}</span>}</div>
+        <div style={{padding:"20px 20px 14px",borderBottom:"1px solid #14213D0d",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div style={{fontSize:18,fontWeight:900,color:LF.white}}>Notifications{unread>0&&<span style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,color:"#14213D",fontSize:12,fontWeight:800,padding:"2px 8px",borderRadius:20,marginLeft:8}}>{unread}</span>}</div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            {unread>0&&<button onClick={onMarkAllRead} style={{background:"none",border:"none",color:LF.hotpink,fontSize:12,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontWeight:800,textDecoration:"underline"}}>Mark all read</button>}
-            <button onClick={onClose} style={{background:"none",border:"none",color:"#ffffffcc",fontSize:22,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
+            {unread>0&&<button onClick={onMarkAllRead} style={{background:"none",border:"none",color:LF.hotpink,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:800,textDecoration:"underline"}}>Mark all read</button>}
+            <button onClick={onClose} style={{background:"none",border:"none",color:"#5B6878",fontSize:22,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
           </div>
         </div>
         <div style={{flex:1,overflowY:"auto",padding:"8px 0"}}>
           {notifications.length===0?(
-            <div style={{textAlign:"center",padding:"48px 24px",color:"#ffffffcc",fontSize:14,fontWeight:700}}>
+            <div style={{textAlign:"center",padding:"48px 24px",color:"#5B6878",fontSize:14,fontWeight:700}}>
               <div style={{fontSize:40,marginBottom:12}}>🔔</div>
               No notifications yet
             </div>
           ):(
             notifications.map(n=>(
-              <div key={n.id} style={{padding:"12px 20px",borderBottom:"1px solid #ffffff0a",background:n.read?"transparent":"#FF2D9B08",display:"flex",gap:12,alignItems:"flex-start"}}>
+              <div key={n.id} style={{padding:"12px 20px",borderBottom:"1px solid #14213D08",background:n.read?"transparent":"#8C62D108",display:"flex",gap:12,alignItems:"flex-start"}}>
                 <div style={{fontSize:20,flexShrink:0,marginTop:2}}>
                   {n.type==="writingReminder"?"✍️":n.type==="checkInWarning"?"⏰":n.type==="missedCheckIn"?"💔":n.type==="challengeStarting"?"🚀":n.type==="memberHitGoal"?"🌟":n.type==="newPoll"?"📊":n.type==="pollClosingSoon"?"⏳":"💬"}
                 </div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:14,fontWeight:n.read?700:900,color:n.read?"#ffffffcc":LF.white,marginBottom:2}}>{n.title}</div>
-                  <div style={{fontSize:13,color:"#ffffffaa",fontWeight:700,lineHeight:1.5}}>{n.body}</div>
-                  <div style={{fontSize:11,color:"#ffffff66",fontWeight:700,marginTop:4}}>{fmtDate(n.ts)}</div>
+                  <div style={{fontSize:14,fontWeight:n.read?700:900,color:n.read?"#5B6878":LF.white,marginBottom:2}}>{n.title}</div>
+                  <div style={{fontSize:13,color:"#6B7685",fontWeight:700,lineHeight:1.5}}>{n.body}</div>
+                  <div style={{fontSize:11,color:"#8A94A3",fontWeight:700,marginTop:4}}>{fmtDate(n.ts)}</div>
                 </div>
                 {!n.read&&<div style={{width:8,height:8,borderRadius:"50%",background:LF.pink,flexShrink:0,marginTop:6}}/>}
               </div>
@@ -2053,7 +2096,7 @@ export default function App(){
   // ── Auth/loading states ──
   if(authUser===undefined)return(
     <div className="leopard" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <style>{G}</style><div style={{fontSize:32}}>🦄</div>
+      <style>{G}</style><BgCircles/><div style={{fontSize:32}}>🦄</div>
     </div>
   );
   if(!authUser)return(
@@ -2064,7 +2107,7 @@ export default function App(){
   );
   if(!ready||(!me&&!noAccount))return(
     <div className="leopard" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <style>{G}</style><div style={{fontSize:32}}>✨</div>
+      <style>{G}</style><BgCircles/><div style={{fontSize:32}}>✨</div>
     </div>
   );
   if(!me)return <Setup user={authUser} onSave={handleSetup}/>;
@@ -2110,7 +2153,7 @@ export default function App(){
 
   return(
     <div className={`root leopard leopard-${tab.toLowerCase()}`}>
-      <style>{G}</style>
+      <style>{G}</style><BgCircles/>
       {showPrivacy&&<PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
       {showPwaPrompt&&<PwaPrompt onClose={()=>setShowPwaPrompt(false)}/>}
 
@@ -2147,15 +2190,15 @@ export default function App(){
           <div className="modal-bg" style={{zIndex:300}}>
             <div className="card modal" style={{padding:28,textAlign:"center",maxWidth:380}}>
               <div style={{fontSize:52,marginBottom:12}}>{emoji}</div>
-              {totalPeriods&&<div style={{fontSize:11,color:"#ffffffaa",fontWeight:900,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Check-in {periodNum} of {totalPeriods}</div>}
+              {totalPeriods&&<div style={{fontSize:11,color:"#6B7685",fontWeight:900,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Check-in {periodNum} of {totalPeriods}</div>}
               <div style={{fontSize:18,fontWeight:900,color:metGoal?LF.lime:LF.yellow,marginBottom:12,lineHeight:1.4}}>{heading}</div>
-              <div style={{fontSize:15,color:"#ffffffcc",fontWeight:700,lineHeight:1.7,marginBottom:8}}>{message}</div>
+              <div style={{fontSize:15,color:"#5B6878",fontWeight:700,lineHeight:1.7,marginBottom:8}}>{message}</div>
               {!metGoal&&progress>0&&(
-                <div style={{fontSize:13,color:"#ffffffaa",fontWeight:700,marginBottom:16}}>
+                <div style={{fontSize:13,color:"#6B7685",fontWeight:700,marginBottom:16}}>
                   You logged {fmtProgress} of your {fmtGoal} goal ({pct}%).
                 </div>
               )}
-              <button className="btn" style={{width:"100%",fontSize:15,marginTop:8}} onClick={()=>acknowledgeCheckIn(deadlineMs)}>
+              <button className="btn btn-sm" style={{width:"100%",fontSize:15,marginTop:8}} onClick={()=>acknowledgeCheckIn(deadlineMs)}>
                 {metGoal?"Let's celebrate! 🎉":"Got it! 💪"}
               </button>
             </div>
@@ -2179,22 +2222,22 @@ export default function App(){
           <div className="modal-bg" style={{zIndex:300}}>
             <div className="card modal" style={{padding:28,textAlign:"center",maxWidth:380}}>
               <div style={{fontSize:52,marginBottom:12}}>{step.emoji}</div>
-              <div style={{fontSize:11,color:"#ffffffaa",fontWeight:900,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Step {tourStep+1} of {TOUR_STEPS.length}</div>
+              <div style={{fontSize:11,color:"#6B7685",fontWeight:900,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Step {tourStep+1} of {TOUR_STEPS.length}</div>
               <div style={{fontSize:20,fontWeight:900,color:LF.yellow,marginBottom:12,lineHeight:1.3}}>{step.title}</div>
-              <div style={{fontSize:15,color:"#ffffffcc",fontWeight:700,lineHeight:1.7,marginBottom:24}}>{step.body}</div>
+              <div style={{fontSize:15,color:"#5B6878",fontWeight:700,lineHeight:1.7,marginBottom:24}}>{step.body}</div>
               <div style={{display:"flex",gap:8}}>
                 {isLast?(
-                  <button className="btn" style={{flex:1,fontSize:15}} onClick={()=>setShowTour(false)}>Now it's time to write! 🌈</button>
+                  <button className="btn btn-sm" style={{flex:1,fontSize:15}} onClick={()=>setShowTour(false)}>Now it's time to write! 🌈</button>
                 ):(
                   <>
-                    <button className="btn" style={{flex:1,fontSize:15}} onClick={()=>setTourStep(s=>s+1)}>Next →</button>
-                    <button onClick={()=>setShowTour(false)} style={{flex:1,background:"#ffffff18",border:"2px solid #ffffff22",borderRadius:50,padding:11,fontFamily:"'Outfit',sans-serif",fontSize:14,color:"#ffffffaa",cursor:"pointer",fontWeight:700}}>Skip</button>
+                    <button className="btn btn-sm" style={{flex:1,fontSize:15}} onClick={()=>setTourStep(s=>s+1)}>Next →</button>
+                    <button onClick={()=>setShowTour(false)} style={{flex:1,background:"#14213D0d",border:"2px solid #14213D1f",borderRadius:50,padding:11,fontFamily:"'Inter',sans-serif",fontSize:14,color:"#6B7685",cursor:"pointer",fontWeight:700}}>Skip</button>
                   </>
                 )}
               </div>
               <div style={{display:"flex",justifyContent:"center",gap:6,marginTop:18}}>
                 {TOUR_STEPS.map((_,i)=>(
-                  <div key={i} onClick={()=>setTourStep(i)} style={{width:i===tourStep?20:8,height:8,borderRadius:4,background:i===tourStep?LF.pink:"#ffffff33",cursor:"pointer",transition:"all 0.2s"}}/>
+                  <div key={i} onClick={()=>setTourStep(i)} style={{width:i===tourStep?20:8,height:8,borderRadius:4,background:i===tourStep?LF.pink:"#14213D26",cursor:"pointer",transition:"all 0.2s"}}/>
                 ))}
               </div>
             </div>
@@ -2209,7 +2252,7 @@ export default function App(){
         <div className="modal-bg">
           <div className="card modal" style={{padding:24}}>
             <div style={{fontSize:22,fontWeight:900,color:LF.pink,marginBottom:4}}>💝 Pick Your Charity</div>
-            <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,marginBottom:18,lineHeight:1.6}}>
+            <div style={{fontSize:14,color:"#5B6878",fontWeight:700,marginBottom:18,lineHeight:1.6}}>
               {me.charityName
                 ? `Currently: ${me.charityName}. Choose a new one below.`
                 : "Stakes go to each member's chosen charity. Pick yours!"}
@@ -2221,14 +2264,14 @@ export default function App(){
                 const sel=me.charityName===c.name;
                 return(
                   <button key={c.url} onClick={()=>saveCharityFromModal(c.name,c.url)}
-                    style={{background:sel?`linear-gradient(135deg,${LF.pink}33,${LF.purple}33)`:"#ffffff0a",border:`2px solid ${sel?LF.pink:"#ffffff22"}`,borderRadius:14,padding:"12px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
+                    style={{background:sel?`linear-gradient(135deg,${LF.pink}33,${LF.purple}33)`:"#14213D08",border:`2px solid ${sel?LF.pink:"#14213D1f"}`,borderRadius:14,padding:"12px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
                     <div style={{fontSize:15,fontWeight:800,color:sel?LF.pink:LF.white}}>{sel?"✨ ":""}{c.name}</div>
                   </button>
                 );
               })}
 
               {/* Custom option */}
-              <div style={{border:`2px solid ${charityCustomStep==="confirm"?LF.violet:"#ffffff22"}`,borderRadius:14,padding:"12px 14px",background:"#ffffff0a"}}>
+              <div style={{border:`2px solid ${charityCustomStep==="confirm"?LF.violet:"#14213D1f"}`,borderRadius:14,padding:"12px 14px",background:"#14213D08"}}>
                 <div style={{fontSize:15,fontWeight:800,color:LF.white,marginBottom:charityCustomStep==="url"?10:0}}>🔗 Custom charity</div>
 
                 {charityCustomStep==="url"&&(<>
@@ -2256,19 +2299,19 @@ export default function App(){
                 </>)}
 
                 {charityCustomStep==="confirm"&&(<>
-                  <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700,marginTop:6,marginBottom:8}}>
+                  <div style={{fontSize:13,color:"#5B6878",fontWeight:700,marginTop:6,marginBottom:8}}>
                     We found this name — edit if needed:
                   </div>
                   <input className="inp" value={charityEditName} onChange={e=>setCharityEditName(e.target.value)}
                     placeholder="Charity name" style={{marginBottom:10,fontSize:14}}/>
                   <div style={{display:"flex",gap:8}}>
-                    <button className="btn" style={{flex:1,fontSize:13}}
+                    <button className="btn btn-sm" style={{flex:1,fontSize:13}}
                       disabled={!charityEditName.trim()}
                       onClick={()=>saveCharityFromModal(charityEditName.trim(),normalizeUrl(charityCustomUrl))}>
                       Save ✨
                     </button>
                     <button onClick={()=>{setCharityCustomStep("url");setCharityFetchedName(null);}}
-                      style={{flex:1,background:"#ffffff18",border:"2px solid #ffffff22",borderRadius:50,cursor:"pointer",fontSize:13,color:"#fff",fontFamily:"'Outfit',sans-serif",fontWeight:700}}>
+                      style={{flex:1,background:"#14213D0d",border:"2px solid #14213D1f",borderRadius:50,cursor:"pointer",fontSize:13,color:"#14213D",fontFamily:"'Inter',sans-serif",fontWeight:700}}>
                       ← Back
                     </button>
                   </div>
@@ -2279,7 +2322,7 @@ export default function App(){
             {/* Skip / close — only if they already have a charity */}
             {me.charityName&&(
               <button onClick={()=>setShowCharityModal(false)}
-                style={{width:"100%",background:"none",border:"none",color:"#ffffffaa",fontSize:13,cursor:"pointer",fontFamily:"'Outfit',sans-serif",textDecoration:"underline",marginTop:4}}>
+                style={{width:"100%",background:"none",border:"none",color:"#6B7685",fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",textDecoration:"underline",marginTop:4}}>
                 Keep current ({me.charityName})
               </button>
             )}
@@ -2295,11 +2338,11 @@ export default function App(){
           <div className="modal-bg" onClick={()=>{setShowPastDayModal(false);setPastDaySelected(null);setPastDayInput("");}}>
             <div className="card modal" style={{padding:24}} onClick={e=>e.stopPropagation()}>
               <div style={{fontSize:20,fontWeight:900,color:LF.pink,marginBottom:4}}>📅 Log a Previous Day</div>
-              <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,marginBottom:16,lineHeight:1.6}}>
+              <div style={{fontSize:14,color:"#5B6878",fontWeight:700,marginBottom:16,lineHeight:1.6}}>
                 Pick a day from this check-in period and add your {me.goalType==="words"?"words":"minutes"}.
               </div>
               {days.length===0?(
-                <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,textAlign:"center",padding:"16px 0"}}>No previous days available in this period yet.</div>
+                <div style={{fontSize:14,color:"#5B6878",fontWeight:700,textAlign:"center",padding:"16px 0"}}>No previous days available in this period yet.</div>
               ):(
                 <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16,maxHeight:220,overflowY:"auto"}}>
                   {[...days].reverse().map((d,i)=>{
@@ -2308,7 +2351,7 @@ export default function App(){
                     const sel=pastDaySelected&&pastDaySelected.toDateString()===d.toDateString();
                     return(
                       <button key={i} onClick={()=>setPastDaySelected(d)}
-                        style={{background:sel?`linear-gradient(135deg,${LF.pink}33,${LF.purple}33)`:"#ffffff0a",border:`2px solid ${sel?LF.pink:"#ffffff22"}`,borderRadius:14,padding:"10px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
+                        style={{background:sel?`linear-gradient(135deg,${LF.pink}33,${LF.purple}33)`:"#14213D08",border:`2px solid ${sel?LF.pink:"#14213D1f"}`,borderRadius:14,padding:"10px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
                         <div style={{fontSize:14,fontWeight:800,color:sel?LF.pink:LF.white}}>{sel?"✨ ":""}{label}</div>
                       </button>
                     );
@@ -2317,7 +2360,7 @@ export default function App(){
               )}
               {pastDaySelected&&(
                 <div style={{marginBottom:16}}>
-                  <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>
+                  <div style={{fontSize:13,color:"#5B6878",fontWeight:800,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>
                     {me.goalType==="words"?"Words written":"Minutes written"}
                   </div>
                   <div style={{display:"flex",gap:8}}>
@@ -2329,7 +2372,7 @@ export default function App(){
                 </div>
               )}
               <button onClick={()=>{setShowPastDayModal(false);setPastDaySelected(null);setPastDayInput("");}}
-                style={{width:"100%",background:"none",border:"none",color:"#ffffffaa",fontSize:13,cursor:"pointer",fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>
+                style={{width:"100%",background:"none",border:"none",color:"#6B7685",fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",textDecoration:"underline"}}>
                 Cancel
               </button>
             </div>
@@ -2338,42 +2381,14 @@ export default function App(){
       })()}
 
       {/* ── Header ── */}
-      <div style={{width:"100%",maxWidth:500,padding:"22px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-        <div>
-          <div style={{fontSize:26,fontWeight:900,lineHeight:1,marginBottom:4}}>Wordcountability</div>
-          <div style={{fontSize:14,color:LF.hotpink,fontWeight:800,display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
-            {me.avatar} {me.name} · <span style={{color:"#fff"}}>#{me.groupId}</span>
-            {amAdmin&&<span style={{background:`linear-gradient(135deg,${LF.yellow},${LF.orange})`,color:"#1A0030",fontSize:11,fontWeight:800,padding:"2px 8px",borderRadius:20}}>⭐ ADMIN</span>}
-            {triggered&&<span style={{background:`linear-gradient(135deg,${LF.orange},${LF.pink})`,color:"#fff",fontSize:11,fontWeight:800,padding:"2px 8px",borderRadius:20}}>💸 PAY UP!</span>}
-            {!triggered&&atRisk&&<span style={{background:`linear-gradient(135deg,${LF.yellow},${LF.orange})`,color:"#1A0030",fontSize:11,fontWeight:800,padding:"2px 8px",borderRadius:20}}>⚠️ AT RISK</span>}
-            {isLocked&&<span className="locked-badge">🔒 Locked</span>}
-            {admin.changeWindowOpen&&<span className="open-badge">🔓 Window Open</span>}
-          </div>
-          {endDate&&<div style={{fontSize:13,color:LF.lime,fontWeight:800,marginTop:3}}>🏁 {daysLeft}d left · {admin.frequency}</div>}
-        </div>
-        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
-          {/* Bell icon */}
-          <button onClick={()=>setShowNotifFeed(true)} style={{position:"relative",background:"#ffffff18",border:"1px solid #ffffff33",borderRadius:50,width:38,height:38,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
+      <div className="app-header">
+        <div className="wordmark"><span className="wc">Wordcount</span><span className="ab">ability</span></div>
+        <div style={{display:"flex",gap:10,alignItems:"center",flexShrink:0}}>
+          <button className="icon-btn bell" onClick={()=>setShowNotifFeed(true)} aria-label="Notifications">
             🔔
-            {inAppNotifs.filter(n=>!n.read).length>0&&(
-              <span style={{position:"absolute",top:2,right:2,width:10,height:10,background:LF.pink,borderRadius:"50%",border:"2px solid #1A0044"}}/>
-            )}
+            {inAppNotifs.filter(n=>!n.read).length>0&&<span className="dotbadge"/>}
           </button>
-          {/* Gear / settings icon */}
-          <button onClick={()=>setShowSettings(true)} style={{background:"none",border:"none",borderRadius:50,width:38,height:38,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,padding:0}}>
-            <svg width="28" height="28" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="gearRainbow" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%"   stopColor="#FF2D9B"/>
-                  <stop offset="30%"  stopColor="#FF7A00"/>
-                  <stop offset="55%"  stopColor="#FFC200"/>
-                  <stop offset="78%"  stopColor="#E040FB"/>
-                  <stop offset="100%" stopColor="#C77DFF"/>
-                </linearGradient>
-              </defs>
-              <path fill="url(#gearRainbow)" d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.73-.07-1.08l2.32-1.81c.21-.16.27-.46.13-.7l-2.2-3.81c-.14-.24-.42-.32-.66-.24l-2.74 1.1c-.57-.44-1.18-.81-1.86-1.08l-.42-2.92A.54.54 0 0 0 14 2h-4a.54.54 0 0 0-.54.46L9.04 5.38C8.36 5.65 7.75 6 7.18 6.46L4.44 5.36c-.24-.09-.52 0-.66.24L1.58 9.41c-.14.24-.08.54.13.7l2.32 1.81C4.03 12.27 4 12.63 4 13s.03.73.07 1.08L1.75 15.9c-.21.16-.27.46-.13.7l2.2 3.81c.14.24.42.32.66.24l2.74-1.1c.57.44 1.18.81 1.86 1.08l.42 2.92c.05.26.27.45.54.45h4c.27 0 .49-.19.53-.46l.42-2.92c.68-.27 1.29-.64 1.86-1.08l2.74 1.1c.24.09.52 0 .66-.24l2.2-3.81c.14-.24.08-.54-.13-.7l-2.32-1.81z"/>
-            </svg>
-          </button>
+          <button className="icon-btn me" onClick={()=>setShowSettings(true)} aria-label="Profile and settings">{me.avatar}</button>
         </div>
       </div>
 
@@ -2385,12 +2400,12 @@ export default function App(){
 
             <span className="lbl">Challenge Duration</span>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
-              {DURATIONS.map(d=><button key={d.label} onClick={()=>setAdminDraft(s=>({...s,duration:d.label}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.duration===d.label?LF.yellow:"#ffffff22"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:14,background:adminDraft.duration===d.label?`linear-gradient(135deg,${LF.yellow},${LF.orange})`:"#ffffff18",color:adminDraft.duration===d.label?"#1A0030":"#fff"}}>{d.label}</button>)}
+              {DURATIONS.map(d=><button key={d.label} onClick={()=>setAdminDraft(s=>({...s,duration:d.label}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.duration===d.label?LF.yellow:"#14213D1f"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14,background:adminDraft.duration===d.label?`linear-gradient(135deg,${LF.yellow},${LF.orange})`:"#14213D0d",color:adminDraft.duration===d.label?"#1A0030":"#fff"}}>{d.label}</button>)}
             </div>
 
             <span className="lbl">Check-in Frequency</span>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
-              {FREQUENCIES.map(f=><button key={f} onClick={()=>setAdminDraft(s=>({...s,frequency:f}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.frequency===f?LF.violet:"#ffffff22"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:14,background:adminDraft.frequency===f?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"#ffffff18",color:"#fff"}}>{f}</button>)}
+              {FREQUENCIES.map(f=><button key={f} onClick={()=>setAdminDraft(s=>({...s,frequency:f}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.frequency===f?LF.violet:"#14213D1f"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14,background:adminDraft.frequency===f?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"#14213D0d",color:"#14213D"}}>{f}</button>)}
             </div>
 
             <span className="lbl">First Check-in Date &amp; Time</span>
@@ -2398,36 +2413,36 @@ export default function App(){
             {adminDraft.firstCheckIn&&(()=>{
               const start=new Date(adminDraft.firstCheckIn);
               start.setDate(start.getDate()-(adminDraft.frequency==="Daily"?1:adminDraft.frequency==="Weekly"?7:adminDraft.frequency==="Bi-Weekly"?14:30));
-              return <div style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:12,padding:"10px 14px",marginBottom:14,fontSize:13,color:LF.lime,fontWeight:800}}>
+              return <div style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:12,padding:"10px 14px",marginBottom:14,fontSize:13,color:LF.lime,fontWeight:800}}>
                 🚀 Challenge starts: {start.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {start.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
               </div>;
             })()}
-            {!adminDraft.firstCheckIn&&<div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginBottom:14}}>Pick a date to see when the challenge will start.</div>}
+            {!adminDraft.firstCheckIn&&<div style={{fontSize:12,color:"#5B6878",fontWeight:700,marginBottom:14}}>Pick a date to see when the challenge will start.</div>}
 
             <span className="lbl">What happens when someone fails?</span>
             <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
               {[
                 {mode:"charity",icon:"💝",label:"To Charity",desc:"Stakes donated to each member's chosen charity.",grad:`linear-gradient(135deg,${LF.pink},${LF.purple})`,col:"#fff"},
                 {mode:"winners",icon:"🏆",label:"Cash to Winners",desc:"Failed stakes split among members who hit their goals.",grad:`linear-gradient(135deg,${LF.yellow},${LF.orange})`,col:"#1A0030"},
-                {mode:"pain",   icon:"😈",label:"To The Pain",desc:"No money — whoever fails gets mercilessly ridiculed.",grad:`linear-gradient(135deg,#FF4444,#FF7A00)`,col:"#fff"},
+                {mode:"pain",   icon:"😈",label:"To The Pain",desc:"No money — whoever fails gets mercilessly ridiculed.",grad:`linear-gradient(135deg,#BF1E41,#FF7F11)`,col:"#fff"},
               ].map(({mode,icon,label,desc,grad,col})=>(
-                <button key={mode} onClick={()=>setAdminDraft(s=>({...s,payoutMode:mode}))} style={{background:adminDraft.payoutMode===mode?grad:"#ffffff11",border:`2px solid ${adminDraft.payoutMode===mode?"transparent":"#ffffff22"}`,borderRadius:14,padding:"10px 14px",cursor:"pointer",textAlign:"left"}}>
+                <button key={mode} onClick={()=>setAdminDraft(s=>({...s,payoutMode:mode}))} style={{background:adminDraft.payoutMode===mode?grad:"#14213D0a",border:`2px solid ${adminDraft.payoutMode===mode?"transparent":"#14213D1f"}`,borderRadius:14,padding:"10px 14px",cursor:"pointer",textAlign:"left"}}>
                   <div style={{fontSize:15,color:adminDraft.payoutMode===mode?col:"#fff",fontWeight:800,marginBottom:2}}>{icon} {label}</div>
-                  <div style={{fontSize:13,color:adminDraft.payoutMode===mode?col+"cc":"#ffffffaa",fontWeight:700}}>{desc}</div>
+                  <div style={{fontSize:13,color:adminDraft.payoutMode===mode?col+"cc":"#6B7685",fontWeight:700}}>{desc}</div>
                 </button>
               ))}
             </div>
 
-            <div style={{background:"#ffffff11",border:"1px solid #ffffff22",borderRadius:14,padding:12,marginBottom:14}}>
+            <div style={{background:"#14213D0a",border:"1px solid #14213D1f",borderRadius:14,padding:12,marginBottom:14}}>
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:adminDraft.prizeEnabled?10:0}}>
                 <input type="checkbox" id="prizeToggle" checked={!!adminDraft.prizeEnabled} onChange={e=>setAdminDraft(s=>({...s,prizeEnabled:e.target.checked}))} style={{accentColor:LF.pink,width:18,height:18,flexShrink:0}}/>
-                <label htmlFor="prizeToggle" style={{fontSize:14,color:"#fff",fontWeight:700,cursor:"pointer"}}>🏅 Also offer a Prize for the top performer</label>
+                <label htmlFor="prizeToggle" style={{fontSize:14,color:"#14213D",fontWeight:700,cursor:"pointer"}}>🏅 Also offer a Prize for the top performer</label>
               </div>
               {adminDraft.prizeEnabled&&(<>
                 <span className="lbl" style={{marginTop:6}}>Prize Metric</span>
                 <div className="pill" style={{marginBottom:8}}>
-                  <button onClick={()=>setAdminDraft(s=>({...s,prizeMetric:"absolute"}))} style={{background:adminDraft.prizeMetric==="absolute"?`linear-gradient(135deg,#E040FB,#C77DFF)`:"transparent",color:"#fff"}}>📈 Most Total</button>
-                  <button onClick={()=>setAdminDraft(s=>({...s,prizeMetric:"pct"}))} style={{background:adminDraft.prizeMetric==="pct"?`linear-gradient(135deg,#FF2D9B,#BF5FFF)`:"transparent",color:"#fff"}}>🎯 Highest %</button>
+                  <button onClick={()=>setAdminDraft(s=>({...s,prizeMetric:"absolute"}))} style={{background:adminDraft.prizeMetric==="absolute"?`linear-gradient(135deg,#0062B1,#8377D1)`:"transparent",color:"#14213D"}}>📈 Most Total</button>
+                  <button onClick={()=>setAdminDraft(s=>({...s,prizeMetric:"pct"}))} style={{background:adminDraft.prizeMetric==="pct"?`linear-gradient(135deg,#8C62D1,#8377D1)`:"transparent",color:"#14213D"}}>🎯 Highest %</button>
                 </div>
                 <span className="lbl">What's the Prize?</span>
                 <input className="inp" placeholder="e.g. Free developmental edit, gift card..." value={adminDraft.prizeDescription||""} onChange={e=>setAdminDraft(s=>({...s,prizeDescription:e.target.value}))} style={{marginBottom:6}}/>
@@ -2436,19 +2451,19 @@ export default function App(){
 
             <span className="lbl">Stake Amount per Person</span>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
-              {[0,10,25,50,100,250].map(n=><button key={n} onClick={()=>setAdminDraft(s=>({...s,stake:n}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.stake===n?LF.pink:"#ffffff22"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:14,background:adminDraft.stake===n?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#ffffff18",color:"#fff"}}>${n}</button>)}
+              {[0,10,25,50,100,250].map(n=><button key={n} onClick={()=>setAdminDraft(s=>({...s,stake:n}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.stake===n?LF.pink:"#14213D1f"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14,background:adminDraft.stake===n?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#14213D0d",color:"#14213D"}}>${n}</button>)}
             </div>
 
             <span className="lbl">Miss Threshold (triggers stake)</span>
             <div style={{display:"flex",gap:6,marginBottom:14}}>
-              {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setAdminDraft(s=>({...s,threshold:n}))} style={{flex:1,padding:"10px 0",border:`2px solid ${adminDraft.threshold===n?LF.pink:"#ffffff22"}`,borderRadius:12,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:15,background:adminDraft.threshold===n?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#ffffff18",color:"#fff"}}>{n}</button>)}
+              {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setAdminDraft(s=>({...s,threshold:n}))} style={{flex:1,padding:"10px 0",border:`2px solid ${adminDraft.threshold===n?LF.pink:"#14213D1f"}`,borderRadius:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:15,background:adminDraft.threshold===n?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#14213D0d",color:"#14213D"}}>{n}</button>)}
             </div>
 
-            <div style={{background:"#FF444411",border:"2px solid #FF444433",borderRadius:14,padding:14,marginBottom:14}}>
+            <div style={{background:"#BF1E4111",border:"2px solid #BF1E4133",borderRadius:14,padding:14,marginBottom:14}}>
               <span className="lbl" style={{color:LF.orange}}>🔒 Goal Lock</span>
-              <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700,marginBottom:10}}>When locked, members cannot lower their goals. Open a temporary change window to allow edits.</div>
+              <div style={{fontSize:13,color:"#5B6878",fontWeight:700,marginBottom:10}}>When locked, members cannot lower their goals. Open a temporary change window to allow edits.</div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <span style={{fontSize:13,color:"#fff",fontWeight:800}}>Change window (days):</span>
+                <span style={{fontSize:13,color:"#14213D",fontWeight:800}}>Change window (days):</span>
                 <input className="inp" type="number" min="1" max="14" value={adminDraft.changeWindowDays||3} onChange={e=>setAdminDraft(s=>({...s,changeWindowDays:parseInt(e.target.value)||3}))} style={{width:70,padding:"6px 10px",fontSize:13}}/>
               </div>
             </div>
@@ -2496,9 +2511,9 @@ export default function App(){
                 }
               }
               return(
-                <div style={{background:"#FFC20011",border:`2px solid ${LF.yellow}44`,borderRadius:14,padding:14,marginBottom:14}}>
+                <div style={{background:"#B8540011",border:`2px solid ${LF.yellow}44`,borderRadius:14,padding:14,marginBottom:14}}>
                   <span className="lbl" style={{color:LF.yellow}}>💸 Record Check-in Payments</span>
-                  <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginBottom:10}}>
+                  <div style={{fontSize:12,color:"#5B6878",fontWeight:700,marginBottom:10}}>
                     Check-in: {dlLabel} · {Math.round(48-hoursAgo)}h remaining to attach payments
                   </div>
                   {alreadyRecorded?(
@@ -2513,29 +2528,29 @@ export default function App(){
                       {paymentRows.length>0&&(<>
                         {isCharity&&(
                           <>
-                            <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginBottom:6}}>One row per charity. Enter the amount donated.</div>
+                            <div style={{fontSize:12,color:"#5B6878",fontWeight:700,marginBottom:6}}>One row per charity. Enter the amount donated.</div>
                             {paymentRows.map((row,i)=>(
                               <div key={i} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center"}}>
                                 <input className="inp" placeholder="Charity name" value={row.name} onChange={e=>{const r=[...paymentRows];r[i]={...r[i],name:e.target.value};setPaymentRows(r);}} style={{flex:2,padding:"8px 12px",fontSize:13}}/>
                                 <div style={{position:"relative",flex:1}}>
-                                  <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#ffffffcc",fontWeight:800,fontSize:13,pointerEvents:"none"}}>$</span>
+                                  <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#5B6878",fontWeight:800,fontSize:13,pointerEvents:"none"}}>$</span>
                                   <input className="inp" type="number" min="0" placeholder="0.00" value={row.amount} onChange={e=>{const r=[...paymentRows];r[i]={...r[i],amount:e.target.value};setPaymentRows(r);}} style={{width:"100%",padding:"8px 12px 8px 22px",fontSize:13}}/>
                                 </div>
-                                <button onClick={()=>setPaymentRows(paymentRows.filter((_,j)=>j!==i))} style={{background:"#FF444422",border:"2px solid #FF444444",borderRadius:10,width:32,height:32,cursor:"pointer",color:"#FF8888",fontSize:14,flexShrink:0}}>✕</button>
+                                <button onClick={()=>setPaymentRows(paymentRows.filter((_,j)=>j!==i))} style={{background:"#BF1E4122",border:"2px solid #BF1E4144",borderRadius:10,width:32,height:32,cursor:"pointer",color:"#BF1E41",fontSize:14,flexShrink:0}}>✕</button>
                               </div>
                             ))}
-                            <button onClick={()=>setPaymentRows([...paymentRows,{name:"",amount:""}])} style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:10,padding:"6px 14px",color:"#fff",fontFamily:"'Outfit',sans-serif",fontSize:13,cursor:"pointer",marginBottom:10}}>+ Add Charity</button>
+                            <button onClick={()=>setPaymentRows([...paymentRows,{name:"",amount:""}])} style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:10,padding:"6px 14px",color:"#14213D",fontFamily:"'Inter',sans-serif",fontSize:13,cursor:"pointer",marginBottom:10}}>+ Add Charity</button>
                           </>
                         )}
                         {isPayout&&(
                           <>
-                            <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginBottom:6}}>Enter amount per member. Positive = received money. Negative = paid out.</div>
+                            <div style={{fontSize:12,color:"#5B6878",fontWeight:700,marginBottom:6}}>Enter amount per member. Positive = received money. Negative = paid out.</div>
                             {paymentRows.map((row,i)=>(
                               <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
                                 <div style={{fontSize:18,flexShrink:0}}>{row.avatar||"🦄"}</div>
                                 <div style={{flex:1,fontSize:13,fontWeight:700,color:LF.white}}>{row.memberName}</div>
                                 <div style={{position:"relative",width:110}}>
-                                  <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#ffffffcc",fontWeight:800,fontSize:13,pointerEvents:"none"}}>$</span>
+                                  <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#5B6878",fontWeight:800,fontSize:13,pointerEvents:"none"}}>$</span>
                                   <input className="inp" type="number" placeholder="0.00" value={row.amount} onChange={e=>{const r=[...paymentRows];r[i]={...r[i],amount:e.target.value};setPaymentRows(r);}} style={{width:"100%",padding:"8px 12px 8px 22px",fontSize:13}}/>
                                 </div>
                               </div>
@@ -2556,92 +2571,95 @@ export default function App(){
               );
             })()}
 
-            <div style={{display:"flex",gap:8,position:"sticky",bottom:0,background:"#2D006Eee",paddingTop:12,marginLeft:-20,marginRight:-20,paddingLeft:20,paddingRight:20,paddingBottom:4}}>
-              <button className="btn" onClick={saveAdminSettings} style={{flex:1,fontSize:13}}>Save &amp; Activate 🌈</button>
-              <button onClick={()=>setShowAdmin(false)} style={{flex:1,background:"#ffffff18",border:"2px solid #ffffff22",borderRadius:50,padding:11,fontFamily:"'Outfit',sans-serif",fontSize:14,color:"#fff",cursor:"pointer"}}>Cancel</button>
+            <div style={{display:"flex",gap:8,position:"sticky",bottom:0,background:"#FFFFFF",paddingTop:12,marginLeft:-20,marginRight:-20,paddingLeft:20,paddingRight:20,paddingBottom:4}}>
+              <button className="btn btn-sm" onClick={saveAdminSettings} style={{flex:1,fontSize:13}}>Save &amp; Activate 🌈</button>
+              <button onClick={()=>setShowAdmin(false)} style={{flex:1,background:"#14213D0d",border:"2px solid #14213D1f",borderRadius:50,padding:11,fontFamily:"'Inter',sans-serif",fontSize:14,color:"#14213D",cursor:"pointer"}}>Cancel</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Nav ── */}
-      <div style={{width:"100%",maxWidth:500,display:"flex",padding:"14px 20px 0",borderBottom:`2px solid ${LF.pink}33`,overflowX:"auto"}}>
-        {TABS.map(t=><button key={t} className="tab" onClick={()=>setTab(t)} style={{color:tab===t?LF.pink:"#fff",borderBottom:tab===t?`4px solid ${LF.pink}`:"4px solid transparent"}}>{t}</button>)}
-      </div>
+      {/* ── Bottom tab bar ── */}
+      <nav className="bottom-nav">
+        <div className="bottom-nav-inner">
+          {TABS.map(t=>(
+            <button key={t} className={`nav-btn${tab===t?" on":""}`} onClick={()=>setTab(t)} aria-current={tab===t?"page":undefined}>
+              <TabIcon name={t}/>{TAB_LABELS[t]}
+            </button>
+          ))}
+        </div>
+      </nav>
 
       <div style={{width:"100%",maxWidth:500,padding:"18px 20px 0",display:"flex",flexDirection:"column",gap:14}}>
 
         {/* ── DASHBOARD ── */}
-        {tab==="Dashboard"&&(<>
+        {tab==="Dashboard"&&(()=>{
+          const info=getCheckInPeriodInfo();
+          const firstName=(me.name||"").split(" ")[0]||"writer";
+          const streak=history.filter(h=>h.met).length;
+          // Which check-in is coming up next (1 before the first deadline)
+          const upcoming=info?Math.min(info.periodNumber+1,info.totalPeriods||info.periodNumber+1):null;
+          const eyebrow=challengeNotStarted
+            ?`Challenge starts ${challengeStartDate.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}`
+            :info?.isActive
+              ?`Check-in ${upcoming}${info.totalPeriods?` of ${info.totalPeriods}`:""} · due ${info.nextCheckIn.toLocaleDateString("en-US",{weekday:"short"})} ${info.nextCheckIn.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}`
+              :"This week";
+          const goalLabel=me.goalType==="words"?`${periodGoal.toLocaleString()} words`:(()=>{const h=Math.floor(periodGoal/60),m=periodGoal%60;return h>0?`${h}h`+(m>0?` ${m}m`:""):m+"m";})();
+          return(<>
+          <div style={{paddingTop:4}}>
+            <p className="eyebrow">{eyebrow}</p>
+            <h1 className="headline">Hi {firstName}. {pct>=100?"Goal crushed! 🌟":`${fmtLeft()}.`}</h1>
+            <div className="chips">
+              <span className="chip">#{me.groupId}</span>
+              {amAdmin&&<span className="chip" style={{color:"#6D47B5",borderColor:"#8C62D166"}}>Admin</span>}
+              {endDate&&!challengeNotStarted&&<span className="chip">{daysLeft} days left · {admin.frequency}</span>}
+              {isLocked&&<span className="chip" style={{color:"#BF1E41",borderColor:"#BF1E4166"}}>Goals locked</span>}
+              {admin.changeWindowOpen&&<span className="chip" style={{color:"#4F7A1F",borderColor:"#82B63A88"}}>Change window open</span>}
+              {triggered&&<span className="chip" style={{background:"#BF1E41",color:"#fff",borderColor:"#BF1E41"}}>Pay up</span>}
+              {!triggered&&atRisk&&<span className="chip" style={{color:"#B85400",borderColor:"#FF7F1188"}}>At risk</span>}
+            </div>
+          </div>
+
           {challengeNotStarted&&(
-            <div className="card" style={{border:`2px solid ${LF.violet}88`,background:"#E040FB11",textAlign:"center"}}>
-              <div style={{fontSize:13,color:LF.lime,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>⏳ Challenge Countdown</div>
-              <div style={{fontSize:32,fontWeight:900,color:LF.yellow,letterSpacing:2,marginBottom:4}}>
-                {countdownDays>0&&<span>{countdownDays}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>d</span></span>}
-                {countdownHours>0&&<span>{countdownHours}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>h</span></span>}
-                <span>{countdownMins}<span style={{fontSize:14,color:"#ffffffcc"}}>m</span></span>
+            <div className="card" style={{textAlign:"center"}}>
+              <div className="card-title" style={{marginBottom:8}}>Challenge starts in</div>
+              <div style={{fontFamily:"'Poppins',sans-serif",fontSize:34,fontWeight:700,color:"#14213D",marginBottom:6}}>
+                {countdownDays>0&&<span>{countdownDays}<span style={{fontSize:15,color:"#5B6878",margin:"0 10px 0 2px"}}>d</span></span>}
+                {countdownHours>0&&<span>{countdownHours}<span style={{fontSize:15,color:"#5B6878",margin:"0 10px 0 2px"}}>h</span></span>}
+                <span>{countdownMins}<span style={{fontSize:15,color:"#5B6878",marginLeft:2}}>m</span></span>
               </div>
-              <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800}}>
-                Challenge starts {challengeStartDate.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {challengeStartDate.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
+              <div style={{fontSize:14,color:"#5B6878"}}>
+                {challengeStartDate.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {challengeStartDate.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}
               </div>
-              <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginTop:4}}>First check-in: {admin.firstCheckIn?new Date(admin.firstCheckIn).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div>
+              <div style={{fontSize:13,color:"#5B6878",marginTop:4}}>First check-in: {admin.firstCheckIn?new Date(admin.firstCheckIn).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"—"}</div>
             </div>
           )}
-          {(()=>{
-            const info=getCheckInPeriodInfo();
-            if(!info)return null;
-            return(
-              <div className="card" style={{border:`2px solid ${info.isActive?LF.violet:LF.yellow}55`,background:info.isActive?"#00E5FF08":"#FFD60008"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:info.isActive?10:0}}>
-                  <div style={{fontSize:11,fontWeight:900,color:info.isActive?LF.violet:LF.yellow,textTransform:"uppercase",letterSpacing:2}}>
-                    {info.isActive?"🟢 Round Active":"⏳ Round Starting Soon"}
-                  </div>
-                  {info.totalPeriods&&info.periodNumber>0&&(
-                    <div style={{fontSize:12,fontWeight:800,color:"#ffffffcc",background:"#ffffff14",borderRadius:50,padding:"3px 10px"}}>
-                      Period {info.periodNumber} of {info.totalPeriods}
-                    </div>
-                  )}
-                </div>
-                {info.isActive&&(
-                  <div style={{display:"flex",alignItems:"center",gap:14}}>
-                    <div>
-                      <div style={{fontSize:11,color:"#ffffffaa",fontWeight:700,marginBottom:2}}>Next check-in in</div>
-                      <div style={{fontSize:26,fontWeight:900,color:LF.yellow,letterSpacing:1}}>
-                        {info.dLeft>0&&<span>{info.dLeft}<span style={{fontSize:12,color:"#ffffffcc",marginRight:4}}>d</span></span>}
-                        {info.hLeft>0&&<span>{info.hLeft}<span style={{fontSize:12,color:"#ffffffcc",marginRight:4}}>h</span></span>}
-                        <span>{info.mLeft}<span style={{fontSize:12,color:"#ffffffcc"}}>m</span></span>
-                      </div>
-                    </div>
-                    <div style={{fontSize:12,color:"#ffffffbb",fontWeight:700,lineHeight:1.5}}>
-                      {info.nextCheckIn.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}<br/>
-                      {info.nextCheckIn.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-          <div className="card" style={{border:`2px solid ${pct>=100?LF.lime:LF.pink}66`,position:"relative"}}>
+
+          <div className="card" style={{position:"relative"}}>
             {spark>0&&["✨","⭐","💫","🌟","✨","⭐"].map((em,i)=><span key={`${spark}-${i}`} style={{position:"absolute",left:`${sparkPositions.current[i]?.left||20}%`,top:`${sparkPositions.current[i]?.top||20}%`,fontSize:16,animation:"pop 0.5s ease forwards",pointerEvents:"none"}}>{em}</span>)}
-            <div style={{display:"flex",alignItems:"center",gap:18}}>
+            <div style={{display:"flex",alignItems:"center",gap:20}}>
               <div style={{position:"relative",flexShrink:0}}>
-                <Ring pct={pct}/>
+                <Ring pct={pct} size={112} stroke={9}/>
                 <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  <span style={{fontSize:20,fontWeight:900,color:pct>=100?LF.lime:LF.yellow}}>{pct}%</span>
+                  <span style={{fontFamily:"'Poppins',sans-serif",fontSize:26,fontWeight:700,color:pct>=100?"#4F7A1F":"#14213D"}}>{pct}%</span>
                 </div>
               </div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:20,color:LF.white,fontWeight:800,marginBottom:2}}>{fmtProg(me)}</div>
-                <div style={{fontSize:14,color:LF.hotpink,fontWeight:800,marginBottom:2}}>of {me.goalType==="words"?`${periodGoal.toLocaleString()} words`:(()=>{const h=Math.floor(periodGoal/60),m=periodGoal%60;return h>0?`${h}h`+(m>0?` ${m}m`:""):m+"m";})()}{periodActive?` (${periodName(periodDays).replace(" goal","")} check-in)`:""}</div>
-                <div style={{fontSize:14,color:pct>=100?LF.lime:LF.yellow,fontWeight:800}}>{pct>=100?"🌟 GOAL CRUSHED! 🌟":fmtLeft()}</div>
-                {history.filter(h=>h.met).length>0&&<div style={{fontSize:14,marginTop:4,color:LF.yellow,fontWeight:800}}>{"🔥".repeat(Math.min(history.filter(h=>h.met).length,3))} {history.filter(h=>h.met).length}wk streak!</div>}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:"'Poppins',sans-serif",fontSize:27,fontWeight:700,lineHeight:1.1,color:"#14213D"}}>{me.goalType==="words"?me.progressThisWeek.toLocaleString():fmtProg(me)}</div>
+                <div style={{fontSize:14,color:"#5B6878",marginTop:3}}>of {goalLabel} {periodActive?"this check-in":"this week"}</div>
+                {info?.isActive&&(
+                  <span style={{display:"inline-block",marginTop:10,fontSize:13,fontWeight:700,color:"#0062B1",border:"1.5px solid #0062B1",padding:"4px 12px",borderRadius:999}}>
+                    {info.dLeft>0?`${info.dLeft} day${info.dLeft===1?"":"s"}, `:""}{info.hLeft} hour{info.hLeft===1?"":"s"} left
+                  </span>
+                )}
+                {streak>0&&<div style={{fontSize:13,marginTop:8,color:"#B85400",fontWeight:700}}>🔥 {streak}-week streak</div>}
               </div>
             </div>
-            <div style={{display:"flex",gap:6,marginTop:16}}>
+            <div style={{display:"flex",gap:8,marginTop:18}}>
               {WEEK_DAYS.map((d,i)=>(
-                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
-                  <div style={{width:"100%",height:8,borderRadius:4,background:me.dailyChecks[i]?`linear-gradient(90deg,${LF.pink},${LF.purple})`:i===todayIdx()?LF.pink+"33":"#ffffff18"}}/>
-                  <span style={{fontSize:12,color:i===todayIdx()?LF.pink:"#ffffffcc",fontWeight:800}}>{d}</span>
+                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
+                  <div style={{width:"100%",height:6,borderRadius:4,background:me.dailyChecks[i]?"#00BFB2":"#14213D14"}}/>
+                  <span style={{fontSize:12,color:i===todayIdx()?"#14213D":"#5B6878",fontWeight:i===todayIdx()?800:600}}>{d}</span>
                 </div>
               ))}
             </div>
@@ -2656,7 +2674,7 @@ export default function App(){
                 const isToday=pastDaySelected===null;
                 return(<>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                    <span className="lbl" style={{marginBottom:0}}>📝 Log Words</span>
+                    <span className="card-title">Log words</span>
                     {pastDays.length>0&&(
                       <select
                         value={pastDaySelected?pastDaySelected.toDateString():"today"}
@@ -2681,20 +2699,20 @@ export default function App(){
                     </div>
                   )}
                   <div style={{display:"flex",gap:10}}>
-                    <input className="inp" type="number" placeholder="words written" value={logInput} onChange={e=>setLogInput(e.target.value)}
+                    <input className="inp" type="number" placeholder="Words written" value={logInput} onChange={e=>setLogInput(e.target.value)}
                       onKeyDown={e=>{if(e.key==="Enter"){isToday?logProgress():logPastDayInline();}}}
-                      style={{flex:1}}/>
+                      style={{flex:1,minWidth:0}}/>
                     <button className="btn" onClick={isToday?logProgress:logPastDayInline} disabled={saving||pastDaySaving} style={{padding:"11px 20px"}}>
-                      {(saving||pastDaySaving)?"✨":"+ Log"}
+                      {(saving||pastDaySaving)?"Saving…":"Save"}
                     </button>
                   </div>
                 </>);
               })()}
             </div>
           ):(
-            <div className="card" style={{border:`2px solid ${timerRunning?LF.violet:LF.pink}55`}}>
+            <div className="card">
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-                <span className="lbl" style={{marginBottom:0}}>⏱️ Writing Timer</span>
+                <span className="card-title">Writing timer</span>
                 {(()=>{
                   const pastDays=getPastDaysInPeriod();
                   const dayNames=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
@@ -2725,62 +2743,63 @@ export default function App(){
                     📅 Logging for {(()=>{const dayNames=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];const dow=(pastDaySelected.getDay()+6)%7;return`${dayNames[dow]}, ${pastDaySelected.toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;})()}
                   </div>
                   <div style={{display:"flex",gap:10}}>
-                    <input className="inp" type="number" placeholder="minutes written" value={logInput} onChange={e=>setLogInput(e.target.value)}
+                    <input className="inp" type="number" placeholder="Minutes written" value={logInput} onChange={e=>setLogInput(e.target.value)}
                       onKeyDown={e=>{if(e.key==="Enter")logPastDayInline();}}
-                      style={{flex:1}}/>
+                      style={{flex:1,minWidth:0}}/>
                     <button className="btn" onClick={logPastDayInline} disabled={pastDaySaving} style={{padding:"11px 20px"}}>
-                      {pastDaySaving?"✨":"+ Log"}
+                      {pastDaySaving?"Saving…":"Save"}
                     </button>
                   </div>
                 </div>
               ):(
                 <>
                   <div style={{textAlign:"center",padding:"12px 0 16px"}}>
-                    <div style={{fontSize:48,color:timerRunning?LF.pink:LF.yellow,letterSpacing:2,fontWeight:800}}>{fmtTimer(timerSecs)}</div>
-                    <div style={{fontSize:14,fontWeight:800,marginTop:4,color:timerRunning?LF.pink:timerSecs>0?LF.yellow:"#ffffffcc"}}>{timerRunning?"● WRITING IN PROGRESS...":timerSecs>0?"⏸ Paused":"Hit Start when you begin ✨"}</div>
+                    <div style={{fontFamily:"Poppins,sans-serif",fontSize:48,color:"#14213D",fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtTimer(timerSecs)}</div>
+                    <div style={{fontSize:14,fontWeight:800,marginTop:4,color:timerRunning?"#6D47B5":"#5B6878"}}>{timerRunning?"● Writing in progress…":timerSecs>0?"Paused":"Tap Start when you begin"}</div>
                   </div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                     {!timerRunning
-                      ?<button className="btn" onClick={startTimer} style={{flex:1,fontSize:14}}>{timerSecs>0?"▶ Resume":"▶ Start"} Writing</button>
-                      :<button className="btn btn-teal" onClick={pauseTimer} style={{flex:1,fontSize:14}}>⏸ Pause</button>}
-                    {timerSecs>0&&<button className="btn btn-red" onClick={()=>{clearInterval(timerRef.current);setTimerRunning(false);setTimerSecs(0);}} style={{flex:1,fontSize:14}}>⏹ Stop</button>}
-                    {timerSecs>=60&&<button className="btn btn-yellow" onClick={stopAndSave} style={{width:"100%",fontSize:14,marginTop:4}}>✅ Save {Math.round(timerSecs/60)}m</button>}
+                      ?<button className="btn" onClick={startTimer} style={{flex:1}}>{timerSecs>0?"Resume":"Start"} writing</button>
+                      :<button className="btn btn-teal" onClick={pauseTimer} style={{flex:1}}>Pause</button>}
+                    {timerSecs>0&&<button className="btn btn-red" onClick={()=>{clearInterval(timerRef.current);setTimerRunning(false);setTimerSecs(0);}} style={{flex:1}}>Stop</button>}
+                    {timerSecs>=60&&<button className="btn btn-yellow" onClick={stopAndSave} style={{width:"100%",marginTop:4}}>Save {Math.round(timerSecs/60)} min</button>}
                   </div>
                   {timerSessions.length>0&&(
                     <div style={{marginTop:12,borderTop:`1px solid ${LF.purple}33`,paddingTop:10}}>
                       <div style={{fontSize:12,color:LF.lime,fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Today's Sessions</div>
-                      {timerSessions.map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,color:"#fff",fontWeight:800,padding:"2px 0"}}><span>Session {i+1}</span><span style={{color:LF.lime}}>{s.mins}m ✓</span></div>)}
+                      {timerSessions.map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,color:"#14213D",fontWeight:800,padding:"2px 0"}}><span>Session {i+1}</span><span style={{color:LF.lime}}>{s.mins}m ✓</span></div>)}
                       <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:800,marginTop:6,color:LF.yellow}}><span>Total today</span><span>{timerSessions.reduce((a,s)=>a+s.mins,0)}m 🔥</span></div>
                     </div>
                   )}
-                  <div style={{fontSize:12,color:"#ffffffaa",fontWeight:700,marginTop:10,textAlign:"center"}}>Sessions under 1 min aren't counted 🦄</div>
+                  <div style={{fontSize:12,color:"#6B7685",fontWeight:700,marginTop:10,textAlign:"center"}}>Sessions under 1 minute aren't counted</div>
                 </>
               )}
             </div>
           )}
 
-          <div className="card" style={{border:`2px solid ${triggered?LF.orange:atRisk?LF.yellow:LF.pink}44`,background:triggered?"#2D000888":""}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div>
-                <span className="lbl">{admin.payoutMode==="pain"?"😈 To The Pain":admin.payoutMode==="prize"?"🎁 Prize":"Your Stake 🔒"}</span>
+
+          <div className="card">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+              <div style={{minWidth:0}}>
+                <div className="card-title" style={{marginBottom:4}}>{admin.payoutMode==="pain"?"To the Pain":admin.payoutMode==="prize"?"Prize":"Your stake"}</div>
                 {admin.payoutMode==="pain"?(
-                  <>
-                    <div style={{fontSize:16,color:"#FF6666",fontWeight:800}}>😈 No money — just shame.</div>
-                    <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700,marginTop:3}}>Miss your goal and your group WILL hear about it.</div>
-                  </>
+                  <div style={{fontSize:14,color:"#5B6878",lineHeight:1.5}}>No money, just shame. Miss your goal and your group <b style={{color:"#BF1E41"}}>will</b> hear about it. 😈</div>
                 ):(
-                  <>
-                    <div style={{fontSize:16,color:triggered?LF.orange:atRisk?LF.yellow:LF.white,fontWeight:800}}>{fmtMoney(admin.stake)} → {admin.payoutMode==="winners"?"🏆 Winners":(me.charityName||me.charity||"your charity")}</div>
-                    <div style={{fontSize:13,color:LF.hotpink,fontWeight:800,marginTop:3}}>{missed}/{admin.threshold} missed · {admin.payoutMode==="winners"?"payout to winners":"your charity"}</div>
-                  </>
+                  <div style={{fontSize:14,color:"#5B6878",lineHeight:1.5}}>{fmtMoney(admin.stake)} to {admin.payoutMode==="winners"?"the winners":(me.charityName||me.charity||"your charity")} after {admin.threshold} missed check-in{admin.threshold===1?"":"s"}</div>
                 )}
               </div>
-              <div style={{fontSize:30}}>{admin.payoutMode==="pain"?"😈":triggered?"💸":atRisk?"⚠️":"🔒"}</div>
+              {admin.payoutMode!=="pain"&&(
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div style={{fontFamily:"'Poppins',sans-serif",fontSize:22,fontWeight:700,color:triggered?"#BF1E41":atRisk?"#B85400":"#0062B1"}}>{missed} of {admin.threshold}</div>
+                  <div style={{fontSize:12,color:"#5B6878"}}>missed</div>
+                </div>
+              )}
             </div>
-            {triggered&&admin.payoutMode==="charity"&&<button className="btn btn-red" onClick={()=>recordPayment("charity",me.name,admin.stake,me.charity)} style={{marginTop:12,width:"100%",fontSize:13}}>Record Donation →</button>}
-            {triggered&&admin.payoutMode==="winners"&&<button className="btn btn-yellow" onClick={()=>recordPayment("payout",me.name,admin.stake,"")} style={{marginTop:12,width:"100%",fontSize:13}}>Record Payout of {fmtMoney(admin.stake)} →</button>}
+            {triggered&&admin.payoutMode==="charity"&&<button className="btn btn-red" onClick={()=>recordPayment("charity",me.name,admin.stake,me.charity)} style={{marginTop:14,width:"100%"}}>Record donation</button>}
+            {triggered&&admin.payoutMode==="winners"&&<button className="btn btn-yellow" onClick={()=>recordPayment("payout",me.name,admin.stake,"")} style={{marginTop:14,width:"100%"}}>Record payout of {fmtMoney(admin.stake)}</button>}
           </div>
-        </>)}
+          </>);
+        })()}
 
         {/* ── GROUP ── */}
         {tab==="Group"&&(<>
@@ -2789,27 +2808,27 @@ export default function App(){
             <button className="btn btn-teal" onClick={()=>loadMembers(me.groupId)} style={{fontSize:13,padding:"6px 12px"}}>↻ Refresh</button>
           </div>
           {challengeNotStarted&&(
-            <div className="card" style={{border:`2px solid ${LF.violet}88`,background:"#E040FB11",textAlign:"center"}}>
+            <div className="card" style={{border:`2px solid ${LF.violet}88`,background:"#0062B111",textAlign:"center"}}>
               <div style={{fontSize:13,color:LF.lime,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>⏳ Challenge Countdown</div>
               <div style={{fontSize:32,fontWeight:900,color:LF.yellow,letterSpacing:2,marginBottom:4}}>
-                {countdownDays>0&&<span>{countdownDays}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>d</span></span>}
-                {countdownHours>0&&<span>{countdownHours}<span style={{fontSize:14,color:"#ffffffcc",marginRight:8}}>h</span></span>}
-                <span>{countdownMins}<span style={{fontSize:14,color:"#ffffffcc"}}>m</span></span>
+                {countdownDays>0&&<span>{countdownDays}<span style={{fontSize:14,color:"#5B6878",marginRight:8}}>d</span></span>}
+                {countdownHours>0&&<span>{countdownHours}<span style={{fontSize:14,color:"#5B6878",marginRight:8}}>h</span></span>}
+                <span>{countdownMins}<span style={{fontSize:14,color:"#5B6878"}}>m</span></span>
               </div>
-              <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800}}>
+              <div style={{fontSize:13,color:"#5B6878",fontWeight:800}}>
                 Challenge starts {challengeStartDate.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {challengeStartDate.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
               </div>
-              <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginTop:4}}>First check-in: {admin.firstCheckIn?new Date(admin.firstCheckIn).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div>
+              <div style={{fontSize:12,color:"#5B6878",fontWeight:700,marginTop:4}}>First check-in: {admin.firstCheckIn?new Date(admin.firstCheckIn).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</div>
             </div>
           )}
 
           {/* Share invite card */}
           <div className="card" style={{border:`2px solid ${LF.purple}55`}}>
             <span className="lbl">📝 Invite Your Crew</span>
-            <div style={{fontSize:14,color:"#ffffffcc",marginBottom:12}}>Share this link — anyone can join by signing in with Google and entering your Group ID.</div>
-            <div style={{background:"#ffffff11",borderRadius:12,padding:"10px 14px",marginBottom:12,fontFamily:"monospace",fontSize:13,color:LF.yellow,wordBreak:"break-all"}}>{APP_URL}</div>
+            <div style={{fontSize:14,color:"#5B6878",marginBottom:12}}>Share this link — anyone can join by signing in with Google and entering your Group ID.</div>
+            <div style={{background:"#14213D0a",borderRadius:12,padding:"10px 14px",marginBottom:12,fontFamily:"monospace",fontSize:13,color:LF.yellow,wordBreak:"break-all"}}>{APP_URL}</div>
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
-              <div style={{fontSize:14,color:"#ffffffcc"}}>Group ID:</div>
+              <div style={{fontSize:14,color:"#5B6878"}}>Group ID:</div>
               <div style={{fontSize:15,fontWeight:900,color:LF.white}}>#{me.groupId}</div>
             </div>
             <button
@@ -2819,15 +2838,15 @@ export default function App(){
             >
               {shareCopied?"✓ Copied to clipboard!":"📤 Share Invite"}
             </button>
-            <div style={{fontSize:12,color:"#ffffffcc",marginTop:8,textAlign:"center"}}>
+            <div style={{fontSize:12,color:"#5B6878",marginTop:8,textAlign:"center"}}>
               On mobile, this opens your share sheet (iMessage, WhatsApp, email, etc.)
             </div>
           </div>
 
           {amAdmin&&(
-            <div className="card" style={{border:`2px solid ${LF.orange}55`,background:"#FF440011"}}>
+            <div className="card" style={{border:`2px solid ${LF.orange}55`,background:"#BF1E4111"}}>
               <span className="lbl" style={{color:LF.orange}}>🔒 Goal Lock Controls</span>
-              <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700,marginBottom:10}}>
+              <div style={{fontSize:13,color:"#5B6878",fontWeight:700,marginBottom:10}}>
                 {isLocked?"Goals are currently locked.":admin.changeWindowOpen?`🔓 Change window open — closes in ~${changeHoursLeft||"?"}h`:"Goals are unlocked."}
               </div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -2849,15 +2868,15 @@ export default function App(){
           )}
 
           {!amAdmin&&admin.changeWindowOpen&&(
-            <div className="card" style={{border:`2px solid ${LF.lime}55`,background:"#CCFF6611"}}>
+            <div className="card" style={{border:`2px solid ${LF.lime}55`,background:"#82B63A11"}}>
               <div style={{fontSize:15,color:LF.lime,fontWeight:800,marginBottom:4}}>🔓 Goal Change Window is Open!</div>
-              <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700}}>You can adjust your goal until this window closes (~{changeHoursLeft}h left).</div>
+              <div style={{fontSize:13,color:"#5B6878",fontWeight:700}}>You can adjust your goal until this window closes (~{changeHoursLeft}h left).</div>
             </div>
           )}
           {!amAdmin&&isLocked&&(
             <div className="card" style={{border:`2px solid ${LF.orange}44`}}>
               <div style={{fontSize:15,color:LF.orange,fontWeight:800,marginBottom:4}}>🔒 Goals Are Locked</div>
-              <div style={{fontSize:13,color:"#ffffffcc",fontWeight:700}}>Raising your goal is always allowed!</div>
+              <div style={{fontSize:13,color:"#5B6878",fontWeight:700}}>Raising your goal is always allowed!</div>
             </div>
           )}
 
@@ -2868,18 +2887,18 @@ export default function App(){
             const medals=["🥇","🥈","🥉"];
             const bar=p>=100?`linear-gradient(90deg,${LF.lime},${LF.violet})`:i===0?`linear-gradient(90deg,${LF.yellow},${LF.orange})`:`linear-gradient(90deg,${LF.pink},${LF.purple})`;
             return(
-              <div key={w.uid||w.name} className="card" style={{border:`2px solid ${w.isYou?LF.pink:LF.purple}44`,background:w.isYou?"#FF2D9B11":""}}>
+              <div key={w.uid||w.name} className="card" style={{border:`2px solid ${w.isYou?LF.pink:LF.purple}44`,background:w.isYou?"#8C62D111":""}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                   <div style={{fontSize:18}}>{medals[i]||`${i+1}`}</div>
                   <div style={{fontSize:18}}>{w.avatar}</div>
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,color:w.isYou?LF.yellow:LF.white,fontWeight:800}}>{w.name}{w.isYou&&<span style={{fontSize:12,color:LF.hotpink}}> ← you!</span>}{adminUids.includes(w.uid)&&<span style={{fontSize:12,color:LF.yellow}}> ⭐</span>}</div>
-                    <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700}}>{w.goalType==="words"?`${(w.progressThisWeek||0).toLocaleString()}/${wGoal.toLocaleString()}w`:`${w.progressThisWeek||0}/${wGoal}m`} · 💝 {(w.charityName||w.charity)||"—"}</div>
+                    <div style={{fontSize:12,color:"#5B6878",fontWeight:700}}>{w.goalType==="words"?`${(w.progressThisWeek||0).toLocaleString()}/${wGoal.toLocaleString()}w`:`${w.progressThisWeek||0}/${wGoal}m`} · 💝 {(w.charityName||w.charity)||"—"}</div>
                   </div>
                   <div style={{fontSize:16,color:p>=100?LF.lime:LF.yellow,fontWeight:900}}>{p}%</div>
                 </div>
                 {amAdmin&&w.uid&&!adminUids.includes(w.uid)&&(
-                  <button onClick={()=>makeAdmin(w)} style={{background:"none",border:`1px solid ${LF.yellow}66`,borderRadius:20,padding:"3px 10px",color:LF.yellow,fontFamily:"'Outfit',sans-serif",fontSize:11,fontWeight:800,cursor:"pointer",marginBottom:8}}>⭐ Make admin</button>
+                  <button onClick={()=>makeAdmin(w)} style={{background:"none",border:`1px solid ${LF.yellow}66`,borderRadius:20,padding:"3px 10px",color:LF.yellow,fontFamily:"'Inter',sans-serif",fontSize:11,fontWeight:800,cursor:"pointer",marginBottom:8}}>⭐ Make admin</button>
                 )}
                 <div className="pbar-bg"><div className="pbar-fill" style={{width:`${p}%`,background:bar}}/></div>
               </div>
@@ -2890,10 +2909,10 @@ export default function App(){
         {/* ── CHAT ── */}
         {tab==="Chat"&&(<>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{fontSize:15,fontWeight:800,color:"#fff"}}>💬 Group Chat</div>
+            <div style={{fontSize:15,fontWeight:800,color:"#14213D"}}>💬 Group Chat</div>
             <div style={{display:"flex",gap:6}}>
-              <button className="btn" style={{fontSize:12,padding:"6px 10px",background:"#ffffff22",boxShadow:"none"}} onClick={()=>{loadChat(me.groupId);loadPolls(me.groupId);}}>↻ Refresh</button>
-              <button className="btn" onClick={()=>setShowPollForm(s=>!s)} style={{fontSize:12,padding:"6px 12px"}}>📊 {showPollForm?"Cancel":"Poll"}</button>
+              <button className="btn btn-sm" style={{fontSize:12,padding:"6px 10px",background:"#14213D1f",boxShadow:"none"}} onClick={()=>{loadChat(me.groupId);loadPolls(me.groupId);}}>↻ Refresh</button>
+              <button className="btn btn-sm" onClick={()=>setShowPollForm(s=>!s)} style={{fontSize:12,padding:"6px 12px"}}>📊 {showPollForm?"Cancel":"Poll"}</button>
             </div>
           </div>
 
@@ -2907,42 +2926,42 @@ export default function App(){
                   {pollOpts.length>2&&<button onClick={()=>setPollOpts(pollOpts.filter((_,j)=>j!==i))} style={{background:"none",border:`2px solid ${LF.pink}55`,borderRadius:10,padding:"0 12px",cursor:"pointer",color:LF.pink,fontSize:16}}>✕</button>}
                 </div>
               ))}
-              {pollOpts.length<6&&<button onClick={()=>setPollOpts([...pollOpts,""])} style={{background:"none",border:"2px dashed #ffffff33",borderRadius:10,padding:8,width:"100%",cursor:"pointer",color:"#fff",fontSize:14,marginBottom:10}}>+ Add Option</button>}
+              {pollOpts.length<6&&<button onClick={()=>setPollOpts([...pollOpts,""])} style={{background:"none",border:"2px dashed #14213D26",borderRadius:10,padding:8,width:"100%",cursor:"pointer",color:"#14213D",fontSize:14,marginBottom:10}}>+ Add Option</button>}
               <span className="lbl" style={{marginTop:4}}>Voting Deadline (optional)</span>
               <input className="inp" type="datetime-local" value={pollDeadline} onChange={e=>setPollDeadline(e.target.value)} style={{marginBottom:12}}/>
               <div style={{display:"flex",gap:8}}>
                 <button className="btn btn-yellow" onClick={submitPoll} style={{flex:1,fontSize:14}}>Post Poll 📊</button>
-                <button onClick={()=>setShowPollForm(false)} style={{flex:1,background:"#ffffff18",border:"2px solid #ffffff22",borderRadius:50,cursor:"pointer",fontSize:14,color:"#fff"}}>Cancel</button>
+                <button onClick={()=>setShowPollForm(false)} style={{flex:1,background:"#14213D0d",border:"2px solid #14213D1f",borderRadius:50,cursor:"pointer",fontSize:14,color:"#14213D"}}>Cancel</button>
               </div>
             </div>
           )}
 
-          <div style={{background:"#ffffff11",border:"2px solid #ffffff22",borderRadius:20,padding:12,display:"flex",flexDirection:"column",gap:10,minHeight:240,maxHeight:480,overflowY:"auto"}}>
+          <div style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:20,padding:12,display:"flex",flexDirection:"column",gap:10,minHeight:240,maxHeight:480,overflowY:"auto"}}>
             {(()=>{
               const items=[...messages.map(m=>({...m,_type:"msg"})),...polls.map(p=>({...p,_type:"poll"}))].sort((a,b)=>a.ts-b.ts);
-              if(items.length===0)return <div style={{textAlign:"center",padding:36,color:"#ffffffcc",fontSize:15}}>Say hi to your crew! 🌈</div>;
+              if(items.length===0)return <div style={{textAlign:"center",padding:36,color:"#5B6878",fontSize:15}}>Say hi to your crew! 🌈</div>;
               return items.map(item=>{
                 if(item._type==="msg"){
                   const msg=item; const isMe=msg.author===me.name;
                   return(
                     <div key={msg.id} className="msg-in" style={{display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3}}>
-                      {!isMe&&<div style={{fontSize:12,color:"#ffffffcc",fontWeight:800,paddingLeft:4}}>{msg.avatar} {msg.author}</div>}
-                      <div style={{maxWidth:"80%",background:isMe?`linear-gradient(135deg,${LF.pink}cc,${LF.purple}cc)`:"#ffffff18",border:`1px solid ${isMe?LF.pink:"#ffffff33"}`,borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px",padding:"9px 13px"}}>
-                        <div style={{fontSize:14,fontWeight:700,color:"#fff",lineHeight:1.5}}>{msg.text}</div>
-                        <div style={{fontSize:11,color:"#ffffffbb",marginTop:3}}>{fmtDate(msg.ts)}</div>
+                      {!isMe&&<div style={{fontSize:12,color:"#5B6878",fontWeight:800,paddingLeft:4}}>{msg.avatar} {msg.author}</div>}
+                      <div style={{maxWidth:"80%",background:isMe?`linear-gradient(135deg,${LF.pink}cc,${LF.purple}cc)`:"#14213D0d",border:`1px solid ${isMe?LF.pink:"#14213D26"}`,borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px",padding:"9px 13px"}}>
+                        <div style={{fontSize:14,fontWeight:700,color:"#14213D",lineHeight:1.5}}>{msg.text}</div>
+                        <div style={{fontSize:11,color:"#5B6878",marginTop:3}}>{fmtDate(msg.ts)}</div>
                       </div>
                       <div style={{display:"flex",flexWrap:"wrap",gap:3,paddingLeft:isMe?0:4,paddingRight:isMe?4:0,justifyContent:isMe?"flex-end":"flex-start",alignItems:"center"}}>
                         {REACTIONS.filter(r=>(msg.reactions[r]||[]).length>0).map(r=>{
                           const cnt=(msg.reactions[r]||[]).length;
                           const reacted=(msg.reactions[r]||[]).includes(me.name);
-                          return <button key={r} onClick={()=>addReaction(msg.id,r)} style={{background:reacted?`${LF.pink}33`:"#ffffff18",border:`1px solid ${reacted?LF.pink:"#ffffff33"}`,borderRadius:20,padding:"2px 8px",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",gap:3}}>
+                          return <button key={r} onClick={()=>addReaction(msg.id,r)} style={{background:reacted?`${LF.pink}33`:"#14213D0d",border:`1px solid ${reacted?LF.pink:"#14213D26"}`,borderRadius:20,padding:"2px 8px",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",gap:3}}>
                             {r}<span style={{fontSize:11,color:reacted?LF.pink:"#fff",fontWeight:800}}>{cnt}</span>
                           </button>;
                         })}
                         <div style={{position:"relative"}}>
-                          <button onClick={()=>setOpenPicker(openPicker===msg.id?null:msg.id)} style={{background:"#ffffff18",border:"1px solid #ffffff33",borderRadius:20,padding:"2px 8px",cursor:"pointer",fontSize:12,color:"#fff"}}>＋😊</button>
+                          <button onClick={()=>setOpenPicker(openPicker===msg.id?null:msg.id)} style={{background:"#14213D0d",border:"1px solid #14213D26",borderRadius:20,padding:"2px 8px",cursor:"pointer",fontSize:12,color:"#14213D"}}>＋😊</button>
                           {openPicker===msg.id&&(
-                            <div style={{position:"absolute",bottom:"110%",left:isMe?"auto":"0",right:isMe?"0":"auto",background:"#2D006E",border:"2px solid #ffffff33",borderRadius:16,padding:8,display:"flex",flexWrap:"wrap",gap:4,width:196,zIndex:50,boxShadow:"0 8px 32px #00000088"}}>
+                            <div style={{position:"absolute",bottom:"110%",left:isMe?"auto":"0",right:isMe?"0":"auto",background:"#2D006E",border:"2px solid #14213D26",borderRadius:16,padding:8,display:"flex",flexWrap:"wrap",gap:4,width:196,zIndex:50,boxShadow:"0 8px 32px #14213D66"}}>
                               {REACTIONS.map(r=><button key={r} onClick={()=>{addReaction(msg.id,r);setOpenPicker(null);}} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",padding:"2px 4px",borderRadius:8}}>{r}</button>)}
                             </div>
                           )}
@@ -2961,16 +2980,16 @@ export default function App(){
                 const canVote=!resolved&&!expired;
                 const hoursLeft=deadlineDate&&!expired?Math.ceil((deadlineDate-new Date())/3600000):null;
                 return(
-                  <div key={poll.id} className="msg-in" style={{background:"#2D006E99",border:`2px solid ${resolved?"#CCFF66":expired?"#ffffff33":LF.pink}55`,borderRadius:16,padding:12}}>
+                  <div key={poll.id} className="msg-in" style={{background:"#2D006E99",border:`2px solid ${resolved?"#4F7A1F":expired?"#14213D26":LF.pink}55`,borderRadius:16,padding:12}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                       <div>
-                        <div style={{fontSize:11,color:"#ffffffcc",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>📊 {poll.author} · poll</div>
-                        <div style={{fontSize:15,fontWeight:900,color:"#fff"}}>{poll.question}</div>
-                        {deadlineDate&&<div style={{fontSize:11,color:expired?"#ff8888":hoursLeft&&hoursLeft<24?LF.yellow:"#ffffffcc",fontWeight:700,marginTop:2}}>{expired?"⏰ Voting closed":`⏰ ${hoursLeft}h left`}</div>}
+                        <div style={{fontSize:11,color:"#5B6878",fontWeight:800,textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>📊 {poll.author} · poll</div>
+                        <div style={{fontSize:15,fontWeight:900,color:"#14213D"}}>{poll.question}</div>
+                        {deadlineDate&&<div style={{fontSize:11,color:expired?"#BF1E41":hoursLeft&&hoursLeft<24?LF.yellow:"#5B6878",fontWeight:700,marginTop:2}}>{expired?"⏰ Voting closed":`⏰ ${hoursLeft}h left`}</div>}
                         {resolved&&<div style={{fontSize:12,color:LF.lime,fontWeight:800,marginTop:2}}>✅ Result: {resolved}</div>}
                       </div>
                       {(amAdmin||poll.author===me.name)&&(
-                        <button onClick={()=>deletePoll(poll.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:15,color:"#ffffffbb",padding:"0 4px"}}>🗑️</button>
+                        <button onClick={()=>deletePoll(poll.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:15,color:"#5B6878",padding:"0 4px"}}>🗑️</button>
                       )}
                     </div>
                     <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:8}}>
@@ -2980,24 +2999,24 @@ export default function App(){
                         const isLeading=o.votes.length>0&&o.votes.length===leading.votes.length;
                         return(
                           <div key={i}>
-                            <button onClick={()=>canVote&&votePoll(poll.id,i)} style={{width:"100%",textAlign:"left",padding:"8px 12px",borderRadius:10,cursor:canVote?"pointer":"default",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:voted?900:700,border:`2px solid ${voted?LF.pink:isLeading&&canVote?LF.yellow:"#ffffff33"}`,background:voted?`${LF.pink}33`:isLeading&&canVote?"#FFC20011":"#ffffff11",color:voted?LF.pink:isLeading&&canVote?LF.yellow:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <button onClick={()=>canVote&&votePoll(poll.id,i)} style={{width:"100%",textAlign:"left",padding:"8px 12px",borderRadius:10,cursor:canVote?"pointer":"default",fontFamily:"'Inter',sans-serif",fontSize:14,fontWeight:voted?900:700,border:`2px solid ${voted?LF.pink:isLeading&&canVote?LF.yellow:"#14213D26"}`,background:voted?`${LF.pink}33`:isLeading&&canVote?"#B8540011":"#14213D0a",color:voted?LF.pink:isLeading&&canVote?LF.yellow:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                               <span>{voted?"✓ ":isLeading&&canVote?"🏆 ":""}{o.text}</span>
                               <span style={{fontSize:12,opacity:0.8,marginLeft:8,flexShrink:0}}>{pct2}%</span>
                             </button>
                             <div className="pbar-bg" style={{height:3,marginTop:2}}>
-                              <div className="pbar-fill" style={{width:`${pct2}%`,background:voted?`linear-gradient(90deg,${LF.pink},${LF.purple})`:"#ffffff33"}}/>
+                              <div className="pbar-fill" style={{width:`${pct2}%`,background:voted?`linear-gradient(90deg,${LF.pink},${LF.purple})`:"#14213D26"}}/>
                             </div>
                           </div>
                         );
                       })}
                     </div>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
-                      <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700}}>{myVoteIdx>=0?"✓ You voted":canVote?"Tap an option to vote":"Voting closed"}</div>
+                      <div style={{fontSize:12,color:"#5B6878",fontWeight:700}}>{myVoteIdx>=0?"✓ You voted":canVote?"Tap an option to vote":"Voting closed"}</div>
                       {amAdmin&&!resolved&&(
                         <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
-                          <span style={{fontSize:11,color:"#ffffffaa",fontWeight:700}}>override:</span>
+                          <span style={{fontSize:11,color:"#6B7685",fontWeight:700}}>override:</span>
                           {poll.options.map((o,i)=>(
-                            <button key={i} onClick={()=>overridePollResult(poll.id,o.text)} style={{background:"#ffffff11",border:"1px solid #ffffff22",borderRadius:8,padding:"2px 8px",cursor:"pointer",fontSize:11,color:"#ffffffbb",fontWeight:700}}>{o.text}</button>
+                            <button key={i} onClick={()=>overridePollResult(poll.id,o.text)} style={{background:"#14213D0a",border:"1px solid #14213D1f",borderRadius:8,padding:"2px 8px",cursor:"pointer",fontSize:11,color:"#5B6878",fontWeight:700}}>{o.text}</button>
                           ))}
                         </div>
                       )}
@@ -3022,13 +3041,13 @@ export default function App(){
             <div style={{display:"flex"}}>
               {totalGroupWords>0&&<div style={{flex:1,textAlign:"center",borderRight:totalGroupMinutes>0?`1px solid ${LF.purple}33`:"none"}}>
                 <div style={{fontSize:24,color:LF.yellow,fontWeight:900}}>{totalGroupWords.toLocaleString()}</div>
-                <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800,marginTop:2}}>Total Words ✍️</div>
+                <div style={{fontSize:13,color:"#5B6878",fontWeight:800,marginTop:2}}>Total Words ✍️</div>
               </div>}
               {totalGroupMinutes>0&&<div style={{flex:1,textAlign:"center"}}>
                 <div style={{fontSize:24,color:LF.yellow,fontWeight:900}}>{Math.round(totalGroupMinutes/60)}h {totalGroupMinutes%60}m</div>
-                <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800,marginTop:2}}>Total Time ⏱️</div>
+                <div style={{fontSize:13,color:"#5B6878",fontWeight:800,marginTop:2}}>Total Time ⏱️</div>
               </div>}
-              {totalGroupWords===0&&totalGroupMinutes===0&&<div style={{flex:1,textAlign:"center",padding:16,color:"#ffffffcc",fontSize:13}}>No progress logged yet 🌈</div>}
+              {totalGroupWords===0&&totalGroupMinutes===0&&<div style={{flex:1,textAlign:"center",padding:16,color:"#5B6878",fontSize:13}}>No progress logged yet 🌈</div>}
             </div>
           </div>
 
@@ -3037,18 +3056,18 @@ export default function App(){
             <div style={{display:"flex",marginBottom:14}}>
               <div style={{flex:1,textAlign:"center",borderRight:`1px solid ${LF.purple}33`}}>
                 <div style={{fontSize:20,color:LF.white,fontWeight:900}}>{fmtMoney(totalCharity)}</div>
-                <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800,marginTop:2}}>Donated 💝</div>
+                <div style={{fontSize:13,color:"#5B6878",fontWeight:800,marginTop:2}}>Donated 💝</div>
               </div>
               <div style={{flex:1,textAlign:"center",borderRight:`1px solid ${LF.purple}33`}}>
                 <div style={{fontSize:20,color:LF.yellow,fontWeight:900}}>{fmtMoney(totalPayouts)}</div>
-                <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800,marginTop:2}}>To Winners 🏆</div>
+                <div style={{fontSize:13,color:"#5B6878",fontWeight:800,marginTop:2}}>To Winners 🏆</div>
               </div>
               <div style={{flex:1,textAlign:"center"}}>
                 <div style={{fontSize:20,color:LF.white,fontWeight:900}}>{totalPrizes}</div>
-                <div style={{fontSize:13,color:"#ffffffcc",fontWeight:800,marginTop:2}}>Prizes 🎁</div>
+                <div style={{fontSize:13,color:"#5B6878",fontWeight:800,marginTop:2}}>Prizes 🎁</div>
               </div>
             </div>
-            {totalCharity===0&&totalPayouts===0&&totalPrizes===0&&<div style={{textAlign:"center",padding:14,color:"#ffffffcc",fontSize:13}}>No payments recorded yet. Keep writing! 🦄</div>}
+            {totalCharity===0&&totalPayouts===0&&totalPrizes===0&&<div style={{textAlign:"center",padding:14,color:"#5B6878",fontSize:13}}>No payments recorded yet. Keep writing! 🦄</div>}
           </div>
 
           <div className="card">
@@ -3058,7 +3077,7 @@ export default function App(){
                 <div style={{fontSize:18}}>{w.avatar}</div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:14,fontWeight:700,color:w.isYou?LF.yellow:LF.white}}>{w.name}{w.isYou?" (you)":""}</div>
-                  <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700}}>💝 {(w.charityName||w.charity)||"—"}</div>
+                  <div style={{fontSize:12,color:"#5B6878",fontWeight:700}}>💝 {(w.charityName||w.charity)||"—"}</div>
                 </div>
                 <div style={{fontSize:15,color:LF.white,fontWeight:800}}>{w.goalType==="words"?`${(w.totalProgress||0).toLocaleString()}w`:`${Math.round((w.totalProgress||0)/60)}h`}</div>
               </div>
@@ -3067,7 +3086,7 @@ export default function App(){
 
           {/* ── Check-in History ── */}
           {groupCheckIns===null&&tab==="Stats"&&(
-            <div className="card" style={{textAlign:"center",padding:20,color:"#ffffffcc",fontSize:13}}>Loading check-in history… 🦄</div>
+            <div className="card" style={{textAlign:"center",padding:20,color:"#5B6878",fontSize:13}}>Loading check-in history… 🦄</div>
           )}
           {groupCheckIns!==null&&groupCheckIns.length===0&&(
             <div className="card" style={{textAlign:"center",padding:24}}>
@@ -3095,7 +3114,7 @@ export default function App(){
                     <div style={{fontSize:18}}>{e.avatar}</div>
                     <div style={{flex:1}}>
                       <div style={{fontSize:14,fontWeight:700,color:e.isYou?LF.yellow:LF.white}}>{e.name}{e.isYou?" (you)":""}</div>
-                      <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700}}>{prog} of {goal}</div>
+                      <div style={{fontSize:12,color:"#5B6878",fontWeight:700}}>{prog} of {goal}</div>
                     </div>
                     <div style={{fontSize:18}}>{e.met?"✅":"❌"}</div>
                   </div>
@@ -3103,7 +3122,7 @@ export default function App(){
               })}
               {/* If no other members have their uid stored yet, show a note */}
               {ci.entries.length===1&&(
-                <div style={{fontSize:12,color:"#ffffff66",marginTop:8,textAlign:"center"}}>Other members will appear after they next open the app.</div>
+                <div style={{fontSize:12,color:"#8A94A3",marginTop:8,textAlign:"center"}}>Other members will appear after they next open the app.</div>
               )}
               {/* Payment summary — only shown when the admin has recorded payments for this check-in */}
               {ciPayments.length>0&&(
@@ -3111,10 +3130,10 @@ export default function App(){
                   <div style={{fontSize:11,color:LF.yellow,fontWeight:900,textTransform:"uppercase",letterSpacing:2,marginBottom:8}}>💸 Money Allocated</div>
                   {ciPayments.map((p,pi)=>(
                     <div key={p.id||pi} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:pi<ciPayments.length-1?`1px solid ${LF.purple}22`:"none"}}>
-                      <div style={{fontSize:13,fontWeight:700,color:p.type==="charity"?LF.lime:p.amount>=0?LF.yellow:"#FF8888"}}>
+                      <div style={{fontSize:13,fontWeight:700,color:p.type==="charity"?LF.lime:p.amount>=0?LF.yellow:"#BF1E41"}}>
                         {p.type==="charity"?`💝 ${p.name}`:`${p.amount>=0?"🏆":"💸"} ${p.name}`}
                       </div>
-                      <div style={{fontSize:13,fontWeight:800,color:p.type==="charity"?LF.lime:p.amount>=0?LF.yellow:"#FF8888"}}>
+                      <div style={{fontSize:13,fontWeight:800,color:p.type==="charity"?LF.lime:p.amount>=0?LF.yellow:"#BF1E41"}}>
                         {p.amount>=0?"+":""}{fmtMoney(p.amount)}
                       </div>
                     </div>
@@ -3133,7 +3152,7 @@ export default function App(){
                   <div>
                     {/* Use charityName first — fall back to charity URL only if name is missing */}
                     <div style={{fontSize:13,fontWeight:800,color:e.type==="charity"?LF.lime:LF.yellow}}>{e.type==="charity"?`💝 ${e.name} → ${e.charityName||"charity"}`:`🏆 Payout to ${e.name}`}</div>
-                    <div style={{fontSize:11,color:"#ffffffcc"}}>{fmtDate(e.ts)} · by {e.recordedBy}</div>
+                    <div style={{fontSize:11,color:"#5B6878"}}>{fmtDate(e.ts)} · by {e.recordedBy}</div>
                   </div>
                   <div style={{fontSize:13,color:e.type==="charity"?LF.lime:LF.yellow,fontWeight:800}}>{fmtMoney(e.amount)}</div>
                 </div>
@@ -3148,8 +3167,8 @@ export default function App(){
             <span className="lbl">Goal Type &amp; Target</span>
             {isLocked&&<div style={{fontSize:13,color:LF.orange,fontWeight:800,marginBottom:10}}>🔒 Goals locked — you can raise but not lower{admin.changeWindowOpen?` (~${changeHoursLeft}h window open)`:"."}.</div>}
             <div className="pill" style={{marginBottom:12}}>
-              <button onClick={()=>setGoalTypeEdit("words")} style={{background:goalTypeEdit==="words"?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"transparent",color:"#fff"}}>✍️ Words</button>
-              <button onClick={()=>setGoalTypeEdit("time")}  style={{background:goalTypeEdit==="time"?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"transparent",color:"#fff"}}>⏱️ Time</button>
+              <button onClick={()=>setGoalTypeEdit("words")} style={{background:goalTypeEdit==="words"?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"transparent",color:"#14213D"}}>✍️ Words</button>
+              <button onClick={()=>setGoalTypeEdit("time")}  style={{background:goalTypeEdit==="time"?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"transparent",color:"#14213D"}}>⏱️ Time</button>
             </div>
             <div style={{display:"flex",gap:10}}>
               <input className="inp" type="number" value={goalInput} onChange={e=>setGoalInput(e.target.value)} style={{flex:1}}/>
@@ -3165,7 +3184,7 @@ export default function App(){
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
                   <div>
                     <div style={{fontSize:17,fontWeight:900,color:LF.lime}}>✨ {me.charityName}</div>
-                    <div style={{fontSize:12,color:"#ffffffcc",fontWeight:700,marginTop:2}}>Your stakes go here if you miss your goal.</div>
+                    <div style={{fontSize:12,color:"#5B6878",fontWeight:700,marginTop:2}}>Your stakes go here if you miss your goal.</div>
                   </div>
                   {!isLocked&&(
                     <button className="btn btn-teal" onClick={()=>setShowCharityModal(true)} style={{fontSize:13,padding:"8px 14px",flexShrink:0}}>
@@ -3175,9 +3194,9 @@ export default function App(){
                 </div>
               ):(
                 <div>
-                  <div style={{fontSize:14,color:"#ffffffcc",fontWeight:700,marginBottom:12}}>You haven't picked a charity yet!</div>
+                  <div style={{fontSize:14,color:"#5B6878",fontWeight:700,marginBottom:12}}>You haven't picked a charity yet!</div>
                   {!isLocked&&(
-                    <button className="btn" onClick={()=>setShowCharityModal(true)} style={{width:"100%",fontSize:15}}>
+                    <button className="btn btn-sm" onClick={()=>setShowCharityModal(true)} style={{width:"100%",fontSize:15}}>
                       💝 Pick My Charity
                     </button>
                   )}
@@ -3187,24 +3206,24 @@ export default function App(){
             </div>
           )}
 
-          <div className="card" style={{background:"#ffffff0a",border:"2px solid #ffffff22",textAlign:"center"}}>
+          <div className="card" style={{background:"#14213D08",border:"2px solid #14213D1f",textAlign:"center"}}>
             <div style={{fontSize:14,color:LF.white,fontWeight:700,lineHeight:2}}>
               Miss <span style={{color:LF.yellow,fontWeight:900}}>{fmtGoal({...me,goalValue:periodGoal})}</span> for <span style={{color:LF.yellow,fontWeight:900}}>{admin.threshold} check-ins</span><br/>
               → <span style={{color:LF.pink,fontWeight:900}}>{fmtMoney(admin.stake)}</span>{" "}
               {admin.payoutMode==="winners"&&<span>split among 🏆 members who hit their goals</span>}
-              {admin.payoutMode==="pain"&&<span style={{color:"#FF6666"}}>😈 you'll be publicly roasted</span>}
+              {admin.payoutMode==="pain"&&<span style={{color:"#BF1E41"}}>😈 you'll be publicly roasted</span>}
               {admin.payoutMode==="charity"&&<span>goes to 💝 {me.charityName||me.charity||"your charity"}</span>}
             </div>
           </div>
 
           <div style={{textAlign:"center",marginTop:4,display:"flex",flexDirection:"column",gap:8,alignItems:"center"}}>
-            <button onClick={()=>setShowPrivacy(true)} style={{background:"none",border:"none",color:"#ffffffbb",fontSize:12,cursor:"pointer",fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>Privacy Policy</button>
-            <button onClick={handleReset} style={{background:"none",border:"none",color:"#ffffffaa",fontSize:12,cursor:"pointer",fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>Reset all data…</button>
+            <button onClick={()=>setShowPrivacy(true)} style={{background:"none",border:"none",color:"#5B6878",fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",textDecoration:"underline"}}>Privacy Policy</button>
+            <button onClick={handleReset} style={{background:"none",border:"none",color:"#6B7685",fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",textDecoration:"underline"}}>Reset all data…</button>
           </div>
         </>)}
 
         {/* ── HISTORY ── */}
-        {tab==="History"&&(<>
+        {tab==="Stats"&&(<>
           <div style={{fontSize:14,color:LF.lime,fontWeight:800}}>📅 Your Writing History</div>
           {history.length===0&&<div className="card" style={{textAlign:"center",padding:24}}><div style={{fontSize:28,marginBottom:8}}>🌈</div><div style={{fontSize:14,color:LF.pink,fontWeight:800}}>History appears at end of each period.</div></div>}
           {history.map((h,i)=>(
@@ -3215,7 +3234,7 @@ export default function App(){
                   <div style={{fontSize:13,color:LF.white,fontWeight:800,marginBottom:2}}>{h.week}</div>
                   <div style={{fontSize:16,color:h.met?LF.lime:LF.pink,fontWeight:800}}>
                     {h.goalType==="words"?`${(h.progress||0).toLocaleString()} words`:`${h.progress||0} min`}
-                    <span style={{fontSize:12,color:"#ffffffcc",fontWeight:700}}> / {h.goalType==="words"?`${(h.goal||0).toLocaleString()}w`:`${h.goal||0}m`}</span>
+                    <span style={{fontSize:12,color:"#5B6878",fontWeight:700}}> / {h.goalType==="words"?`${(h.goal||0).toLocaleString()}w`:`${h.goal||0}m`}</span>
                   </div>
                 </div>
                 <div style={{fontSize:12,color:LF.white,background:h.met?`linear-gradient(135deg,${LF.lime},${LF.violet})`:`linear-gradient(135deg,${LF.pink},${LF.purple})`,padding:"4px 10px",borderRadius:20,fontWeight:800}}>{h.met?"NAILED IT":"missed"}</div>
