@@ -156,7 +156,7 @@ const G = `
   *{box-sizing:border-box;} body{margin:0;background:#FFF7EE;color:#14213D;}
   .leopard{background:#FFF7EE;color:#14213D;position:relative;}
   .root{min-height:100vh;font-family:'Inter',sans-serif;color:#14213D;font-weight:500;display:flex;flex-direction:column;align-items:center;padding-bottom:104px;position:relative;}
-  .root > *{position:relative;z-index:1;}
+  .root > *, .leopard > *{position:relative;z-index:1;}
   /* Decorative circles: many sizes, each with a thick border in a contrasting palette colour */
   .bgc{position:fixed!important;inset:0;overflow:hidden;pointer-events:none;z-index:0!important;}
   .bgc i{position:absolute;border-radius:50%;border-style:solid;}
@@ -455,9 +455,9 @@ function SignIn({onPrivacy}){
     <div className="leopard leopard-setup" style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"32px 24px",fontFamily:"'Inter',sans-serif",color:"#14213D"}}>
       <style>{G}</style><BgCircles/>
       <div style={{maxWidth:380,width:"100%",display:"flex",flexDirection:"column",alignItems:"center",gap:24,textAlign:"center"}}>
-        <div style={{fontSize:44,fontWeight:700,lineHeight:1.1}}>Wordcountability</div>
-        <div style={{fontSize:18,color:LF.hotpink,fontWeight:700,lineHeight:1.5}}>
-          Your writing accountability crew. Sign in to sync across all your devices. 📝🌈
+        <div className="wordmark" style={{fontSize:"clamp(30px,9vw,40px)"}}><span className="wc">Wordcount</span><span className="ab">ability</span></div>
+        <div style={{fontSize:17,color:"#5B6878",fontWeight:500,lineHeight:1.5}}>
+          Your writing accountability crew. Sign in to sync across all your devices.
         </div>
         <button className="btn-google" onClick={handleGoogle} disabled={loading}>
           <svg width="20" height="20" viewBox="0 0 48 48">
@@ -499,12 +499,12 @@ function Setup({user,onSave}){
   }
 
   return(
-    <div className="leopard leopard-setup" style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",padding:"32px 24px 48px",fontFamily:"'Inter',sans-serif",color:"#14213D"}}>
+    <div className="leopard leopard-setup" style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",padding:"100px 24px 48px",fontFamily:"'Inter',sans-serif",color:"#14213D"}}>
       <style>{G}</style><BgCircles/>
       <div style={{maxWidth:420,width:"100%",display:"flex",flexDirection:"column",gap:16}}>
         <div style={{textAlign:"center",marginBottom:4}}>
-          <div style={{fontSize:38,fontWeight:700,lineHeight:1.1}}>Wordcountability</div>
-          <div style={{fontSize:14,color:LF.hotpink,marginTop:6}}>Signed in as {user.email}</div>
+          <div className="wordmark" style={{fontSize:"clamp(28px,8vw,36px)"}}><span className="wc">Wordcount</span><span className="ab">ability</span></div>
+          <div style={{fontSize:14,color:"#5B6878",marginTop:8}}>Signed in as {user.email}</div>
         </div>
 
         <div className="card"><span className="lbl">Your Name</span>
@@ -520,8 +520,8 @@ function Setup({user,onSave}){
 
         <div className="card"><span className="lbl">Weekly Goal Type</span>
           <div className="pill" style={{marginBottom:12}}>
-            <button onClick={()=>setGType("words")} style={{background:gType==="words"?`linear-gradient(135deg,#8C62D1,#8377D1)`:"transparent",color:"#14213D"}}>✍️ Word Count</button>
-            <button onClick={()=>setGType("time")}  style={{background:gType==="time"?`linear-gradient(135deg,#0062B1,#8377D1)`:"transparent",color:"#14213D"}}>⏱️ Time</button>
+            <button onClick={()=>setGType("words")} style={{background:gType==="words"?"#8C62D1":"transparent",color:gType==="words"?"#fff":"#14213D"}}>✍️ Word Count</button>
+            <button onClick={()=>setGType("time")}  style={{background:gType==="time"?"#8C62D1":"transparent",color:gType==="time"?"#fff":"#14213D"}}>⏱️ Time</button>
           </div>
           <input className="inp" type="number" value={gVal} onChange={e=>setGVal(e.target.value)} placeholder={gType==="words"?"e.g. 2000 words":"e.g. 120 minutes"}/>
           {gType==="time"&&<div style={{fontSize:13,color:"#5B6878",marginTop:6}}>Total minutes per week</div>}
@@ -908,7 +908,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                       <div style={{background:"#14213D06",borderRadius:12,padding:"10px 12px",margin:"6px 0 4px",display:"flex",flexDirection:"column",gap:8}}>
                         {reminderSaved?(
                           <>
-                            <div style={{fontSize:13,color:LF.lime,fontWeight:600}}>
+                            <div style={{fontSize:13,color:"#0062B1",fontWeight:600}}>
                               ✅ Reminder set for {(()=>{const t=notifPrefs.reminderTime||"09:00";const[h,m]=t.split(":");const hr=parseInt(h);return`${hr===0?12:hr>12?hr-12:hr}:${m} ${hr<12?"AM":"PM"}`;})()}  · {notifPrefs.reminderFrequency||"Daily"}
                             </div>
                             <button
@@ -926,7 +926,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                               <div style={{fontSize:12,color:"#5B6878",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
                               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                                 {["Daily","Weekly","Monthly"].map(f=>(
-                                  <button key={f} onClick={()=>setReminderFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${reminderFreqDraft===f?LF.pink:"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:reminderFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#14213D0d",color:"#14213D",fontWeight:500}}>{f}</button>
+                                  <button key={f} onClick={()=>setReminderFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${reminderFreqDraft===f?"#8C62D1":"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:reminderFreqDraft===f?"#8C62D1":"#fff",color:reminderFreqDraft===f?"#fff":"#14213D",fontWeight:500}}>{f}</button>
                                 ))}
                               </div>
                             </div>
@@ -986,7 +986,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                             ):(
                               progressSaved?(
                                 <>
-                                  <div style={{fontSize:13,color:LF.lime,fontWeight:600}}>
+                                  <div style={{fontSize:13,color:"#0062B1",fontWeight:600}}>
                                     ✅ Progress check-in set for {(()=>{const t=notifPrefs.progressNotifTime||"09:00";const[h,m]=t.split(":");const hr=parseInt(h);return`${hr===0?12:hr>12?hr-12:hr}:${m} ${hr<12?"AM":"PM"}`;})()}  · {notifPrefs.progressNotifFrequency||"Daily"}
                                   </div>
                                   <button
@@ -1004,7 +1004,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                                     <div style={{fontSize:12,color:"#5B6878",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
                                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                                       {["Daily","Weekly"].map(f=>(
-                                        <button key={f} onClick={()=>setProgressFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${progressFreqDraft===f?LF.pink:"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:progressFreqDraft===f?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#14213D0d",color:"#14213D",fontWeight:500}}>{f}</button>
+                                        <button key={f} onClick={()=>setProgressFreqDraft(f)} style={{padding:"5px 12px",border:`2px solid ${progressFreqDraft===f?"#8C62D1":"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:progressFreqDraft===f?"#8C62D1":"#fff",color:progressFreqDraft===f?"#fff":"#14213D",fontWeight:500}}>{f}</button>
                                       ))}
                                     </div>
                                   </div>
@@ -1036,7 +1036,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                         <div style={{fontSize:12,color:"#5B6878",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Frequency</div>
                         <div style={{display:"flex",gap:6}}>
                           {["Every message","Digest"].map(f=>(
-                            <button key={f} onClick={()=>handlePrefChange("chatFrequency",f)} style={{padding:"5px 12px",border:`2px solid ${notifPrefs.chatFrequency===f?LF.violet:"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:notifPrefs.chatFrequency===f?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"#14213D0d",color:"#14213D",fontWeight:500}}>{f}</button>
+                            <button key={f} onClick={()=>handlePrefChange("chatFrequency",f)} style={{padding:"5px 12px",border:`2px solid ${notifPrefs.chatFrequency===f?"#8C62D1":"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,background:notifPrefs.chatFrequency===f?"#8C62D1":"#fff",color:notifPrefs.chatFrequency===f?"#fff":"#14213D",fontWeight:500}}>{f}</button>
                           ))}
                         </div>
                       </div>
@@ -1090,7 +1090,7 @@ function SettingsPanel({me, uid, db, isAdmin, onClose, onAvatarChange, onSignOut
                   <p style={{margin:"0 0 20px"}}>Your goal is always set as a weekly target — but your progress is tracked against your current check-in period. So if your group has a two-week check-in, your target for that period is double your weekly goal. If there's no active challenge, progress resets each week as usual.</p>
 
                   <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                    <button onClick={()=>{onStartTour();onClose();}} style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,border:"none",borderRadius:50,padding:"10px 20px",color:"#14213D",fontFamily:"'Inter',sans-serif",fontSize:14,fontWeight:600,cursor:"pointer",textAlign:"center"}}>
+                    <button onClick={()=>{onStartTour();onClose();}} style={{background:"#6D47B5",border:"none",borderRadius:14,padding:"10px 20px",color:"#fff",fontFamily:"'Inter',sans-serif",fontSize:14,fontWeight:600,cursor:"pointer",textAlign:"center"}}>
                       🌈 Take a tour of the app
                     </button>
                     <div style={{textAlign:"center"}}>
@@ -1124,7 +1124,7 @@ function NotifFeed({notifications, onClose, onMarkAllRead}){
       <div className="settings-panel-overlay" onClick={onClose}/>
       <div className="notif-feed" style={{animation:"slideInRight 0.3s cubic-bezier(0.4,0,0.2,1)"}}>
         <div style={{padding:"20px 20px 14px",borderBottom:"1px solid #14213D0d",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-          <div style={{fontSize:18,fontWeight:700,color:LF.white}}>Notifications{unread>0&&<span style={{background:`linear-gradient(135deg,${LF.pink},${LF.purple})`,color:"#14213D",fontSize:12,fontWeight:600,padding:"2px 8px",borderRadius:20,marginLeft:8}}>{unread}</span>}</div>
+          <div style={{fontSize:18,fontWeight:700,color:LF.white}}>Notifications{unread>0&&<span style={{background:"#8C62D1",color:"#fff",fontSize:12,fontWeight:600,padding:"2px 8px",borderRadius:20,marginLeft:8}}>{unread}</span>}</div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {unread>0&&<button onClick={onMarkAllRead} style={{background:"none",border:"none",color:LF.hotpink,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,textDecoration:"underline"}}>Mark all read</button>}
             <button onClick={onClose} style={{background:"none",border:"none",color:"#5B6878",fontSize:22,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
@@ -2220,13 +2220,12 @@ export default function App(){
 
       {showTour&&(()=>{
         const TOUR_STEPS=[
-          {emoji:"📊",title:"Start with the Dashboard",body:"Check if your group has a challenge kicking off and when your next check-in is. This is also where you'll log your words or set your timer."},
+          {emoji:"📊",title:"Start on the Today tab",body:"See how far you are from this week's goal and when your next check-in is. This is also where you'll log your words or run your writing timer."},
           {emoji:"👀",title:"Check Out the Group Tab",body:"See your competitors and what their goals are. You can also share your group link here to invite new members."},
-          {emoji:"⚙️",title:"Set Up Your Notifications",body:"Tap the gear icon in the top right corner to open Settings. From there you can set up a daily reminder to write, or a warning that your check-in is coming up."},
+          {emoji:"⚙️",title:"Set Up Your Notifications",body:"Tap your avatar in the top right corner to open Settings. From there you can set up a daily reminder to write, or a warning that your check-in is coming up."},
           {emoji:"💬",title:"Say Hi in Chat",body:"Close Settings and head to the Chat tab to connect with your group. You can even send a poll to get everyone's opinions."},
-          {emoji:"📈",title:"Track Group Progress in Stats",body:"The Stats tab is where you'll see the whole group's progress at a glance."},
+          {emoji:"📈",title:"Track Progress in Stats",body:"The Stats tab shows your own history week to week, plus the whole group's progress at a glance."},
           {emoji:"🎯",title:"Manage Your Goal in Stakes",body:"The Stakes tab is where you can change your goal — but only when the admin allows it."},
-          {emoji:"📅",title:"Review Your History",body:"The History tab keeps a record of how you do week to week, so you can see your progress over time."},
         ];
         const step=TOUR_STEPS[tourStep];
         const isLast=tourStep===TOUR_STEPS.length-1;
@@ -2263,7 +2262,7 @@ export default function App(){
       {showCharityModal&&(
         <div className="modal-bg">
           <div className="card modal" style={{padding:24}}>
-            <div style={{fontSize:22,fontWeight:700,color:LF.pink,marginBottom:4}}>💝 Pick Your Charity</div>
+            <div className="page-title" style={{fontSize:24,marginBottom:6}}>Pick your charity</div>
             <div style={{fontSize:14,color:"#5B6878",fontWeight:500,marginBottom:18,lineHeight:1.6}}>
               {me.charityName
                 ? `Currently: ${me.charityName}. Choose a new one below.`
@@ -2276,22 +2275,22 @@ export default function App(){
                 const sel=me.charityName===c.name;
                 return(
                   <button key={c.url} onClick={()=>saveCharityFromModal(c.name,c.url)}
-                    style={{background:sel?`linear-gradient(135deg,${LF.pink}33,${LF.purple}33)`:"#14213D08",border:`2px solid ${sel?LF.pink:"#14213D1f"}`,borderRadius:14,padding:"12px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
-                    <div style={{fontSize:15,fontWeight:600,color:sel?LF.pink:LF.white}}>{sel?"✨ ":""}{c.name}</div>
+                    style={{background:sel?"#8C62D1":"#fff",border:`2px solid ${sel?"#8C62D1":"#14213D26"}`,borderRadius:14,padding:"12px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
+                    <div style={{fontSize:15,fontWeight:600,color:sel?"#fff":"#14213D"}}>{sel?"✓ ":""}{c.name}</div>
                   </button>
                 );
               })}
 
               {/* Custom option */}
-              <div style={{border:`2px solid ${charityCustomStep==="confirm"?LF.violet:"#14213D1f"}`,borderRadius:14,padding:"12px 14px",background:"#14213D08"}}>
-                <div style={{fontSize:15,fontWeight:600,color:LF.white,marginBottom:charityCustomStep==="url"?10:0}}>🔗 Custom charity</div>
+              <div style={{border:`2px solid ${charityCustomStep==="confirm"?"#0062B1":"#14213D26"}`,borderRadius:14,padding:"12px 14px",background:"#fff"}}>
+                <div style={{fontSize:15,fontWeight:600,color:"#14213D",marginBottom:charityCustomStep==="url"?10:0}}>Another charity</div>
 
                 {charityCustomStep==="url"&&(<>
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <input className="inp" placeholder="https://www.yourcharity.org" value={charityCustomUrl}
                       onChange={e=>{setCharityCustomUrl(e.target.value);setCharityFetchedName(null);setCharityCustomStep("url");}}
-                      style={{flex:1,fontSize:14,padding:"8px 12px"}}/>
-                    <button className="btn btn-teal" style={{padding:"8px 14px",fontSize:13,flexShrink:0}}
+                      style={{flex:1,minWidth:0,fontSize:14,padding:"8px 12px"}}/>
+                    <button className="btn btn-teal" style={{padding:"8px 14px",fontSize:14,flexShrink:0}}
                       disabled={charityFetchLoading||!isValidUrl(charityCustomUrl)}
                       onClick={async()=>{
                         if(!isValidUrl(charityCustomUrl))return;
@@ -2306,7 +2305,7 @@ export default function App(){
                     </button>
                   </div>
                   {charityCustomUrl&&!isValidUrl(charityCustomUrl)&&(
-                    <div style={{fontSize:12,color:LF.pink,fontWeight:600,marginTop:6}}>Please enter a valid URL</div>
+                    <div style={{fontSize:13,color:"#BF1E41",marginTop:6}}>Please enter a valid web address</div>
                   )}
                 </>)}
 
@@ -2320,10 +2319,10 @@ export default function App(){
                     <button className="btn btn-sm" style={{flex:1,fontSize:13}}
                       disabled={!charityEditName.trim()}
                       onClick={()=>saveCharityFromModal(charityEditName.trim(),normalizeUrl(charityCustomUrl))}>
-                      Save ✨
+                      Save
                     </button>
                     <button onClick={()=>{setCharityCustomStep("url");setCharityFetchedName(null);}}
-                      style={{flex:1,background:"#14213D0d",border:"2px solid #14213D1f",borderRadius:50,cursor:"pointer",fontSize:13,color:"#14213D",fontFamily:"'Inter',sans-serif",fontWeight:500}}>
+                      className="ghost-btn" style={{flex:1}}>
                       ← Back
                     </button>
                   </div>
@@ -2408,16 +2407,16 @@ export default function App(){
       {showAdmin&&amAdmin&&(
         <div className="modal-bg">
           <div className="card modal" style={{overflowX:"hidden"}}>
-            <div style={{fontSize:18,color:LF.yellow,marginBottom:16,fontWeight:700}}>⚙️ Admin Settings</div>
+            <div className="page-title" style={{fontSize:24,marginBottom:16}}>Admin settings</div>
 
             <span className="lbl">Challenge Duration</span>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
-              {DURATIONS.map(d=><button key={d.label} onClick={()=>setAdminDraft(s=>({...s,duration:d.label}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.duration===d.label?LF.yellow:"#14213D1f"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14,background:adminDraft.duration===d.label?`linear-gradient(135deg,${LF.yellow},${LF.orange})`:"#14213D0d",color:adminDraft.duration===d.label?"#1A0030":"#fff"}}>{d.label}</button>)}
+              {DURATIONS.map(d=><button key={d.label} onClick={()=>setAdminDraft(s=>({...s,duration:d.label}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.duration===d.label?"#8C62D1":"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14,background:adminDraft.duration===d.label?"#8C62D1":"#fff",color:adminDraft.duration===d.label?"#fff":"#14213D"}}>{d.label}</button>)}
             </div>
 
             <span className="lbl">Check-in Frequency</span>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
-              {FREQUENCIES.map(f=><button key={f} onClick={()=>setAdminDraft(s=>({...s,frequency:f}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.frequency===f?LF.violet:"#14213D1f"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14,background:adminDraft.frequency===f?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"#14213D0d",color:"#14213D"}}>{f}</button>)}
+              {FREQUENCIES.map(f=><button key={f} onClick={()=>setAdminDraft(s=>({...s,frequency:f}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.frequency===f?"#8C62D1":"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14,background:adminDraft.frequency===f?"#8C62D1":"#fff",color:adminDraft.frequency===f?"#fff":"#14213D"}}>{f}</button>)}
             </div>
 
             <span className="lbl">First Check-in Date &amp; Time</span>
@@ -2425,8 +2424,8 @@ export default function App(){
             {adminDraft.firstCheckIn&&(()=>{
               const start=new Date(adminDraft.firstCheckIn);
               start.setDate(start.getDate()-(adminDraft.frequency==="Daily"?1:adminDraft.frequency==="Weekly"?7:adminDraft.frequency==="Bi-Weekly"?14:30));
-              return <div style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:12,padding:"10px 14px",marginBottom:14,fontSize:13,color:LF.lime,fontWeight:600}}>
-                🚀 Challenge starts: {start.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {start.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
+              return <div style={{background:"#14213D0a",border:"2px solid #14213D1f",borderRadius:12,padding:"10px 14px",marginBottom:14,fontSize:13,color:"#0062B1",fontWeight:600}}>
+                Challenge starts: {start.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {start.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
               </div>;
             })()}
             {!adminDraft.firstCheckIn&&<div style={{fontSize:12,color:"#5B6878",fontWeight:500,marginBottom:14}}>Pick a date to see when the challenge will start.</div>}
@@ -2434,13 +2433,13 @@ export default function App(){
             <span className="lbl">What happens when someone fails?</span>
             <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
               {[
-                {mode:"charity",icon:"💝",label:"To Charity",desc:"Stakes donated to each member's chosen charity.",grad:`linear-gradient(135deg,${LF.pink},${LF.purple})`,col:"#fff"},
-                {mode:"winners",icon:"🏆",label:"Cash to Winners",desc:"Failed stakes split among members who hit their goals.",grad:`linear-gradient(135deg,${LF.yellow},${LF.orange})`,col:"#1A0030"},
-                {mode:"pain",   icon:"😈",label:"To The Pain",desc:"No money — whoever fails gets mercilessly ridiculed.",grad:`linear-gradient(135deg,#BF1E41,#FF7F11)`,col:"#fff"},
+                {mode:"charity",icon:"💝",label:"To Charity",desc:"Stakes donated to each member's chosen charity.",grad:"#8C62D1",col:"#fff"},
+                {mode:"winners",icon:"🏆",label:"Cash to Winners",desc:"Failed stakes split among members who hit their goals.",grad:"#FF7F11",col:"#14213D"},
+                {mode:"pain",   icon:"😈",label:"To The Pain",desc:"No money — whoever fails gets mercilessly ridiculed.",grad:"#BF1E41",col:"#fff"},
               ].map(({mode,icon,label,desc,grad,col})=>(
-                <button key={mode} onClick={()=>setAdminDraft(s=>({...s,payoutMode:mode}))} style={{background:adminDraft.payoutMode===mode?grad:"#14213D0a",border:`2px solid ${adminDraft.payoutMode===mode?"transparent":"#14213D1f"}`,borderRadius:14,padding:"10px 14px",cursor:"pointer",textAlign:"left"}}>
-                  <div style={{fontSize:15,color:adminDraft.payoutMode===mode?col:"#fff",fontWeight:600,marginBottom:2}}>{icon} {label}</div>
-                  <div style={{fontSize:13,color:adminDraft.payoutMode===mode?col+"cc":"#6B7685",fontWeight:500}}>{desc}</div>
+                <button key={mode} onClick={()=>setAdminDraft(s=>({...s,payoutMode:mode}))} style={{background:adminDraft.payoutMode===mode?grad:"#fff",border:`2px solid ${adminDraft.payoutMode===mode?grad:"#14213D26"}`,borderRadius:14,padding:"10px 14px",cursor:"pointer",textAlign:"left"}}>
+                  <div style={{fontSize:15,color:adminDraft.payoutMode===mode?col:"#14213D",fontWeight:600,marginBottom:2}}>{icon} {label}</div>
+                  <div style={{fontSize:13,color:adminDraft.payoutMode===mode?col:"#5B6878",fontWeight:500,opacity:adminDraft.payoutMode===mode?0.9:1}}>{desc}</div>
                 </button>
               ))}
             </div>
@@ -2453,8 +2452,8 @@ export default function App(){
               {adminDraft.prizeEnabled&&(<>
                 <span className="lbl" style={{marginTop:6}}>Prize Metric</span>
                 <div className="pill" style={{marginBottom:8}}>
-                  <button onClick={()=>setAdminDraft(s=>({...s,prizeMetric:"absolute"}))} style={{background:adminDraft.prizeMetric==="absolute"?`linear-gradient(135deg,#0062B1,#8377D1)`:"transparent",color:"#14213D"}}>📈 Most Total</button>
-                  <button onClick={()=>setAdminDraft(s=>({...s,prizeMetric:"pct"}))} style={{background:adminDraft.prizeMetric==="pct"?`linear-gradient(135deg,#8C62D1,#8377D1)`:"transparent",color:"#14213D"}}>🎯 Highest %</button>
+                  <button onClick={()=>setAdminDraft(s=>({...s,prizeMetric:"absolute"}))} style={{background:adminDraft.prizeMetric==="absolute"?"#8C62D1":"transparent",color:adminDraft.prizeMetric==="absolute"?"#fff":"#14213D"}}>📈 Most Total</button>
+                  <button onClick={()=>setAdminDraft(s=>({...s,prizeMetric:"pct"}))} style={{background:adminDraft.prizeMetric==="pct"?"#8C62D1":"transparent",color:adminDraft.prizeMetric==="pct"?"#fff":"#14213D"}}>🎯 Highest %</button>
                 </div>
                 <span className="lbl">What's the Prize?</span>
                 <input className="inp" placeholder="e.g. Free developmental edit, gift card..." value={adminDraft.prizeDescription||""} onChange={e=>setAdminDraft(s=>({...s,prizeDescription:e.target.value}))} style={{marginBottom:6}}/>
@@ -2463,16 +2462,16 @@ export default function App(){
 
             <span className="lbl">Stake Amount per Person</span>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
-              {[0,10,25,50,100,250].map(n=><button key={n} onClick={()=>setAdminDraft(s=>({...s,stake:n}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.stake===n?LF.pink:"#14213D1f"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14,background:adminDraft.stake===n?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#14213D0d",color:"#14213D"}}>${n}</button>)}
+              {[0,10,25,50,100,250].map(n=><button key={n} onClick={()=>setAdminDraft(s=>({...s,stake:n}))} style={{padding:"7px 14px",border:`2px solid ${adminDraft.stake===n?"#8C62D1":"#14213D26"}`,borderRadius:50,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14,background:adminDraft.stake===n?"#8C62D1":"#fff",color:adminDraft.stake===n?"#fff":"#14213D"}}>${n}</button>)}
             </div>
 
             <span className="lbl">Miss Threshold (triggers stake)</span>
             <div style={{display:"flex",gap:6,marginBottom:14}}>
-              {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setAdminDraft(s=>({...s,threshold:n}))} style={{flex:1,padding:"10px 0",border:`2px solid ${adminDraft.threshold===n?LF.pink:"#14213D1f"}`,borderRadius:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:15,background:adminDraft.threshold===n?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"#14213D0d",color:"#14213D"}}>{n}</button>)}
+              {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setAdminDraft(s=>({...s,threshold:n}))} style={{flex:1,padding:"10px 0",border:`2px solid ${adminDraft.threshold===n?"#8C62D1":"#14213D26"}`,borderRadius:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:15,background:adminDraft.threshold===n?"#8C62D1":"#fff",color:adminDraft.threshold===n?"#fff":"#14213D"}}>{n}</button>)}
             </div>
 
-            <div style={{background:"#BF1E4111",border:"2px solid #BF1E4133",borderRadius:14,padding:14,marginBottom:14}}>
-              <span className="lbl" style={{color:LF.orange}}>🔒 Goal Lock</span>
+            <div style={{background:"#14213D06",border:"1px solid #14213D1f",borderRadius:14,padding:14,marginBottom:14}}>
+              <span className="lbl">Goal lock</span>
               <div style={{fontSize:13,color:"#5B6878",fontWeight:500,marginBottom:10}}>When locked, members cannot lower their goals. Open a temporary change window to allow edits.</div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <span style={{fontSize:13,color:"#14213D",fontWeight:600}}>Change window (days):</span>
@@ -2583,9 +2582,9 @@ export default function App(){
               );
             })()}
 
-            <div style={{display:"flex",gap:8,position:"sticky",bottom:0,background:"#FFFFFF",paddingTop:12,marginLeft:-20,marginRight:-20,paddingLeft:20,paddingRight:20,paddingBottom:4}}>
-              <button className="btn btn-sm" onClick={saveAdminSettings} style={{flex:1,fontSize:13}}>Save &amp; Activate 🌈</button>
-              <button onClick={()=>setShowAdmin(false)} style={{flex:1,background:"#14213D0d",border:"2px solid #14213D1f",borderRadius:50,padding:11,fontFamily:"'Inter',sans-serif",fontSize:14,color:"#14213D",cursor:"pointer"}}>Cancel</button>
+            <div style={{display:"flex",gap:8,position:"sticky",bottom:-20,background:"#FFFFFF",paddingTop:12,marginLeft:-20,marginRight:-20,marginBottom:-20,paddingLeft:20,paddingRight:20,paddingBottom:20,borderTop:"1px solid #14213D14"}}>
+              <button className="btn" onClick={saveAdminSettings} style={{flex:2}}>Save &amp; activate</button>
+              <button className="ghost-btn" onClick={()=>setShowAdmin(false)} style={{flex:1,fontSize:16}}>Cancel</button>
             </div>
           </div>
         </div>
@@ -3189,56 +3188,63 @@ export default function App(){
 
         {/* ── STAKES ── */}
         {tab==="Stakes"&&(<>
+          <div className="page-head">
+            <div>
+              <p className="eyebrow">#{me.groupId}</p>
+              <h2 className="page-title">Stakes</h2>
+            </div>
+          </div>
           <div className="card">
-            <span className="lbl">Goal Type &amp; Target</span>
-            {isLocked&&<div style={{fontSize:13,color:LF.orange,fontWeight:600,marginBottom:10}}>🔒 Goals locked — you can raise but not lower{admin.changeWindowOpen?` (~${changeHoursLeft}h window open)`:"."}.</div>}
+            <div className="card-title" style={{marginBottom:6}}>Your weekly goal</div>
+            {isLocked&&<div style={{fontSize:14,color:"#B85400",marginBottom:12}}>Goals are locked. You can raise your goal but not lower it.</div>}
+            {admin.changeWindowOpen&&<div style={{fontSize:14,color:"#0062B1",marginBottom:12}}>The change window is open for about {changeHoursLeft} more hours.</div>}
             <div className="pill" style={{marginBottom:12}}>
-              <button onClick={()=>setGoalTypeEdit("words")} style={{background:goalTypeEdit==="words"?`linear-gradient(135deg,${LF.pink},${LF.purple})`:"transparent",color:"#14213D"}}>✍️ Words</button>
-              <button onClick={()=>setGoalTypeEdit("time")}  style={{background:goalTypeEdit==="time"?`linear-gradient(135deg,${LF.violet},${LF.blue})`:"transparent",color:"#14213D"}}>⏱️ Time</button>
+              <button onClick={()=>setGoalTypeEdit("words")} style={{background:goalTypeEdit==="words"?"#8C62D1":"transparent",color:goalTypeEdit==="words"?"#fff":"#14213D"}}>✍️ Words</button>
+              <button onClick={()=>setGoalTypeEdit("time")}  style={{background:goalTypeEdit==="time"?"#8C62D1":"transparent",color:goalTypeEdit==="time"?"#fff":"#14213D"}}>⏱️ Time</button>
             </div>
             <div style={{display:"flex",gap:10}}>
-              <input className="inp" type="number" value={goalInput} onChange={e=>setGoalInput(e.target.value)} style={{flex:1}}/>
-              <button className="btn" onClick={updateGoal} style={{padding:"11px 18px"}}>Set ✨</button>
+              <input className="inp" type="number" value={goalInput} onChange={e=>setGoalInput(e.target.value)} style={{flex:1,minWidth:0}}/>
+              <button className="btn" onClick={updateGoal} style={{padding:"11px 22px"}}>Set</button>
             </div>
-            <div style={{fontSize:13,color:LF.hotpink,marginTop:8,fontWeight:600}}>Current: {fmtGoal(me)}/week</div>
+            <div style={{fontSize:14,color:"#5B6878",marginTop:10}}>Current goal: <b style={{color:"#14213D"}}>{fmtGoal(me)} a week</b></div>
           </div>
 
           {admin.payoutMode==="charity"&&(
             <div className="card">
-              <span className="lbl">Your Personal Charity 💝</span>
+              <div className="card-title" style={{marginBottom:8}}>Your charity</div>
               {me.charityName?(
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
                   <div>
-                    <div style={{fontSize:17,fontWeight:700,color:LF.lime}}>✨ {me.charityName}</div>
-                    <div style={{fontSize:12,color:"#5B6878",fontWeight:500,marginTop:2}}>Your stakes go here if you miss your goal.</div>
+                    <div style={{fontSize:17,fontWeight:700,color:"#14213D"}}>{me.charityName}</div>
+                    <div style={{fontSize:13,color:"#5B6878",marginTop:2}}>Your stake goes here if you miss your goal.</div>
                   </div>
                   {!isLocked&&(
-                    <button className="btn btn-teal" onClick={()=>setShowCharityModal(true)} style={{fontSize:13,padding:"8px 14px",flexShrink:0}}>
-                      Change
-                    </button>
+                    <button className="ghost-btn" onClick={()=>setShowCharityModal(true)}>Change</button>
                   )}
                 </div>
               ):(
                 <div>
                   <div style={{fontSize:14,color:"#5B6878",fontWeight:500,marginBottom:12}}>You haven't picked a charity yet!</div>
                   {!isLocked&&(
-                    <button className="btn btn-sm" onClick={()=>setShowCharityModal(true)} style={{width:"100%",fontSize:15}}>
-                      💝 Pick My Charity
+                    <button className="btn" onClick={()=>setShowCharityModal(true)} style={{width:"100%"}}>
+                      Pick my charity
                     </button>
                   )}
-                  {isLocked&&<div style={{fontSize:13,color:LF.orange,fontWeight:600}}>🔒 Goals are locked — charity can't be changed.</div>}
+                  {isLocked&&<div style={{fontSize:14,color:"#B85400"}}>Goals are locked, so your charity can't be changed right now.</div>}
                 </div>
               )}
             </div>
           )}
 
-          <div className="card" style={{background:"#14213D08",border:"2px solid #14213D1f",textAlign:"center"}}>
-            <div style={{fontSize:14,color:LF.white,fontWeight:500,lineHeight:2}}>
-              Miss <span style={{color:LF.yellow,fontWeight:700}}>{fmtGoal({...me,goalValue:periodGoal})}</span> for <span style={{color:LF.yellow,fontWeight:700}}>{admin.threshold} check-ins</span><br/>
-              → <span style={{color:LF.pink,fontWeight:700}}>{fmtMoney(admin.stake)}</span>{" "}
-              {admin.payoutMode==="winners"&&<span>split among 🏆 members who hit their goals</span>}
-              {admin.payoutMode==="pain"&&<span style={{color:"#BF1E41"}}>😈 you'll be publicly roasted</span>}
-              {admin.payoutMode==="charity"&&<span>goes to 💝 {me.charityName||me.charity||"your charity"}</span>}
+          <div className="card" style={{textAlign:"center"}}>
+            <div className="card-title" style={{marginBottom:6}}>The deal</div>
+            <div style={{fontSize:15,color:"#14213D",lineHeight:1.7}}>
+              Miss <b style={{color:"#0062B1"}}>{fmtGoal({...me,goalValue:periodGoal})}</b> for <b style={{color:"#0062B1"}}>{admin.threshold} check-in{admin.threshold===1?"":"s"}</b><br/>
+              {admin.payoutMode==="pain"
+                ?<span>and you'll be publicly roasted. 😈</span>
+                :<><b style={{color:"#6D47B5"}}>{fmtMoney(admin.stake)}</b>{" "}
+                  {admin.payoutMode==="winners"&&<span>is split among members who hit their goals.</span>}
+                  {admin.payoutMode==="charity"&&<span>goes to {me.charityName||me.charity||"your charity"}.</span>}</>}
             </div>
           </div>
 
