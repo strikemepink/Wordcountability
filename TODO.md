@@ -2,7 +2,7 @@
 
 Goal: people can test the app during November 2026 (the old National Novel Writing Month).
 
-Last updated: 10/25/2026
+Last updated: 10/26/2026
 
 ## Before November testing (suggested)
 
@@ -10,6 +10,7 @@ Last updated: 10/25/2026
 
 ## Open bugs and loose ends
 
+- [ ] **First-run pop-ups overlap.** After Setup, the app tour and the "Install the app" prompt open at the same time, stacked. Show the install prompt after the tour ends.
 - [ ] **Protect the payment ledger.** Any group member's app can still change the ledger, because members' apps write group word totals and "Record Donation" entries to it. Locking it to admins needs the ledger restructured (e.g. each member's entries saved separately).
 - [ ] `/api/fetch-title` (charity name lookup) will fetch any web page for anyone. Low risk, easy to tighten.
 - [ ] **Let preview versions connect to Firebase** so changes can be tested before they go live. In Vercel: Settings → Environments → Preview, then add the same Firebase and OneSignal variables that Production has (including FIREBASE_SERVICE_ACCOUNT). Catch: previews would then use the real database, so test with a throwaway account and group (or set up a separate test Firebase project later).
@@ -18,12 +19,12 @@ Last updated: 10/25/2026
 
 - [ ] **Pace-based nudges (idea).** Instead of just "you're 30% there," tell writers if they're behind where they should be by today (e.g. "1,400 words behind pace for Thursday").
 - [ ] **Proof of writing (research first).** How can people show they actually wrote? Research options before deciding.
-- [ ] **Redesign.** The current look is too busy. Model it on the Perfect Pomodoro app's look.
 - [ ] **Real payments (research first).** Make the money stakes actually work. Research money-transmitter rules and payment providers before building. For now, the admin records payments manually and money moves outside the app.
 - [ ] **App Store.** Get the app into the Apple App Store (developer account already set up). Apple often rejects apps that are mostly a website in a wrapper (App Review Guideline 4.2) and has rules for real-money contests (Guideline 5.3), so plan for extra native features and review time.
 
 ## Done
 
+- [x] **Redesign** (10/26/2026): light cream background with bordered palette circles, orange/purple title, bottom tab bar (Today, Group, Chat, Stats, Stakes; History now inside Stats), colored card outlines, purple buttons. Design rules: never pair green with red/pink; small text uses deeper shades so it stays readable.
 - [x] **Duplicate first names** (10/25/2026): cards saved by account; joining with a name already used in the group asks for an initial or nickname.
 - [x] **Skipped check-ins recorded** (10/25/2026): each missed deadline gets its own entry (missed with 0 after the first).
 - [x] **Notifications on every device** (10/25/2026): each person's devices are kept in a list and every push goes to all of them.
