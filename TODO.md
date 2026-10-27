@@ -2,7 +2,7 @@
 
 Goal: people can test the app during November 2026 (the old National Novel Writing Month).
 
-Last updated: 10/26/2026
+Last updated: 10/27/2026
 
 ## Before November testing (suggested)
 
@@ -24,6 +24,8 @@ Last updated: 10/26/2026
 
 ## Done
 
+- [x] **Writing timer pause** (10/27/2026): Pause and Stop now really stop the clock, even if you lock the phone or switch apps.
+- [x] **App tour** (10/27/2026): each step switches to the tab it describes; the avatar glows on the notifications step.
 - [x] **Redesign** (10/26/2026): light cream background with bordered palette circles, orange/purple title, bottom tab bar (Today, Group, Chat, Stats, Stakes; History now inside Stats), colored card outlines, purple buttons. Design rules: never pair green with red/pink; small text uses deeper shades so it stays readable.
 - [x] **Duplicate first names** (10/25/2026): cards saved by account; joining with a name already used in the group asks for an initial or nickname.
 - [x] **Skipped check-ins recorded** (10/25/2026): each missed deadline gets its own entry (missed with 0 after the first).
