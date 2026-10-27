@@ -10,9 +10,7 @@ Last updated: 10/27/2026
 
 ## Open bugs and loose ends
 
-- [ ] **First-run pop-ups overlap.** After Setup, the app tour and the "Install the app" prompt open at the same time, stacked. Show the install prompt after the tour ends.
 - [ ] **Protect the payment ledger.** Any group member's app can still change the ledger, because members' apps write group word totals and "Record Donation" entries to it. Locking it to admins needs the ledger restructured (e.g. each member's entries saved separately).
-- [ ] `/api/fetch-title` (charity name lookup) will fetch any web page for anyone. Low risk, easy to tighten.
 - [ ] **Let preview versions connect to Firebase** so changes can be tested before they go live. In Vercel: Settings → Environments → Preview, then add the same Firebase and OneSignal variables that Production has (including FIREBASE_SERVICE_ACCOUNT). Catch: previews would then use the real database, so test with a throwaway account and group (or set up a separate test Firebase project later).
 
 ## Bigger projects (suggested for after November)
@@ -24,6 +22,8 @@ Last updated: 10/27/2026
 
 ## Done
 
+- [x] **First-run pop-ups** (10/27/2026): new members see the app tour first, then the "Install the app" prompt.
+- [x] **Charity lookup safety** (10/27/2026): only signed-in users can use it, it never visits private/internal network addresses (checked on every redirect), and it reads at most the first 300 KB of a page.
 - [x] **Writing timer pause** (10/27/2026): Pause and Stop now really stop the clock, even if you lock the phone or switch apps.
 - [x] **App tour** (10/27/2026): each step switches to the tab it describes; the avatar glows on the notifications step.
 - [x] **Redesign** (10/26/2026): light cream background with bordered palette circles, orange/purple title, bottom tab bar (Today, Group, Chat, Stats, Stakes; History now inside Stats), colored card outlines, purple buttons. Design rules: never pair green with red/pink; small text uses deeper shades so it stays readable.

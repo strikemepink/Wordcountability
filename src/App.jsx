@@ -1199,6 +1199,7 @@ export default function App(){
   const [showNotifFeed,setShowNotifFeed]=useState(false);
   const [showTour,setShowTour]=useState(false);
   const [tourStep,setTourStep]=useState(0);
+  const pwaAfterTour=useRef(false); // true when the install prompt should follow the first-run tour
   const [inAppNotifs,setInAppNotifs]=useState([]);
   // timer
   const [timerRunning,setTimerRunning]=useState(false);
@@ -1609,8 +1610,12 @@ export default function App(){
     writeUserIndex(uid,d).catch(()=>{});
     pub(d).catch(()=>{});
     loadMembers(groupId); loadAdmins(groupId); loadChat(groupId); loadPolls(groupId); loadAdminData(groupId); loadLedger(groupId);
-    if(!localStorage.getItem("pwaPromptShown")){setShowPwaPrompt(true);localStorage.setItem("pwaPromptShown","1");}
-    if(!localStorage.getItem("appTourShown")){setShowTour(true);setTourStep(0);localStorage.setItem("appTourShown","1");}
+    // First visit: show the app tour first, then the "Install the app" prompt once the tour ends
+    // (they used to open at the same time, stacked on top of each other)
+    const needPwa=!localStorage.getItem("pwaPromptShown"), needTour=!localStorage.getItem("appTourShown");
+    if(needTour){setShowTour(true);setTourStep(0);localStorage.setItem("appTourShown","1");pwaAfterTour.current=needPwa;}
+    else if(needPwa){setShowPwaPrompt(true);}
+    if(needPwa)localStorage.setItem("pwaPromptShown","1");
   }
 
   async function saveProgress(n){
@@ -1810,11 +1815,7 @@ export default function App(){
 
   async function fetchCharityName(url){
     try{
-      const res=await fetch("/api/fetch-title",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({url}),
-      });
+      const res=await apiPost("/api/fetch-title",{url});
       const data=await res.json();
       return data.name||null;
     }catch{return null;}
@@ -1874,6 +1875,13 @@ export default function App(){
       await setDoc(adminUidDocRef(me.groupId,member.uid),{value:JSON.stringify({uid:member.uid,addedBy:uid,at:Date.now()})});
       loadAdmins(me.groupId);
     }catch(e){console.warn("makeAdmin",e);alert("Couldn't make them an admin. Please try again.");}
+  }
+
+  // Closes the app tour (finished or skipped), returns to Today, and shows the install
+  // prompt next if this was a new member's first visit
+  function endTour(){
+    setShowTour(false); setTab("Dashboard");
+    if(pwaAfterTour.current){pwaAfterTour.current=false;setShowPwaPrompt(true);}
   }
 
   function toggleGoalLock(){
@@ -2265,11 +2273,11 @@ export default function App(){
               <div style={{fontSize:15,color:"#5B6878",fontWeight:500,lineHeight:1.55,marginBottom:16}}>{step.body}</div>
               <div style={{display:"flex",gap:8}}>
                 {isLast?(
-                  <button className="btn" style={{flex:1}} onClick={()=>{setShowTour(false);setTab("Dashboard");}}>Time to write! 🌈</button>
+                  <button className="btn" style={{flex:1}} onClick={endTour}>Time to write! 🌈</button>
                 ):(
                   <>
                     <button className="btn" style={{flex:1}} onClick={()=>setTourStep(s=>s+1)}>Next →</button>
-                    <button className="ghost-btn" onClick={()=>{setShowTour(false);setTab("Dashboard");}} style={{flex:1,fontSize:16}}>Skip</button>
+                    <button className="ghost-btn" onClick={endTour} style={{flex:1,fontSize:16}}>Skip</button>
                   </>
                 )}
               </div>
