@@ -1640,16 +1640,38 @@ export default function App(){
       setTimerSecs(elapsed);
     },1000);
   }
-  function pauseTimer(){
+  // Seconds on the clock right now: worked out from the wall clock while running, so it's
+  // exact even if the phone was asleep; when stopped or paused, it's whatever was locked in.
+  function timerElapsedNow(){
+    return timerStartedAt.current!==null
+      ?timerBaseSecs.current+Math.floor((Date.now()-timerStartedAt.current)/1000)
+      :timerSecs;
+  }
+  // Stops the clock. Clearing the start time matters: without it, coming back to the app
+  // (which re-syncs the timer from the start time) made a paused timer jump ahead.
+  function haltTimer(){
+    const secs=timerElapsedNow();
     clearInterval(timerRef.current);
+    timerStartedAt.current=null;
+    timerBaseSecs.current=secs;
     setTimerRunning(false);
-    // timerSecs is already correct from the interval — no extra calculation needed
+    return secs;
+  }
+  function pauseTimer(){
+    setTimerSecs(haltTimer());
+  }
+  function resetTimer(){
+    haltTimer();
+    timerBaseSecs.current=0;
+    setTimerSecs(0);
   }
   async function stopAndSave(){
-    clearInterval(timerRef.current); setTimerRunning(false);
-    if(timerSecs<60){setTimerSecs(0);return;}
-    const mins=Math.round(timerSecs/60);
-    setTimerSessions(s=>[...s,{mins,ts:Date.now()}]); setTimerSecs(0);
+    const secs=haltTimer();
+    timerBaseSecs.current=0;
+    setTimerSecs(0);
+    if(secs<60)return;
+    const mins=Math.round(secs/60);
+    setTimerSessions(s=>[...s,{mins,ts:Date.now()}]);
     await saveProgress(mins);
   }
 
@@ -2772,7 +2794,7 @@ export default function App(){
                     {!timerRunning
                       ?<button className="btn" onClick={startTimer} style={{flex:1}}>{timerSecs>0?"Resume":"Start"} writing</button>
                       :<button className="btn btn-teal" onClick={pauseTimer} style={{flex:1}}>Pause</button>}
-                    {timerSecs>0&&<button className="btn btn-red" onClick={()=>{clearInterval(timerRef.current);setTimerRunning(false);setTimerSecs(0);}} style={{flex:1}}>Stop</button>}
+                    {timerSecs>0&&<button className="btn btn-red" onClick={resetTimer} style={{flex:1}}>Stop</button>}
                     {timerSecs>=60&&<button className="btn btn-yellow" onClick={stopAndSave} style={{width:"100%",marginTop:4}}>Save {Math.round(timerSecs/60)} min</button>}
                   </div>
                   {timerSessions.length>0&&(
