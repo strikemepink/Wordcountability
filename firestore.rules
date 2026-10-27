@@ -55,11 +55,30 @@ service cloud.firestore {
       allow read, write: if isMember(groupId);
     }
 
-    // Shared group data (chat, polls, ledger, notification bookkeeping): members only.
-    // Challenge settings ("admin") can be read by members but changed only by admins.
+    // Shared group data (chat, polls, notification bookkeeping): members only.
+    // Challenge settings ("admin") and the older payment list ("ledger") can be read by
+    // members but changed only by admins.
     match /groups/{groupId}/data/{docId} {
       allow read: if isMember(groupId);
-      allow write: if (isMember(groupId) && docId != "admin") || isGroupAdmin(groupId);
+      allow write: if (isMember(groupId) && docId != "admin" && docId != "ledger") || isGroupAdmin(groupId);
+    }
+
+    // Payment records, one per payment. Members can see them all. A member can add only their
+    // own record, once per check-in (its name is "<their id>_<check-in>", and nobody can
+    // overwrite a record). Admins can add records for anyone and remove mistakes.
+    match /groups/{groupId}/payments/{paymentId} {
+      allow read: if isMember(groupId);
+      allow create: if isMember(groupId) &&
+        request.resource.data.recordedByUid == request.auth.uid &&
+        request.resource.data.type in ["charity", "payout"] &&
+        request.resource.data.amount is number &&
+        request.resource.data.amount >= -10000 && request.resource.data.amount <= 10000 &&
+        request.resource.data.periodKey is string &&
+        (isGroupAdmin(groupId) ||
+          (request.resource.data.uid == request.auth.uid &&
+           request.resource.data.self == true &&
+           paymentId == request.auth.uid + "_" + request.resource.data.periodKey));
+      allow delete: if isGroupAdmin(groupId);
     }
   }
 }

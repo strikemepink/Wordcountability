@@ -10,7 +10,6 @@ Last updated: 10/27/2026
 
 ## Open bugs and loose ends
 
-- [ ] **Protect the payment ledger.** Any group member's app can still change the ledger, because members' apps write group word totals and "Record Donation" entries to it. Locking it to admins needs the ledger restructured (e.g. each member's entries saved separately).
 - [ ] **Let preview versions connect to Firebase** so changes can be tested before they go live. In Vercel: Settings → Environments → Preview, then add the same Firebase and OneSignal variables that Production has (including FIREBASE_SERVICE_ACCOUNT). Catch: previews would then use the real database, so test with a throwaway account and group (or set up a separate test Firebase project later).
 
 ## Bigger projects (suggested for after November)
@@ -22,6 +21,7 @@ Last updated: 10/27/2026
 
 ## Done
 
+- [x] **Payment records protected** (10/27/2026): each payment is its own record. Members can record only their own donation or payout, once per check-in, and can't change or delete anyone's. Admins can record for anyone and remove mistakes (Stats → Money). Older records still show and count, and only admins can change them.
 - [x] **First-run pop-ups** (10/27/2026): new members see the app tour first, then the "Install the app" prompt.
 - [x] **Charity lookup safety** (10/27/2026): only signed-in users can use it, it never visits private/internal network addresses (checked on every redirect), and it reads at most the first 300 KB of a page.
 - [x] **Writing timer pause** (10/27/2026): Pause and Stop now really stop the clock, even if you lock the phone or switch apps.

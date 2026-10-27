@@ -4,7 +4,7 @@ import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
 } from "firebase/auth";
 import {
-  getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, runTransaction,
+  getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, runTransaction, addDoc,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -29,7 +29,10 @@ const legacyMemberDocRef = (gid, name) => doc(db, "groups", gid, "members", name
 const chatDocRef    = (gid)       => doc(db, "groups", gid, "data", "chat");
 const pollsDocRef   = (gid)       => doc(db, "groups", gid, "data", "polls");
 const adminDocRef   = (gid)       => doc(db, "groups", gid, "data", "admin");
-const ledgerDocRef  = (gid)       => doc(db, "groups", gid, "data", "ledger");
+const ledgerDocRef  = (gid)       => doc(db, "groups", gid, "data", "ledger");   // older payment records (admin-only now)
+// Payment records: one record per payment. Members can add only their own, once per check-in.
+const paymentsColRef = (gid)       => collection(db, "groups", gid, "payments");
+const paymentDocRef  = (gid, id)   => doc(db, "groups", gid, "payments", id);
 const membersColRef = (gid)       => collection(db, "groups", gid, "members");
 const memberUidDocRef    = (gid, uid) => doc(db, "groups", gid, "memberUids", uid);
 const notifDocRef        = (uid)       => doc(db, "users",  uid, "data", "notifications");
@@ -1242,6 +1245,7 @@ export default function App(){
   const [admin,setAdmin]=useState(DEFAULT_ADMIN);
   const [showAdmin,setShowAdmin]=useState(false);
   const [adminDraft,setAdminDraft]=useState(DEFAULT_ADMIN);
+  const [payments,setPayments]=useState([]); // new-style payment records (see paymentsColRef)
   const [ledger,setLedger]=useState({charityTotals:{},payoutTotals:{},prizeTotals:{},totalWords:0,totalMinutes:0,entries:[]});
   // group check-in history for Stats tab — loaded on demand when Stats tab is opened
   const [groupCheckIns,setGroupCheckIns]=useState(null); // null = not yet loaded
@@ -1510,7 +1514,10 @@ export default function App(){
   async function loadChat(gid){try{const v=await fsGet(chatDocRef(gid));setMessages(v?JSON.parse(v):[]);}catch{}}
   async function loadPolls(gid){try{const v=await fsGet(pollsDocRef(gid));setPolls(v?JSON.parse(v):[]);}catch{}}
   async function loadAdminData(gid){try{const v=await fsGet(adminDocRef(gid));if(v){const a=JSON.parse(v);setAdmin(a);setAdminDraft(a);}}catch{}}
-  async function loadLedger(gid){try{const v=await fsGet(ledgerDocRef(gid));if(v)setLedger(JSON.parse(v));}catch{}}
+  async function loadLedger(gid){
+    try{const v=await fsGet(ledgerDocRef(gid));if(v)setLedger(JSON.parse(v));}catch{}
+    try{const snap=await getDocs(paymentsColRef(gid));setPayments(snap.docs.map(d=>({...d.data(),paymentId:d.id})));}catch{}
+  }
 
   // Loads each member's personal history from Firebase and assembles group check-in cards.
   // Called once when the user first opens the Stats tab.
@@ -1626,19 +1633,8 @@ export default function App(){
     const upd={...me,progressThisWeek:newWeekProgress,totalProgress:newTotal,dailyChecks:checks};
     setMe(upd); triggerSpark();
     fsSet(userDocRef(uid),JSON.stringify(upd)); pub(upd);
-    loadMembers(me.groupId); updateLedgerProgress(n);
+    loadMembers(me.groupId);
     maybeNotifyGoalHit(newWeekProgress);
-  }
-
-  async function updateLedgerProgress(n){
-    try{
-      const v=await fsGet(ledgerDocRef(me.groupId));
-      const l=v?JSON.parse(v):{charityTotals:{},payoutTotals:{},prizeTotals:{},totalWords:0,totalMinutes:0,entries:[]};
-      if(!l.prizeTotals)l.prizeTotals={};
-      if(me.goalType==="words")l.totalWords=(l.totalWords||0)+n;
-      else l.totalMinutes=(l.totalMinutes||0)+n;
-      await fsSet(ledgerDocRef(me.groupId),JSON.stringify(l)); setLedger(l);
-    }catch{}
   }
 
   async function logProgress(){
@@ -1743,7 +1739,7 @@ export default function App(){
     await fsSet(userDocRef(uid),JSON.stringify(upd));
     await pub(upd);
     loadMembers(me.groupId);
-    if(!beforeStart){updateLedgerProgress(n);maybeNotifyGoalHit(newWeekProgress);}
+    if(!beforeStart){maybeNotifyGoalHit(newWeekProgress);}
     setLogInput("");
     setPastDaySaving(false);
     setPastDaySelected(null);
@@ -1766,7 +1762,7 @@ export default function App(){
     await fsSet(userDocRef(uid),JSON.stringify(upd));
     await pub(upd);
     loadMembers(me.groupId);
-    if(!beforeStart){updateLedgerProgress(n);maybeNotifyGoalHit(newWeekProgress);}
+    if(!beforeStart){maybeNotifyGoalHit(newWeekProgress);}
     setPastDayInput("");
     setPastDaySaving(false);
     setShowPastDayModal(false);
@@ -1896,18 +1892,36 @@ export default function App(){
     setAdmin(upd); setAdminDraft(upd); fsSet(adminDocRef(me.groupId),JSON.stringify(upd));
   }
 
-  async function recordPayment(type,name,amount,charity){
+  // The check-in a member's own payment belongs to: the most recent passed deadline,
+  // or the current week when no challenge is running. Used to allow one record per check-in.
+  function currentPaymentKey(){
+    if(admin.firstCheckIn&&admin.startDate){
+      const cad=cadenceDaysLocal(admin.frequency||"Weekly")*86400000;
+      const end=admin.endDate?new Date(admin.endDate).getTime():Infinity;
+      let cur=new Date(admin.firstCheckIn).getTime(),latest=null;
+      while(cur<=end&&cur<=Date.now()){latest=cur;cur+=cad;}
+      if(latest)return String(latest);
+    }
+    return "week-"+getWeekKey();
+  }
+  // A member records their own donation or payout. Saved under "<their id>_<check-in>", so a
+  // second tap can't create a duplicate (the database refuses to overwrite it).
+  async function recordMyPayment(type){
+    const key=currentPaymentKey();
+    const record={uid,memberName:me.name,type,amount:Number(admin.stake)||0,
+      charityName:type==="charity"?(me.charityName||me.charity||""):"",
+      periodKey:key,checkInMs:/^\d+$/.test(key)?Number(key):null,
+      recordedByUid:uid,recordedBy:me.name,ts:Date.now(),self:true};
     try{
-      const v=await fsGet(ledgerDocRef(me.groupId));
-      const l=v?JSON.parse(v):{charityTotals:{},payoutTotals:{},prizeTotals:{},totalWords:0,totalMinutes:0,entries:[]};
-      if(!l.prizeTotals)l.prizeTotals={};
-      const entry={id:Date.now(),type,name,amount,charity,recordedBy:me.name,ts:Date.now()};
-      l.entries=[...(l.entries||[]),entry];
-      if(type==="charity")l.charityTotals[charity]=(l.charityTotals[charity]||0)+amount;
-      else if(type==="payout")l.payoutTotals[name]=(l.payoutTotals[name]||0)+amount;
-      else if(type==="prize")l.prizeTotals[name]=amount;
-      await fsSet(ledgerDocRef(me.groupId),JSON.stringify(l)); setLedger(l);
-    }catch{}
+      await setDoc(paymentDocRef(me.groupId,`${uid}_${key}`),record);
+      loadLedger(me.groupId);
+    }catch(e){console.warn("recordMyPayment",e);alert("Couldn't record that. It may already be recorded. Please refresh and check.");}
+  }
+  // Admins can remove a payment record that was entered by mistake
+  async function removePayment(paymentId){
+    if(!window.confirm("Remove this payment record?"))return;
+    try{await deleteDoc(paymentDocRef(me.groupId,paymentId));loadLedger(me.groupId);}
+    catch(e){console.warn("removePayment",e);alert("Couldn't remove it. Please try again.");}
   }
 
   // Records check-in payments (charity or payout) within 48h of the most recent deadline.
@@ -1922,28 +1936,20 @@ export default function App(){
     if(validRows.length===0)return;
     setPaymentSaving(true);
     try{
-      const v=await fsGet(ledgerDocRef(me.groupId));
-      const l=v?JSON.parse(v):{charityTotals:{},payoutTotals:{},prizeTotals:{},totalWords:0,totalMinutes:0,entries:[]};
-      if(!l.prizeTotals)l.prizeTotals={};
       const now=Date.now();
       for(const row of validRows){
         const amt=parseFloat(row.amount);
+        const base={amount:amt,periodKey:String(checkInMs),checkInMs,recordedByUid:uid,recordedBy:me.name,ts:now,self:false};
         if(admin.payoutMode==="charity"){
           // Charity mode: row = { name: charityName, amount }
-          const charityKey=row.name.trim();
-          const entry={id:now+Math.random(),type:"charity",name:charityKey,charityName:charityKey,amount:amt,charity:"",recordedBy:me.name,ts:now,checkInMs};
-          l.entries=[...(l.entries||[]),entry];
-          l.charityTotals[charityKey]=(l.charityTotals[charityKey]||0)+amt;
+          await addDoc(paymentsColRef(me.groupId),{...base,type:"charity",uid:"",memberName:"",charityName:row.name.trim()});
         } else {
           // Payout mode: row = { memberName, avatar, amount } — positive=received, negative=paid
-          const memberKey=row.memberName.trim();
-          const entry={id:now+Math.random(),type:"payout",name:memberKey,amount:amt,charity:"",recordedBy:me.name,ts:now,checkInMs};
-          l.entries=[...(l.entries||[]),entry];
-          l.payoutTotals[memberKey]=(l.payoutTotals[memberKey]||0)+amt;
+          const who=members.find(m=>m.name===row.memberName.trim());
+          await addDoc(paymentsColRef(me.groupId),{...base,type:"payout",uid:who?.uid||"",memberName:row.memberName.trim(),charityName:""});
         }
       }
-      await fsSet(ledgerDocRef(me.groupId),JSON.stringify(l));
-      setLedger(l);
+      await loadLedger(me.groupId);
       setPaymentSaved(true);
       // Reload Stats check-in history so the new payments appear immediately
       setGroupCheckIns(null);
@@ -2202,8 +2208,17 @@ export default function App(){
   const fmtLeft=()=>{if(me.goalType==="words")return`${left.toLocaleString()} words to go`;const h=Math.floor(left/60),m=left%60;return`${h>0?h+"h ":""}${m>0?m+"m":""} to go`;};
   const totalGroupWords=members.filter(m=>m.goalType==="words").reduce((s,m)=>s+(m.totalProgress||0),0)+(me.goalType==="words"?(me.totalProgress||0):0);
   const totalGroupMinutes=members.filter(m=>m.goalType==="time").reduce((s,m)=>s+(m.totalProgress||0),0)+(me.goalType==="time"?(me.totalProgress||0):0);
-  const totalCharity=Object.values(ledger.charityTotals||{}).reduce((s,v)=>s+v,0);
-  const totalPayouts=Object.values(ledger.payoutTotals||{}).reduce((s,v)=>s+v,0);
+  // Money records: older ones from the shared ledger plus the new one-record-per-payment ones
+  const moneyEntries=[
+    ...(ledger.entries||[]),
+    ...payments.map(pm=>({id:pm.paymentId,paymentId:pm.paymentId,type:pm.type,
+      name:pm.type==="charity"?(pm.memberName||pm.charityName):pm.memberName,
+      charityName:pm.charityName,amount:pm.amount,checkInMs:pm.checkInMs,recordedBy:pm.recordedBy,ts:pm.ts,self:pm.self})),
+  ].sort((a,b)=>(a.ts||0)-(b.ts||0));
+  const sumOf=type=>payments.filter(pm=>pm.type===type).reduce((t,pm)=>t+(Number(pm.amount)||0),0);
+  const totalCharity=Object.values(ledger.charityTotals||{}).reduce((s,v)=>s+v,0)+sumOf("charity");
+  const totalPayouts=Object.values(ledger.payoutTotals||{}).reduce((s,v)=>s+v,0)+sumOf("payout");
+  const myPaymentRecorded=payments.some(pm=>pm.paymentId===`${uid}_${currentPaymentKey()}`);
   const totalPrizes=Object.keys(ledger.prizeTotals||{}).length;
 
   return(
@@ -2532,7 +2547,7 @@ export default function App(){
               const hoursAgo=(now-latestDeadline)/3600000;
               if(hoursAgo>48)return null;
               // Check if payments for this deadline are already recorded in the ledger
-              const alreadyRecorded=(ledger.entries||[]).some(e=>e.checkInMs===latestDeadline);
+              const alreadyRecorded=moneyEntries.some(e=>e.checkInMs===latestDeadline&&!e.self);
               // Build the deadline label for display
               const dlLabel=new Date(latestDeadline).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
               // Initialise rows the first time the section appears (or reset when re-opened)
@@ -2841,8 +2856,11 @@ export default function App(){
                 </div>
               )}
             </div>
-            {triggered&&admin.payoutMode==="charity"&&<button className="btn btn-red" onClick={()=>recordPayment("charity",me.name,admin.stake,me.charity)} style={{marginTop:14,width:"100%"}}>Record donation</button>}
-            {triggered&&admin.payoutMode==="winners"&&<button className="btn btn-yellow" onClick={()=>recordPayment("payout",me.name,admin.stake,"")} style={{marginTop:14,width:"100%"}}>Record payout of {fmtMoney(admin.stake)}</button>}
+            {triggered&&myPaymentRecorded&&(admin.payoutMode==="charity"||admin.payoutMode==="winners")&&(
+              <div style={{marginTop:14,fontSize:14,fontWeight:600,color:"#0062B1",textAlign:"center"}}>✓ {admin.payoutMode==="charity"?"Donation":"Payout"} recorded for this check-in</div>
+            )}
+            {triggered&&!myPaymentRecorded&&admin.payoutMode==="charity"&&<button className="btn btn-red" onClick={()=>recordMyPayment("charity")} style={{marginTop:14,width:"100%"}}>Record donation</button>}
+            {triggered&&!myPaymentRecorded&&admin.payoutMode==="winners"&&<button className="btn btn-yellow" onClick={()=>recordMyPayment("payout")} style={{marginTop:14,width:"100%"}}>Record payout of {fmtMoney(admin.stake)}</button>}
           </div>
           </>);
         })()}
@@ -3161,7 +3179,7 @@ export default function App(){
             <div className="card" style={{textAlign:"center",padding:20,color:"#5B6878",fontSize:14}}>Group check-in results appear after the first deadline.</div>
           )}
           {(groupCheckIns||[]).map(ci=>{
-            const ciPayments=(ledger.entries||[]).filter(e=>e.checkInMs===ci.deadlineMs);
+            const ciPayments=moneyEntries.filter(e=>e.checkInMs===ci.deadlineMs);
             return(
             <div key={ci.deadlineMs} className="card">
               <div className="card-title" style={{marginBottom:4}}>{ci.label}</div>
@@ -3204,15 +3222,18 @@ export default function App(){
                 </div>
               ))}
             </div>
-            {(ledger.entries||[]).length>0&&(
+            {moneyEntries.length>0&&(
               <div style={{marginTop:14}}>
-                {[...(ledger.entries||[])].reverse().slice(0,20).map(e=>(
+                {[...moneyEntries].reverse().slice(0,20).map(e=>(
                   <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderTop:divider,gap:10}}>
                     <div style={{minWidth:0}}>
-                      <div style={{fontSize:14,fontWeight:600,color:"#14213D"}}>{e.type==="charity"?`${e.name} → ${e.charityName||"charity"}`:`Payout to ${e.name}`}</div>
+                      <div style={{fontSize:14,fontWeight:600,color:"#14213D"}}>{e.type==="charity"?(e.name&&e.name!==e.charityName?`${e.name} → ${e.charityName||"charity"}`:`Donation to ${e.charityName||e.name||"charity"}`):`Payout to ${e.name}`}</div>
                       <div style={{fontSize:12,color:"#5B6878"}}>{fmtDate(e.ts)} · recorded by {e.recordedBy}</div>
                     </div>
-                    <div style={{fontSize:14,fontWeight:500,color:"#14213D"}}>{fmtMoney(e.amount)}</div>
+                    <div style={{textAlign:"right",flexShrink:0}}>
+                      <div style={{fontSize:14,fontWeight:500,color:"#14213D"}}>{fmtMoney(e.amount)}</div>
+                      {amAdmin&&e.paymentId&&<button onClick={()=>removePayment(e.paymentId)} style={{background:"none",border:"none",padding:0,marginTop:2,fontSize:12,color:"#BF1E41",textDecoration:"underline",cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Remove</button>}
+                    </div>
                   </div>
                 ))}
               </div>
