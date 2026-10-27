@@ -98,6 +98,15 @@ async function apiPost(path, body){
 // ── Constants ────────────────────────────────────────────────────
 const TABS        = ["Dashboard","Group","Chat","Stats","Stakes"];
 const TAB_LABELS  = {Dashboard:"Today",Group:"Group",Chat:"Chat",Stats:"Stats",Stakes:"Stakes"};
+// App tour: each step shows the tab it describes. "highlight" makes the avatar button glow.
+const TOUR_STEPS = [
+  {tab:"Dashboard",emoji:"📊",title:"Start on the Today tab",body:"See how far you are from this week's goal and when your next check-in is. This is also where you log your words or run your writing timer."},
+  {tab:"Group",emoji:"👀",title:"Meet your group",body:"See everyone's goals and progress. You can also share your group link here to invite new members."},
+  {tab:"Dashboard",highlight:"avatar",emoji:"🔔",title:"Set up your notifications",body:"Tap your avatar in the top right corner to open Settings. From there you can set a daily writing reminder or a warning before each check-in."},
+  {tab:"Chat",emoji:"💬",title:"Say hi in Chat",body:"Cheer each other on here. You can also post a poll to get everyone's opinion."},
+  {tab:"Stats",emoji:"📈",title:"Track progress in Stats",body:"Your own history week to week, plus the whole group's progress at a glance."},
+  {tab:"Stakes",emoji:"🎯",title:"Manage your goal in Stakes",body:"Change your goal and charity here, but only when the admin allows it."},
+];
 const WEEK_DAYS   = ["M","T","W","T","F","S","S"];
 const AVATARS     = ["🦄","🐬","🍉","🐞","🌈","⭐","🌷","🐧","✏️","🙂"];
 const REACTIONS   = ["👍","👎","🦄","🌈","💖","⭐","🔥","🐬","✨","💫"];
@@ -224,6 +233,8 @@ const G = `
   .wordmark .wc{color:#FF7F11;} .wordmark .ab{color:#8C62D1;}
   .icon-btn{position:relative;width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;cursor:pointer;padding:0;}
   .icon-btn.bell{border:3px solid #00BFB2;} .icon-btn.me{border:3px solid #F4E409;}
+  @keyframes tourGlow{from{box-shadow:0 0 0 4px #fff,0 0 0 7px #8C62D1;}to{box-shadow:0 0 0 6px #fff,0 0 0 12px #8C62D1aa;}}
+  .tour-glow{animation:tourGlow 0.9s ease-in-out infinite alternate;}
   .dotbadge{position:absolute;top:5px;right:6px;width:9px;height:9px;border-radius:50%;background:#8C62D1;border:2px solid #fff;}
   .eyebrow{font-size:12px;letter-spacing:0.14em;font-weight:700;color:#0062B1;text-transform:uppercase;margin:0 0 8px;}
   .headline{font-family:'Poppins',sans-serif;font-weight:600;font-size:clamp(26px,7.4vw,31px);line-height:1.15;margin:0 0 12px;color:#14213D;}
@@ -1247,6 +1258,8 @@ export default function App(){
     if(authUser?.uid){loadAll(authUser.uid);}
   },[authUser?.uid]);
   useEffect(()=>()=>clearInterval(timerRef.current),[]);
+  // During the app tour, show the tab each step is describing
+  useEffect(()=>{if(showTour)setTab(TOUR_STEPS[tourStep]?.tab||"Dashboard");},[showTour,tourStep]);
 
   // When the screen wakes up (visibilitychange → visible), immediately recalculate the timer
   // from the wall clock. This corrects for the browser throttling the interval while the
@@ -2241,34 +2254,26 @@ export default function App(){
       })()}
 
       {showTour&&(()=>{
-        const TOUR_STEPS=[
-          {emoji:"📊",title:"Start on the Today tab",body:"See how far you are from this week's goal and when your next check-in is. This is also where you'll log your words or run your writing timer."},
-          {emoji:"👀",title:"Check Out the Group Tab",body:"See your competitors and what their goals are. You can also share your group link here to invite new members."},
-          {emoji:"⚙️",title:"Set Up Your Notifications",body:"Tap your avatar in the top right corner to open Settings. From there you can set up a daily reminder to write, or a warning that your check-in is coming up."},
-          {emoji:"💬",title:"Say Hi in Chat",body:"Close Settings and head to the Chat tab to connect with your group. You can even send a poll to get everyone's opinions."},
-          {emoji:"📈",title:"Track Progress in Stats",body:"The Stats tab shows your own history week to week, plus the whole group's progress at a glance."},
-          {emoji:"🎯",title:"Manage Your Goal in Stakes",body:"The Stakes tab is where you can change your goal — but only when the admin allows it."},
-        ];
         const step=TOUR_STEPS[tourStep];
         const isLast=tourStep===TOUR_STEPS.length-1;
         return(
-          <div className="modal-bg" style={{zIndex:300}}>
-            <div className="card modal" style={{padding:28,textAlign:"center",maxWidth:380}}>
-              <div style={{fontSize:52,marginBottom:12}}>{step.emoji}</div>
+          <div className="modal-bg" style={{zIndex:300,alignItems:"flex-end",paddingBottom:"calc(92px + env(safe-area-inset-bottom))",background:"#14213D2e"}}>
+            <div className="card modal" style={{padding:"18px 20px",textAlign:"center",maxWidth:400,boxShadow:"0 10px 40px rgba(20,33,61,0.25)"}}>
+              <div style={{fontSize:30,marginBottom:4}}>{step.emoji}</div>
               <div style={{fontSize:11,color:"#6B7685",fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Step {tourStep+1} of {TOUR_STEPS.length}</div>
-              <div style={{fontSize:20,fontWeight:700,color:LF.yellow,marginBottom:12,lineHeight:1.3}}>{step.title}</div>
-              <div style={{fontSize:15,color:"#5B6878",fontWeight:500,lineHeight:1.7,marginBottom:24}}>{step.body}</div>
+              <div className="card-title" style={{fontSize:19,marginBottom:6,lineHeight:1.3}}>{step.title}</div>
+              <div style={{fontSize:15,color:"#5B6878",fontWeight:500,lineHeight:1.55,marginBottom:16}}>{step.body}</div>
               <div style={{display:"flex",gap:8}}>
                 {isLast?(
-                  <button className="btn btn-sm" style={{flex:1,fontSize:15}} onClick={()=>setShowTour(false)}>Now it's time to write! 🌈</button>
+                  <button className="btn" style={{flex:1}} onClick={()=>{setShowTour(false);setTab("Dashboard");}}>Time to write! 🌈</button>
                 ):(
                   <>
-                    <button className="btn btn-sm" style={{flex:1,fontSize:15}} onClick={()=>setTourStep(s=>s+1)}>Next →</button>
-                    <button onClick={()=>setShowTour(false)} style={{flex:1,background:"#14213D0d",border:"2px solid #14213D1f",borderRadius:50,padding:11,fontFamily:"'Inter',sans-serif",fontSize:14,color:"#6B7685",cursor:"pointer",fontWeight:500}}>Skip</button>
+                    <button className="btn" style={{flex:1}} onClick={()=>setTourStep(s=>s+1)}>Next →</button>
+                    <button className="ghost-btn" onClick={()=>{setShowTour(false);setTab("Dashboard");}} style={{flex:1,fontSize:16}}>Skip</button>
                   </>
                 )}
               </div>
-              <div style={{display:"flex",justifyContent:"center",gap:6,marginTop:18}}>
+              <div style={{display:"flex",justifyContent:"center",gap:6,marginTop:14}}>
                 {TOUR_STEPS.map((_,i)=>(
                   <div key={i} onClick={()=>setTourStep(i)} style={{width:i===tourStep?20:8,height:8,borderRadius:4,background:i===tourStep?LF.pink:"#14213D26",cursor:"pointer",transition:"all 0.2s"}}/>
                 ))}
@@ -2421,7 +2426,7 @@ export default function App(){
             🔔
             {inAppNotifs.filter(n=>!n.read).length>0&&<span className="dotbadge"/>}
           </button>
-          <button className="icon-btn me" onClick={()=>setShowSettings(true)} aria-label="Profile and settings">{me.avatar}</button>
+          <button className={`icon-btn me${showTour&&TOUR_STEPS[tourStep]?.highlight==="avatar"?" tour-glow":""}`} onClick={()=>setShowSettings(true)} aria-label="Profile and settings">{me.avatar}</button>
         </div>
       </div>
 
