@@ -1674,6 +1674,12 @@ export default function App(){
   function pauseTimer(){
     setTimerSecs(haltTimer());
   }
+  // Cancel: asks first, then throws away the current timed session (saved progress is untouched)
+  function cancelTimer(){
+    const mins=Math.round(timerElapsedNow()/60);
+    if(!window.confirm(mins>=1?`Discard ${mins} minute${mins===1?"":"s"}? This session won't be saved.`:"Discard this session?"))return;
+    resetTimer();
+  }
   function resetTimer(){
     haltTimer();
     timerBaseSecs.current=0;
@@ -2818,13 +2824,18 @@ export default function App(){
                     <div style={{fontFamily:"Poppins,sans-serif",fontSize:48,color:"#14213D",fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtTimer(timerSecs)}</div>
                     <div style={{fontSize:14,fontWeight:600,marginTop:4,color:timerRunning?"#6D47B5":"#5B6878"}}>{timerRunning?"● Writing in progress…":timerSecs>0?"Paused":"Tap Start when you begin"}</div>
                   </div>
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {/* Save and Pause side by side; Cancel is a smaller link underneath */}
+                  <div style={{display:"flex",gap:8}}>
+                    {timerSecs>=60&&<button className="btn btn-yellow" onClick={stopAndSave} style={{flex:1}}>Save {Math.round(timerSecs/60)} min</button>}
                     {!timerRunning
-                      ?<button className="btn" onClick={startTimer} style={{flex:1}}>{timerSecs>0?"Resume":"Start"} writing</button>
+                      ?<button className="btn" onClick={startTimer} style={{flex:1}}>{timerSecs>0?"Resume":"Start writing"}</button>
                       :<button className="btn btn-teal" onClick={pauseTimer} style={{flex:1}}>Pause</button>}
-                    {timerSecs>0&&<button className="btn btn-red" onClick={resetTimer} style={{flex:1}}>Stop</button>}
-                    {timerSecs>=60&&<button className="btn btn-yellow" onClick={stopAndSave} style={{width:"100%",marginTop:4}}>Save {Math.round(timerSecs/60)} min</button>}
                   </div>
+                  {timerSecs>0&&(
+                    <div style={{textAlign:"center",marginTop:10}}>
+                      <button onClick={cancelTimer} style={{background:"none",border:"none",padding:"6px 12px",fontFamily:"'Inter',sans-serif",fontSize:15,fontWeight:600,color:"#5B6878",textDecoration:"underline",cursor:"pointer"}}>Cancel</button>
+                    </div>
+                  )}
                   {timerSessions.length>0&&(
                     <div style={{marginTop:12,borderTop:`1px solid ${LF.purple}33`,paddingTop:10}}>
                       <div style={{fontSize:12,color:LF.lime,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Today's Sessions</div>
