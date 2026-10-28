@@ -2,7 +2,7 @@
 
 Goal: people can test the app during November 2026 (the old National Novel Writing Month).
 
-Last updated: 10/27/2026
+Last updated: 10/28/2026
 
 ## Before November testing (suggested)
 
@@ -21,6 +21,8 @@ Last updated: 10/27/2026
 
 ## Done
 
+- [x] **Timer buttons** (10/28/2026): Save sits next to Pause/Resume; a smaller Cancel underneath asks before discarding the session.
+- [x] **New app icon** (10/28/2026): purple with palette circles, cream notebook and orange pencil. Now PNG files so iPhones actually show it; top-bar color changed to cream.
 - [x] **Payment records protected** (10/27/2026): each payment is its own record. Members can record only their own donation or payout, once per check-in, and can't change or delete anyone's. Admins can record for anyone and remove mistakes (Stats → Money). Older records still show and count, and only admins can change them.
 - [x] **First-run pop-ups** (10/27/2026): new members see the app tour first, then the "Install the app" prompt.
 - [x] **Charity lookup safety** (10/27/2026): only signed-in users can use it, it never visits private/internal network addresses (checked on every redirect), and it reads at most the first 300 KB of a page.
